@@ -175,6 +175,15 @@
     <string name="back">Back</string>
     <string name="wind_direction">Direction</string>
     <string name="precipitation">Precipitation</string>
+
+    <!-- Map -->
+    <string name="map_layers">Map Layers</string>
+    <string name="map_radar_overlay">Radar Overlay</string>
+    <string name="map_base_map">Base Map</string>
+    <string name="map_play">Play animation</string>
+    <string name="map_pause">Pause animation</string>
+    <string name="map_previous_frame">Previous frame</string>
+    <string name="map_next_frame">Next frame</string>
     <string name="switched_to_fahrenheit">Switched to Fahrenheit</string>
     <string name="switched_to_celsius">Switched to Celsius</string>
     <string name="wind_speed_kph">Wind speed: km/h</string>
