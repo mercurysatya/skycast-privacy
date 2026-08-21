@@ -1,6 +1,7 @@
 package com.vayu.weather.presentation.weather
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -175,6 +176,7 @@ fun WeatherDashboard(
     onToggleUnit: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
     onOpenAlerts: () -> Unit = {},
+    onOpenDetail: () -> Unit = {},
     onShare: () -> Unit = {},
     onDismissRefreshError: () -> Unit = {},
     cityName: String? = null,
@@ -222,7 +224,8 @@ fun WeatherDashboard(
                     item {
                         CurrentWeatherSection(
                             info = info,
-                            isCelsius = isCelsius
+                            isCelsius = isCelsius,
+                            onClick = onOpenDetail
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -376,12 +379,14 @@ private fun TopBar(
 @Composable
 private fun CurrentWeatherSection(
     info: WeatherInfo,
-    isCelsius: Boolean
+    isCelsius: Boolean,
+    onClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(8.dp))

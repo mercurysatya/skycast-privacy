@@ -170,6 +170,11 @@
     <string name="clear_cache_confirm">This will clear all cached weather data. The data will be re-fetched on next load.</string>
     <string name="cache_cleared">Weather cache cleared</string>
     <string name="clear_all_recent">Clear all recent searches</string>
+
+    <!-- Weather Detail -->
+    <string name="back">Back</string>
+    <string name="wind_direction">Direction</string>
+    <string name="precipitation">Precipitation</string>
     <string name="switched_to_fahrenheit">Switched to Fahrenheit</string>
     <string name="switched_to_celsius">Switched to Celsius</string>
     <string name="wind_speed_kph">Wind speed: km/h</string>

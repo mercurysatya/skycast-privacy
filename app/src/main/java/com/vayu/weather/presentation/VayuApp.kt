@@ -35,6 +35,7 @@ import com.vayu.weather.presentation.settings.SettingsViewModel
 import com.vayu.weather.presentation.weather.ThemeMode
 import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.WeatherDashboard
+import com.vayu.weather.presentation.weather.WeatherDetailScreen
 import com.vayu.weather.presentation.weather.WeatherShareFormatter
 import com.vayu.weather.presentation.weather.WeatherViewModel
 import com.vayu.weather.ui.theme.SkyCastTheme
@@ -68,6 +69,7 @@ fun VayuApp() {
     val settingsState by settingsViewModel.state.collectAsState()
     var showSettings by remember { mutableStateOf(false) }
     var showAlerts by remember { mutableStateOf(false) }
+    var showDetail by remember { mutableStateOf(false) }
     var showPrivacyPolicy by remember { mutableStateOf(false) }
     var privacyPolicyAnchor by remember { mutableStateOf<String?>(null) }
 
@@ -79,6 +81,10 @@ fun VayuApp() {
     BackHandler(enabled = showPrivacyPolicy) {
         showPrivacyPolicy = false
         privacyPolicyAnchor = null
+    }
+
+    BackHandler(enabled = showDetail && !showAlerts && !showSettings && !showPrivacyPolicy) {
+        showDetail = false
     }
 
     BackHandler(enabled = showAlerts && !showSettings && !showPrivacyPolicy) {
@@ -119,6 +125,13 @@ fun VayuApp() {
                         showPrivacyPolicy = false
                         privacyPolicyAnchor = null
                     }
+                )
+            } else if (showDetail) {
+                WeatherDetailScreen(
+                    state = weatherViewModel.state,
+                    settings = settingsState,
+                    cityName = weatherViewModel.currentCityName,
+                    onBack = { showDetail = false }
                 )
             } else if (showAlerts) {
                 AlertsScreen(
@@ -342,6 +355,7 @@ fun VayuApp() {
                                             onToggleUnit = settingsViewModel::toggleTemperatureUnit,
                                             onOpenSettings = { showSettings = true },
                                             onOpenAlerts = { showAlerts = true },
+                                            onOpenDetail = { showDetail = true },
                                             onShare = {
                                                 val weatherInfo = weatherViewModel.state.weatherInfo
                                                 if (weatherInfo != null) {
