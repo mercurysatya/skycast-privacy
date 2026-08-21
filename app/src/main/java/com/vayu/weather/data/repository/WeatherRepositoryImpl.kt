@@ -50,7 +50,7 @@ class WeatherRepositoryImpl @Inject constructor(
 
     override suspend fun getWeatherData(lat: Double, long: Double): Result<WeatherInfo> {
         return try {
-            val locationId = "${lat},${long}"
+            val locationId = "$lat,$long"
             val cached = dao.getWeatherCache(locationId)
             val cacheAge = System.currentTimeMillis() - (cached?.lastUpdated ?: 0)
 
@@ -74,7 +74,7 @@ class WeatherRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             try {
-                val locationId = "${lat},${long}"
+                val locationId = "$lat,$long"
                 val cached = dao.getWeatherCache(locationId)
                 if (cached != null) {
                     val weatherInfo = json.decodeFromString<WeatherInfo>(cached.weatherDataJson)
