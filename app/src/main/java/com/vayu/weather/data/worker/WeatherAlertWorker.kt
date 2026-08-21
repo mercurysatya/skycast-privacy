@@ -19,6 +19,7 @@ import com.vayu.weather.domain.repository.WeatherRepository
 import com.vayu.weather.domain.use_case.GetWeatherUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlin.math.roundToInt
 
 @HiltWorker
 class WeatherAlertWorker @AssistedInject constructor(
