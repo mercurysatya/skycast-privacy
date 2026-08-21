@@ -7,18 +7,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DeleteSweep
@@ -32,14 +31,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -87,9 +81,8 @@ fun SearchScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Search bar
         TextField(
-            value = state.query,
+            value = state.searchQuery,
             onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text(stringResource(R.string.search_for_city)) },
@@ -112,7 +105,6 @@ fun SearchScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Loading indicator
         if (state.isLoading) {
             Box(
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -120,11 +112,9 @@ fun SearchScreen(
             ) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
-        }
-        // Search results
-        else if (state.query.isNotBlank() && state.results.isNotEmpty()) {
+        } else if (state.searchQuery.isNotBlank() && state.searchResults.isNotEmpty()) {
             LazyColumn(modifier = Modifier.weight(1f)) {
-                items(state.results) { city ->
+                items(state.searchResults) { city ->
                     CityItem(
                         city = city,
                         onClick = { onCitySelected(city) },
@@ -133,26 +123,21 @@ fun SearchScreen(
                     )
                 }
             }
-        }
-        // Empty state
-        else if (state.query.isBlank()) {
+        } else if (state.searchQuery.isBlank()) {
             EmptySearchContent(
                 recentSearches = state.recentSearches,
                 onCitySelected = onCitySelected,
-                onQueryChange = onQueryChange,
                 onClearRecentSearches = onClearRecentSearches,
                 modifier = Modifier.weight(1f)
             )
-        }
-        // No results
-        else if (state.query.isNotBlank() && state.results.isEmpty() && !state.isLoading) {
+        } else if (state.searchQuery.isNotBlank() && state.searchResults.isEmpty() && !state.isLoading) {
             Box(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = stringResource(R.string.no_cities_found, state.query),
+                        text = stringResource(R.string.no_cities_found, state.searchQuery),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -161,7 +146,6 @@ fun SearchScreen(
             }
         }
 
-        // Error message
         state.error?.let { error ->
             Text(
                 text = error,
@@ -180,7 +164,6 @@ fun SearchScreen(
 private fun EmptySearchContent(
     recentSearches: List<City>,
     onCitySelected: (City) -> Unit,
-    onQueryChange: (String) -> Unit,
     onClearRecentSearches: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -188,7 +171,6 @@ private fun EmptySearchContent(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Description
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
@@ -200,7 +182,6 @@ private fun EmptySearchContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Recent searches
         if (recentSearches.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -235,7 +216,6 @@ private fun EmptySearchContent(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Popular cities
         Text(
             text = stringResource(R.string.popular_cities),
             style = MaterialTheme.typography.titleSmall,
@@ -247,14 +227,14 @@ private fun EmptySearchContent(
         )
 
         val popularCities = listOf(
-            City(id = 2643743, name = stringResource(R.string.city_london), latitude = 51.5085, longitude = -0.1257, country = stringResource(R.string.country_uk), countryCode = "GB"),
-            City(id = 5128581, name = stringResource(R.string.city_new_york), latitude = 40.7143, longitude = -74.006, country = stringResource(R.string.country_us), countryCode = "US"),
-            City(id = 1850147, name = stringResource(R.string.city_tokyo), latitude = 35.6895, longitude = 139.6917, country = stringResource(R.string.country_japan), countryCode = "JP"),
-            City(id = 2988507, name = stringResource(R.string.city_paris), latitude = 48.8534, longitude = 2.3488, country = stringResource(R.string.country_france), countryCode = "FR"),
-            City(id = 292223, name = stringResource(R.string.city_dubai), latitude = 25.2582, longitude = 55.2719, country = stringResource(R.string.country_uae), countryCode = "AE"),
-            City(id = 2147714, name = stringResource(R.string.city_sydney), latitude = -33.8679, longitude = 151.2073, country = stringResource(R.string.country_australia), countryCode = "AU"),
-            City(id = 1880252, name = stringResource(R.string.city_singapore), latitude = 1.3521, longitude = 103.8198, country = stringResource(R.string.country_singapore), countryCode = "SG"),
-            City(id = 1275339, name = stringResource(R.string.city_mumbai), latitude = 19.0728, longitude = 72.8797, country = stringResource(R.string.country_india), countryCode = "IN")
+            City(id = 2643743, name = stringResource(R.string.city_london), latitude = 51.5085, longitude = -0.1257, country = stringResource(R.string.country_uk), admin1 = null, countryCode = "GB"),
+            City(id = 5128581, name = stringResource(R.string.city_new_york), latitude = 40.7143, longitude = -74.006, country = stringResource(R.string.country_us), admin1 = null, countryCode = "US"),
+            City(id = 1850147, name = stringResource(R.string.city_tokyo), latitude = 35.6895, longitude = 139.6917, country = stringResource(R.string.country_japan), admin1 = null, countryCode = "JP"),
+            City(id = 2988507, name = stringResource(R.string.city_paris), latitude = 48.8534, longitude = 2.3488, country = stringResource(R.string.country_france), admin1 = null, countryCode = "FR"),
+            City(id = 292223, name = stringResource(R.string.city_dubai), latitude = 25.2582, longitude = 55.2719, country = stringResource(R.string.country_uae), admin1 = null, countryCode = "AE"),
+            City(id = 2147714, name = stringResource(R.string.city_sydney), latitude = -33.8679, longitude = 151.2073, country = stringResource(R.string.country_australia), admin1 = null, countryCode = "AU"),
+            City(id = 1880252, name = stringResource(R.string.city_singapore), latitude = 1.3521, longitude = 103.8198, country = stringResource(R.string.country_singapore), admin1 = null, countryCode = "SG"),
+            City(id = 1275339, name = stringResource(R.string.city_mumbai), latitude = 19.0728, longitude = 72.8797, country = stringResource(R.string.country_india), admin1 = null, countryCode = "IN")
         )
 
         popularCities.forEach { city ->
