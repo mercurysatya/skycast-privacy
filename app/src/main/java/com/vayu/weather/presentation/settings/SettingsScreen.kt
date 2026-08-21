@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.content.Intent
 import android.net.Uri
-import com.vayu.weather.BuildConfig
 import androidx.compose.ui.res.stringResource
 import com.vayu.weather.BuildConfig
 import com.vayu.weather.R
@@ -56,6 +55,7 @@ fun SettingsScreen(
     onOpenAlerts: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
 
@@ -661,7 +661,6 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(40.dp))
         }
     }
-}
 }
 
 @Composable

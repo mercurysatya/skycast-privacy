@@ -139,7 +139,7 @@ private fun getWeatherDescription(weatherCode: Int, isDay: Boolean): String {
 }
 
 @Composable
-private fun localizedWeatherDescription(weatherCode: Int, isDay: Boolean): String {
+internal fun localizedWeatherDescription(weatherCode: Int, isDay: Boolean): String {
     val resId = when (weatherCode) {
         0 -> if (isDay) R.string.weather_clear_sky else R.string.weather_clear_night
         1 -> R.string.weather_mainly_clear

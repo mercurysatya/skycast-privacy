@@ -32,7 +32,7 @@ class VayuApplication : Application(), Configuration.Provider {
         val requestConfig = RequestConfiguration.Builder()
             .setTestDeviceIds(
                 if (BuildConfig.DEBUG) listOf(
-                    RequestConfiguration.DEVICE_ID_EMULATOR
+                    "EMULATOR"
                 ) else emptyList()
             )
             .build()

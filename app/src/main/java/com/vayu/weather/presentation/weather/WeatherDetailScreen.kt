@@ -25,6 +25,7 @@ import com.vayu.weather.R
 import com.vayu.weather.domain.model.AirQuality
 import com.vayu.weather.domain.model.DailyWeather
 import com.vayu.weather.domain.model.HourlyWeather
+import com.vayu.weather.domain.model.WeatherDescription
 import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.presentation.components.AirQualityCard
 import java.time.LocalDate
@@ -232,7 +233,7 @@ private fun CurrentConditionsExpanded(
                         value = info.current.windGusts?.let { "${convertWindRaw(it, settings.windUnit)} ${windUnitLabel(settings.windUnit)}" } ?: "--"
                     )
                     DetailInfoItem(
-                        icon = Icons.Rounded.Compass,
+                        icon = Icons.Rounded.Explore,
                         label = stringResource(R.string.wind_direction),
                         value = info.current.windDirection?.let { formatWindDirection(it) } ?: "--"
                     )
@@ -477,7 +478,7 @@ private fun DailyDetailItem(
         val date = try { LocalDate.parse(data.date) } catch (e: Exception) { LocalDate.now() }
         val today = LocalDate.now()
         when (date) {
-            today -> stringResource(R.string.today)
+            today -> "Today"
             today.plusDays(1) -> "Tomorrow"
             else -> date.format(DateTimeFormatter.ofPattern("EEE, MMM d"))
         }
@@ -565,8 +566,8 @@ private fun DailyDetailItem(
 
             // Temp range bar
             TempRangeBar(
-                globalMin = dailyData.minOf { it.minTemp }.roundToInt(),
-                globalMax = dailyData.maxOf { it.maxTemp }.roundToInt(),
+                globalMin = convertTemp(data.minTemp, isCelsius).coerceAtMost(convertTemp(data.maxTemp, isCelsius)),
+                globalMax = convertTemp(data.maxTemp, isCelsius).coerceAtLeast(convertTemp(data.minTemp, isCelsius)),
                 dayMin = minTemp,
                 dayMax = maxTemp,
                 modifier = Modifier

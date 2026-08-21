@@ -108,7 +108,7 @@ class WeatherWidget : GlanceAppWidget() {
                         .fillMaxSize()
                         .background(GlanceTheme.colors.background)
                         .padding(16.dp)
-                        .clickable(actionStartActivity(Intent(context, com.vayu.weather.MainActivity::class.java))),
+                        .clickable(actionStartActivity(android.content.ComponentName(context, com.vayu.weather.MainActivity::class.java))),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalAlignment = Alignment.Top
                 ) {
