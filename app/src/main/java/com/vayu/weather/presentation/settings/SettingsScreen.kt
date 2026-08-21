@@ -33,6 +33,7 @@ import com.vayu.weather.presentation.weather.AlertSeverity
 import com.vayu.weather.presentation.weather.SettingsState
 import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.ThemeMode
+import com.vayu.weather.presentation.weather.WidgetSize
 import com.vayu.weather.presentation.weather.WindUnit
 import kotlin.math.roundToInt
 
@@ -47,6 +48,7 @@ fun SettingsScreen(
     onRainAlertThresholdChange: (Int) -> Unit,
     onCheckIntervalChange: (Int) -> Unit = {},
     onSeverityFilterChange: (AlertSeverity) -> Unit = {},
+    onWidgetSizeChange: (WidgetSize) -> Unit = {},
     onBack: () -> Unit,
     onOpenPrivacyPolicy: (String?) -> Unit = {},
     onDeleteAllData: () -> Unit = {},
@@ -116,6 +118,15 @@ fun SettingsScreen(
         }
         snackbarMessage = context.getString(R.string.severity_filter_toast, label)
         onSeverityFilterChange(value)
+    }
+    val wrappedWidgetSizeChange: (WidgetSize) -> Unit = { value ->
+        val label = when (value) {
+            WidgetSize.SMALL -> context.getString(R.string.widget_size_small)
+            WidgetSize.MEDIUM -> context.getString(R.string.widget_size_medium)
+            WidgetSize.LARGE -> context.getString(R.string.widget_size_large)
+        }
+        snackbarMessage = context.getString(R.string.widget_size_toast, label)
+        onWidgetSizeChange(value)
     }
 
     Scaffold(
@@ -448,6 +459,69 @@ fun SettingsScreen(
                             }
                         }
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Widget Settings
+            SettingsGroup(title = stringResource(R.string.widget_group)) {
+                SettingsRow(
+                    icon = Icons.Rounded.Widgets,
+                    title = stringResource(R.string.widget_size),
+                    subtitle = when (state.widgetSize) {
+                        WidgetSize.SMALL -> stringResource(R.string.widget_size_small)
+                        WidgetSize.MEDIUM -> stringResource(R.string.widget_size_medium)
+                        WidgetSize.LARGE -> stringResource(R.string.widget_size_large)
+                    }
+                ) {
+                    var expanded by remember { mutableStateOf(false) }
+                    Box {
+                        TextButton(onClick = { expanded = true }) {
+                            Text(
+                                text = when (state.widgetSize) {
+                                    WidgetSize.SMALL -> stringResource(R.string.widget_size_small)
+                                    WidgetSize.MEDIUM -> stringResource(R.string.widget_size_medium)
+                                    WidgetSize.LARGE -> stringResource(R.string.widget_size_large)
+                                },
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            WidgetSize.entries.forEach { size ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = when (size) {
+                                                WidgetSize.SMALL -> stringResource(R.string.widget_size_small)
+                                                WidgetSize.MEDIUM -> stringResource(R.string.widget_size_medium)
+                                                WidgetSize.LARGE -> stringResource(R.string.widget_size_large)
+                                            },
+                                            fontWeight = if (size == state.widgetSize) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    onClick = {
+                                        wrappedWidgetSizeChange(size)
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Widget size description
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    Text(
+                        text = when (state.widgetSize) {
+                            WidgetSize.SMALL -> stringResource(R.string.widget_size_small_desc)
+                            WidgetSize.MEDIUM -> stringResource(R.string.widget_size_medium_desc)
+                            WidgetSize.LARGE -> stringResource(R.string.widget_size_large_desc)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 

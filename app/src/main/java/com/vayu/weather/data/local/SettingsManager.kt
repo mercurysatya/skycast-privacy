@@ -36,6 +36,7 @@ class SettingsManager @Inject constructor(
         val RAIN_ALERT_THRESHOLD = intPreferencesKey("rain_alert_threshold")
         val CHECK_INTERVAL_HOURS = intPreferencesKey("check_interval_hours")
         val SEVERITY_FILTER = stringPreferencesKey("severity_filter")
+        val WIDGET_SIZE = stringPreferencesKey("widget_size")
     }
 
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -138,5 +139,16 @@ class SettingsManager @Inject constructor(
 
     suspend fun setSeverityFilter(value: String) {
         dataStore.edit { it[Keys.SEVERITY_FILTER] = value }
+    }
+
+    val widgetSizeFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[Keys.WIDGET_SIZE] ?: "MEDIUM"
+    }
+
+    suspend fun getWidgetSize(): String =
+        dataStore.data.first()[Keys.WIDGET_SIZE] ?: "MEDIUM"
+
+    suspend fun setWidgetSize(value: String) {
+        dataStore.edit { it[Keys.WIDGET_SIZE] = value }
     }
 }

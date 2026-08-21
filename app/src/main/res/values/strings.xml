@@ -225,6 +225,17 @@ Try selecting a different severity level.</string>
     <string name="check_interval_toast">Check interval: %1$s</string>
     <string name="severity_filter_toast">Severity filter: %1$s</string>
 
+    <!-- Widget Settings -->
+    <string name="widget_group">Widget</string>
+    <string name="widget_size">Widget Size</string>
+    <string name="widget_size_small">Small</string>
+    <string name="widget_size_medium">Medium</string>
+    <string name="widget_size_large">Large</string>
+    <string name="widget_size_small_desc">Compact widget showing temperature and weather condition only.</string>
+    <string name="widget_size_medium_desc">Standard widget with temperature, humidity, wind, and 3-day forecast.</string>
+    <string name="widget_size_large_desc">Expanded widget with all weather details and 3-day forecast.</string>
+    <string name="widget_size_toast">Widget size: %1$s</string>
+
     <!-- Share -->
     <string name="share_weather">Share weather</string>
     <string name="share_weather_title">Share Weather</string>

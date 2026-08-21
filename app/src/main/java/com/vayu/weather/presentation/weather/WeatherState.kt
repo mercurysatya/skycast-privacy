@@ -18,6 +18,7 @@ enum class WindUnit { KPH, MPH, MS, KNOTS }
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 enum class AlertSeverity { ALL, HIGH, HIGH_MEDIUM }
+enum class WidgetSize { SMALL, MEDIUM, LARGE }
 
 data class SettingsState(
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
@@ -27,5 +28,6 @@ data class SettingsState(
     val notificationsEnabled: Boolean = true,
     val rainAlertThreshold: Int = 50,
     val checkIntervalHours: Int = 3,
-    val severityFilter: AlertSeverity = AlertSeverity.ALL
+    val severityFilter: AlertSeverity = AlertSeverity.ALL,
+    val widgetSize: WidgetSize = WidgetSize.MEDIUM
 )

@@ -9,6 +9,7 @@ import com.vayu.weather.presentation.weather.AlertSeverity
 import com.vayu.weather.presentation.weather.SettingsState
 import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.ThemeMode
+import com.vayu.weather.presentation.weather.WidgetSize
 import com.vayu.weather.presentation.weather.WindUnit
 import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -42,6 +43,9 @@ class SettingsViewModel @Inject constructor(
             val severity = try {
                 AlertSeverity.valueOf(settingsManager.getSeverityFilter().uppercase())
             } catch (_: Exception) { AlertSeverity.ALL }
+            val widgetSz = try {
+                WidgetSize.valueOf(settingsManager.getWidgetSize().uppercase())
+            } catch (_: Exception) { WidgetSize.MEDIUM }
 
             _state.value = SettingsState(
                 temperatureUnit = settingsManager.getTemperatureUnit(),
@@ -51,7 +55,8 @@ class SettingsViewModel @Inject constructor(
                 notificationsEnabled = settingsManager.getNotificationsEnabled(),
                 rainAlertThreshold = settingsManager.getRainAlertThreshold(),
                 checkIntervalHours = settingsManager.getCheckIntervalHours(),
-                severityFilter = severity
+                severityFilter = severity,
+                widgetSize = widgetSz
             )
         }
     }
@@ -129,6 +134,31 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsManager.setSeverityFilter(severity.name)
             _state.update { it.copy(severityFilter = severity) }
+        }
+    }
+
+    fun setWidgetSize(size: WidgetSize) {
+        viewModelScope.launch {
+            settingsManager.setWidgetSize(size.name)
+            _state.update { it.copy(widgetSize = size) }
+            // Write to widget SharedPreferences so the widget can read it
+            appContext.getSharedPreferences("weather_widget_prefs", android.content.Context.MODE_PRIVATE)
+                .edit().putString("widget_size", size.name).apply()
+            refreshAllWidgets()
+        }
+    }
+
+    private fun refreshAllWidgets() {
+        viewModelScope.launch {
+            try {
+                val manager = androidx.glance.appwidget.GlanceAppWidgetManager(appContext)
+                val glanceIds = manager.getGlanceIds(com.vayu.weather.presentation.widget.WeatherWidget::class.java)
+                glanceIds.forEach { glanceId ->
+                    com.vayu.weather.presentation.widget.WeatherWidget().update(appContext, glanceId)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SettingsViewModel", "Failed to refresh widgets", e)
+            }
         }
     }
 

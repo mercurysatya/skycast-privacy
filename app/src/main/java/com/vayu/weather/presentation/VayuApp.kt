@@ -152,6 +152,7 @@ fun VayuApp() {
                     onRainAlertThresholdChange = settingsViewModel::setRainAlertThreshold,
                     onCheckIntervalChange = settingsViewModel::setCheckIntervalHours,
                     onSeverityFilterChange = settingsViewModel::setSeverityFilter,
+                    onWidgetSizeChange = settingsViewModel::setWidgetSize,
                     onBack = { showSettings = false },
                     onOpenPrivacyPolicy = { anchor ->
                         privacyPolicyAnchor = anchor
