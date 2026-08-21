@@ -21,6 +21,9 @@ interface WeatherRepository {
     suspend fun addWeatherAlert(alert: WeatherAlert)
     suspend fun deleteWeatherAlert(id: Long)
     suspend fun clearWeatherAlerts()
+    suspend fun clearWeatherCache()
+    suspend fun deleteStaleWeatherCache(maxAgeMs: Long)
+    suspend fun deleteAllLocalData()
 }
 
 data class WeatherAlert(

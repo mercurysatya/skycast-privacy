@@ -30,7 +30,11 @@ class VayuApplication : Application(), Configuration.Provider {
 
     private fun initializeAds() {
         val requestConfig = RequestConfiguration.Builder()
-            .setTestDeviceIds(listOf())
+            .setTestDeviceIds(
+                if (BuildConfig.DEBUG) listOf(
+                    RequestConfiguration.DEVICE_ID_EMULATOR
+                ) else emptyList()
+            )
             .build()
         MobileAds.setRequestConfiguration(requestConfig)
 

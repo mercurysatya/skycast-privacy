@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayu.weather.domain.model.City
 import com.vayu.weather.domain.use_case.AddRecentSearchUseCase
+import com.vayu.weather.domain.use_case.ClearRecentSearchesUseCase
 import com.vayu.weather.domain.use_case.GetRecentSearchesUseCase
 import com.vayu.weather.domain.use_case.SearchCityUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,7 +22,8 @@ import javax.inject.Inject
 class SearchViewModel @Inject constructor(
     private val searchCityUseCase: SearchCityUseCase,
     private val getRecentSearchesUseCase: GetRecentSearchesUseCase,
-    private val addRecentSearchUseCase: AddRecentSearchUseCase
+    private val addRecentSearchUseCase: AddRecentSearchUseCase,
+    private val clearRecentSearchesUseCase: ClearRecentSearchesUseCase
 ) : ViewModel() {
 
     var state by mutableStateOf(SearchState())
@@ -75,6 +77,12 @@ class SearchViewModel @Inject constructor(
     fun addToRecentSearches(city: City) {
         viewModelScope.launch {
             addRecentSearchUseCase(city)
+        }
+    }
+
+    fun clearRecentSearches() {
+        viewModelScope.launch {
+            clearRecentSearchesUseCase()
         }
     }
 }

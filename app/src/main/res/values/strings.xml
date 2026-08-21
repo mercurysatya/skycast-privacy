@@ -161,6 +161,15 @@
     <string name="delete_my_data">Delete My Data</string>
     <string name="delete_my_data_subtitle">Remove all local data from this device</string>
     <string name="delete">Delete</string>
+    <string name="delete_all_data_confirm">This will permanently delete all your favorites, recent searches, weather alerts, and cached data. This action cannot be undone.</string>
+    <string name="data_deleted">All data deleted</string>
+
+    <!-- Data Management -->
+    <string name="clear_cache">Clear Cache</string>
+    <string name="clear_cache_subtitle">Remove cached weather data</string>
+    <string name="clear_cache_confirm">This will clear all cached weather data. The data will be re-fetched on next load.</string>
+    <string name="cache_cleared">Weather cache cleared</string>
+    <string name="clear_all_recent">Clear all recent searches</string>
     <string name="switched_to_fahrenheit">Switched to Fahrenheit</string>
     <string name="switched_to_celsius">Switched to Celsius</string>
     <string name="wind_speed_kph">Wind speed: km/h</string>

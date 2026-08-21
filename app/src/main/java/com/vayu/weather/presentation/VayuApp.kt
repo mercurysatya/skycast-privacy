@@ -139,7 +139,9 @@ fun VayuApp() {
                     onOpenPrivacyPolicy = { anchor ->
                         privacyPolicyAnchor = anchor
                         showPrivacyPolicy = true
-                    }
+                    },
+                    onDeleteAllData = { settingsViewModel.deleteAllData() },
+                    onClearCache = { settingsViewModel.clearWeatherCache() }
                 )
             } else {
                 Scaffold(
@@ -317,7 +319,8 @@ fun VayuApp() {
                                             },
                                             isFavorite = { cityId ->
                                                 favoritesViewModel.state.favorites.any { it.id == cityId }
-                                            }
+                                            },
+                                            onClearRecentSearches = searchViewModel::clearRecentSearches
                                         )
                                     }
                                 }

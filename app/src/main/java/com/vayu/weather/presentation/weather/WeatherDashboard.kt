@@ -82,18 +82,27 @@ import com.vayu.weather.presentation.components.WeatherTrends
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
+private object ConversionConstants {
+    const val KPH_TO_MPH = 0.621371
+    const val KPH_TO_MS = 1.0 / 3.6
+    const val KPH_TO_KNOTS = 0.539957
+    const val CELSIUS_TO_FAHRENHEIT_FACTOR = 9.0 / 5.0
+    const val FAHRENHEIT_OFFSET = 32.0
+    const val METERS_TO_KM = 1000.0
+}
+
 private fun convertTemp(temp: Double, isCelsius: Boolean): Int {
     return if (isCelsius) temp.roundToInt()
-    else (temp * 9 / 5 + 32).roundToInt()
+    else (temp * ConversionConstants.CELSIUS_TO_FAHRENHEIT_FACTOR + ConversionConstants.FAHRENHEIT_OFFSET).roundToInt()
 }
 
 private fun convertWind(windKph: Double?, unit: WindUnit): String {
     val speed = windKph ?: return "--"
     return when (unit) {
         WindUnit.KPH -> "${speed.roundToInt()}"
-        WindUnit.MPH -> "${(speed * 0.621371).roundToInt()}"
-        WindUnit.MS -> "${(speed / 3.6).roundToInt()}"
-        WindUnit.KNOTS -> "${(speed * 0.539957).roundToInt()}"
+        WindUnit.MPH -> "${(speed * ConversionConstants.KPH_TO_MPH).roundToInt()}"
+        WindUnit.MS -> "${(speed * ConversionConstants.KPH_TO_MS).roundToInt()}"
+        WindUnit.KNOTS -> "${(speed * ConversionConstants.KPH_TO_KNOTS).roundToInt()}"
     }
 }
 
@@ -459,7 +468,7 @@ private fun HourlyForecast(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(horizontal = 0.dp)
             ) {
-                items(hourlyData.take(24)) { hour ->
+                items(hourlyData.sortedBy { it.time }.take(24)) { hour ->
                     HourlyCard(
                         data = hour,
                         isCelsius = isCelsius

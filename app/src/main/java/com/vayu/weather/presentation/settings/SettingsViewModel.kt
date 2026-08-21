@@ -3,6 +3,8 @@ package com.vayu.weather.presentation.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayu.weather.data.local.SettingsManager
+import com.vayu.weather.domain.use_case.ClearWeatherCacheUseCase
+import com.vayu.weather.domain.use_case.DeleteAllLocalDataUseCase
 import com.vayu.weather.presentation.weather.SettingsState
 import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.ThemeMode
@@ -18,7 +20,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsManager: SettingsManager
+    private val settingsManager: SettingsManager,
+    private val deleteAllLocalDataUseCase: DeleteAllLocalDataUseCase,
+    private val clearWeatherCacheUseCase: ClearWeatherCacheUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -78,6 +82,18 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsManager.setRainAlertThreshold(value)
             _state.update { it.copy(rainAlertThreshold = value) }
+        }
+    }
+
+    fun deleteAllData() {
+        viewModelScope.launch {
+            deleteAllLocalDataUseCase()
+        }
+    }
+
+    fun clearWeatherCache() {
+        viewModelScope.launch {
+            clearWeatherCacheUseCase()
         }
     }
 }

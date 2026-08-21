@@ -25,6 +25,12 @@ interface WeatherDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWeatherCache(cache: WeatherCacheEntity)
 
+    @Query("DELETE FROM weather_cache")
+    suspend fun clearWeatherCache()
+
+    @Query("DELETE FROM weather_cache WHERE lastUpdated < :timestamp")
+    suspend fun deleteStaleCache(timestamp: Long)
+
     @Query("SELECT * FROM recent_searches ORDER BY timestamp DESC LIMIT :limit")
     fun getRecentSearches(limit: Int = 10): Flow<List<RecentSearchEntity>>
 

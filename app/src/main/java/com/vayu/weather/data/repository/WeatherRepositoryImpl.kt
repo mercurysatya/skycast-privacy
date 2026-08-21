@@ -1,5 +1,8 @@
 package com.vayu.weather.data.repository
 
+import android.app.Application
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.vayu.weather.data.local.FavoriteCityEntity
 import com.vayu.weather.data.local.RecentSearchEntity
 import com.vayu.weather.data.local.WeatherAlertEntity
@@ -28,10 +31,18 @@ class WeatherRepositoryImpl @Inject constructor(
     private val api: OpenMeteoApi,
     private val airQualityApi: OpenMeteoAirQualityApi,
     private val geocodingApi: GeocodingApi,
-    private val dao: WeatherDao
+    private val dao: WeatherDao,
+    private val application: Application
 ) : WeatherRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
+
+    private fun isNetworkAvailable(): Boolean {
+        val cm = application.getSystemService(Application.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 
     companion object {
         private const val CACHE_TTL_MS = 30 * 60 * 1000L
@@ -48,6 +59,9 @@ class WeatherRepositoryImpl @Inject constructor(
                 return Result.success(weatherInfo)
             }
 
+            if (!isNetworkAvailable()) {
+                return@try Result.failure(Exception("No internet connection"))
+            }
             val response = api.getWeatherData(lat, long)
             val weatherInfo = response.toWeatherInfo()
             val cacheEntity = WeatherCacheEntity(
@@ -73,6 +87,9 @@ class WeatherRepositoryImpl @Inject constructor(
 
     override suspend fun getAirQuality(lat: Double, long: Double): Result<AirQuality> {
         return try {
+            if (!isNetworkAvailable()) {
+                return Result.failure(Exception("No internet connection"))
+            }
             val response = airQualityApi.getAirQuality(lat, long)
             val airQuality = response.current?.toAirQuality()
                 ?: return Result.failure(Exception("No air quality data available"))
@@ -85,6 +102,9 @@ class WeatherRepositoryImpl @Inject constructor(
 
     override suspend fun searchCity(query: String): Result<List<City>> {
         return try {
+            if (!isNetworkAvailable()) {
+                return Result.failure(Exception("No internet connection"))
+            }
             val response = geocodingApi.searchCity(query)
             Result.success(response.results?.map { it.toCity() } ?: emptyList())
         } catch (e: Exception) {
@@ -209,6 +229,12 @@ class WeatherRepositoryImpl @Inject constructor(
                 cityName = alert.cityName
             )
         )
+        // Keep only the most recent 100 alerts
+        val count = dao.getWeatherAlerts(999).first().size
+        if (count > 100) {
+            val oldest = dao.getWeatherAlerts(999).first().takeLast(count - 100)
+            oldest.forEach { dao.deleteWeatherAlert(it.id) }
+        }
     }
 
     override suspend fun deleteWeatherAlert(id: Long) {
@@ -217,5 +243,21 @@ class WeatherRepositoryImpl @Inject constructor(
 
     override suspend fun clearWeatherAlerts() {
         dao.clearWeatherAlerts()
+    }
+
+    override suspend fun clearWeatherCache() {
+        dao.clearWeatherCache()
+    }
+
+    override suspend fun deleteStaleWeatherCache(maxAgeMs: Long) {
+        val cutoff = System.currentTimeMillis() - maxAgeMs
+        dao.deleteStaleCache(cutoff)
+    }
+
+    override suspend fun deleteAllLocalData() {
+        dao.clearWeatherCache()
+        dao.clearRecentSearches()
+        dao.clearWeatherAlerts()
+        dao.getFavoriteCities().first().forEach { dao.deleteFavoriteCity(it) }
     }
 }

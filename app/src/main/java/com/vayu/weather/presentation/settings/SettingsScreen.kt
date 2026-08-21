@@ -46,6 +46,8 @@ fun SettingsScreen(
     onRainAlertThresholdChange: (Int) -> Unit,
     onBack: () -> Unit,
     onOpenPrivacyPolicy: (String?) -> Unit = {},
+    onDeleteAllData: () -> Unit = {},
+    onClearCache: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -377,8 +379,63 @@ fun SettingsScreen(
                     title = stringResource(R.string.delete_my_data),
                     subtitle = stringResource(R.string.delete_my_data_subtitle)
                 ) {
-                    TextButton(onClick = { onOpenPrivacyPolicy("data-deletion") }) {
+                    var showDeleteDialog by remember { mutableStateOf(false) }
+                    if (showDeleteDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showDeleteDialog = false },
+                            title = { Text(stringResource(R.string.delete_my_data)) },
+                            text = { Text(stringResource(R.string.delete_all_data_confirm)) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    onDeleteAllData()
+                                    showDeleteDialog = false
+                                }) {
+                                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDeleteDialog = false }) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+                            }
+                        )
+                    }
+                    TextButton(onClick = { showDeleteDialog = true }) {
                         Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                SettingsRow(
+                    icon = Icons.Rounded.CleaningServices,
+                    title = stringResource(R.string.clear_cache),
+                    subtitle = stringResource(R.string.clear_cache_subtitle)
+                ) {
+                    var showCacheDialog by remember { mutableStateOf(false) }
+                    if (showCacheDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showCacheDialog = false },
+                            title = { Text(stringResource(R.string.clear_cache)) },
+                            text = { Text(stringResource(R.string.clear_cache_confirm)) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    onClearCache()
+                                    showCacheDialog = false
+                                }) {
+                                    Text(stringResource(R.string.delete))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showCacheDialog = false }) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+                            }
+                        )
+                    }
+                    TextButton(onClick = { showCacheDialog = true }) {
+                        Text(stringResource(R.string.open), color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }

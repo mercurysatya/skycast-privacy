@@ -57,6 +57,8 @@
 
 # Glance (App Widget)
 -keep class androidx.glance.** { *; }
+-keep class * extends androidx.glance.appwidget.GlanceAppWidget { *; }
+-keep class * extends androidx.glance.appwidget.GlanceAppWidgetReceiver { *; }
 
 # Compose
 -dontwarn androidx.compose.**

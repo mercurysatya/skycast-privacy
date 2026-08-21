@@ -1,10 +1,13 @@
 package com.vayu.weather.data.worker
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -58,15 +61,27 @@ class WeatherAlertWorker @AssistedInject constructor(
     }
 
     private fun showNotification(title: String, message: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    applicationContext,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+        }
+
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "weather_alerts"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "Weather Alerts",
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
+                applicationContext.getString(R.string.notification_channel_weather),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = applicationContext.getString(R.string.notification_channel_weather)
+            }
             notificationManager.createNotificationChannel(channel)
         }
 
@@ -74,6 +89,7 @@ class WeatherAlertWorker @AssistedInject constructor(
             .setContentTitle(title)
             .setContentText(message)
             .setSmallIcon(R.drawable.ic_vayu_icon_fg)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()
 

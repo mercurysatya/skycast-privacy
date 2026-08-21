@@ -31,6 +31,7 @@ fun SearchScreen(
     onCitySelected: (City) -> Unit,
     onToggleFavorite: ((City) -> Unit)? = null,
     isFavorite: ((Long) -> Boolean)? = null,
+    onClearRecentSearches: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -207,15 +208,28 @@ private fun EmptySearchContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         if (recentSearches.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.recent_searches),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-            )
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.recent_searches),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(onClick = onClearRecentSearches, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.DeleteSweep,
+                        contentDescription = stringResource(R.string.clear_all),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
 
             recentSearches.forEach { city ->
                 RecentSearchItem(
