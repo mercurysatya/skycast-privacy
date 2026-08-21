@@ -161,8 +161,8 @@ fun WeatherMapScreen(
                     val source = rememberRasterSource(
                         tiles = listOf(tileUrl),
                         options = TileSetOptions(
-                            minZoom = 3,
-                            maxZoom = 18
+                            minZoom = 0,
+                            maxZoom = 10
                         ),
                         tileSize = 256
                     )
@@ -170,8 +170,8 @@ fun WeatherMapScreen(
                         id = "rainviewer-radar",
                         source = source,
                         visible = true,
-                        minZoom = 3f,
-                        maxZoom = 18f,
+                        minZoom = 0f,
+                        maxZoom = 10f,
                         opacity = const(0.65f)
                     )
                 }
