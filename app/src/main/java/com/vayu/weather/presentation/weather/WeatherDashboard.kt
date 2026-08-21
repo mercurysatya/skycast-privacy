@@ -25,13 +25,11 @@ import androidx.compose.material.icons.rounded.Air
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudQueue
-import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.NightsStay
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Thunderstorm
 import androidx.compose.material.icons.rounded.Umbrella
@@ -43,7 +41,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -131,6 +128,7 @@ fun getWeatherIcon(weatherCode: Int, isDay: Boolean): ImageVector {
     }
 }
 
+@Composable
 internal fun localizedWeatherDescription(weatherCode: Int, isDay: Boolean): String {
     val resId = when (weatherCode) {
         0 -> if (isDay) R.string.weather_clear_sky else R.string.weather_clear_night
@@ -155,7 +153,7 @@ internal fun localizedWeatherDescription(weatherCode: Int, isDay: Boolean): Stri
         99 -> R.string.weather_thunderstorm_heavy_hail
         else -> R.string.weather_cloudy
     }
-    return androidx.compose.ui.res.stringResource(resId)
+    return stringResource(resId)
 }
 
 // ============================================================
@@ -204,7 +202,6 @@ fun WeatherDashboard(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    // Top bar
                     item {
                         TopBar(
                             onToggleUnit = onToggleUnit,
@@ -214,7 +211,6 @@ fun WeatherDashboard(
                         )
                     }
 
-                    // Hero section - Google Weather style
                     item {
                         HeroSection(
                             info = info,
@@ -224,7 +220,6 @@ fun WeatherDashboard(
                         )
                     }
 
-                    // Hourly forecast
                     item {
                         Spacer(modifier = Modifier.height(32.dp))
                         HourlyForecastSection(
@@ -233,7 +228,6 @@ fun WeatherDashboard(
                         )
                     }
 
-                    // Daily forecast
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
                         DailyForecastSection(
@@ -242,7 +236,6 @@ fun WeatherDashboard(
                         )
                     }
 
-                    // Weather details
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
                         WeatherDetailsSection(
@@ -252,7 +245,6 @@ fun WeatherDashboard(
                         )
                     }
 
-                    // Temperature trends chart
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
                         WeatherTrends(
@@ -262,13 +254,11 @@ fun WeatherDashboard(
                         )
                     }
 
-                    // Sun & Moon
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
                         SunMoonSection(dailyData = info.daily)
                     }
 
-                    // Air quality
                     if (state.airQuality != null) {
                         item {
                             Spacer(modifier = Modifier.height(24.dp))
@@ -279,7 +269,6 @@ fun WeatherDashboard(
                         }
                     }
 
-                    // Ad
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
                         AdBanner()
@@ -317,8 +306,8 @@ private fun TopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, top = 8.dp),
-        horizontalArrangement = Arrangement.End,
+            .padding(horizontal = 8.dp).padding(top = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onOpenAlerts) {
@@ -357,7 +346,7 @@ private fun TopBar(
 }
 
 // ============================================================
-// HERO SECTION - Google Weather inspired
+// HERO SECTION
 // ============================================================
 
 @Composable
@@ -373,7 +362,6 @@ private fun HeroSection(
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // City name
         Text(
             text = cityName ?: stringResource(R.string.default_city_name),
             style = MaterialTheme.typography.titleLarge,
@@ -385,7 +373,6 @@ private fun HeroSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Huge temperature
         Text(
             text = "${convertTemp(info.current.temperature, isCelsius)}°",
             fontSize = 96.sp,
@@ -396,7 +383,6 @@ private fun HeroSection(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Weather condition
         Text(
             text = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
             style = MaterialTheme.typography.titleMedium,
@@ -404,7 +390,6 @@ private fun HeroSection(
             color = Color.White.copy(alpha = 0.85f)
         )
 
-        // High / Low
         info.daily.firstOrNull()?.let { today ->
             val high = convertTemp(today.maxTemp, isCelsius)
             val low = convertTemp(today.minTemp, isCelsius)
@@ -415,7 +400,6 @@ private fun HeroSection(
             )
         }
 
-        // Feels like
         info.current.apparentTemperature?.let { apparent ->
             Text(
                 text = stringResource(R.string.feels_like, convertTemp(apparent, isCelsius)),
@@ -427,7 +411,7 @@ private fun HeroSection(
 }
 
 // ============================================================
-// HOURLY FORECAST - Pill-shaped cards
+// HOURLY FORECAST
 // ============================================================
 
 @Composable
@@ -450,7 +434,7 @@ private fun HourlyForecastSection(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White.copy(alpha = 0.9f),
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 0.dp, bottom = 12.dp)
+                modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp)
             )
 
             LazyRow(
@@ -474,6 +458,15 @@ private fun HourlyPillCard(
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
     val isNow = data.time == currentHour
 
+    val timeLabel = if (isNow) {
+        stringResource(R.string.now)
+    } else {
+        try {
+            java.time.LocalDateTime.parse(data.time, DateTimeFormatter.ISO_DATE_TIME)
+                .format(DateTimeFormatter.ofPattern("ha"))
+        } catch (e: Exception) { data.time.takeLast(5) }
+    }
+
     Column(
         modifier = Modifier
             .width(64.dp)
@@ -486,14 +479,8 @@ private fun HourlyPillCard(
             .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Time
         Text(
-            text = if (isNow) stringResource(R.string.now) else {
-                try {
-                    java.time.LocalDateTime.parse(data.time, DateTimeFormatter.ISO_DATE_TIME)
-                        .format(DateTimeFormatter.ofPattern("ha"))
-                } catch (e: Exception) { data.time.takeLast(5) }
-            },
+            text = timeLabel,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (isNow) FontWeight.Bold else FontWeight.Normal,
             color = Color.White.copy(alpha = if (isNow) 1f else 0.7f),
@@ -502,7 +489,6 @@ private fun HourlyPillCard(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Icon
         Icon(
             imageVector = getWeatherIcon(data.weatherCode, true),
             contentDescription = null,
@@ -512,7 +498,6 @@ private fun HourlyPillCard(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Temperature
         Text(
             text = "${convertTemp(data.temperature, isCelsius)}°",
             style = MaterialTheme.typography.bodyMedium,
@@ -523,7 +508,7 @@ private fun HourlyPillCard(
 }
 
 // ============================================================
-// DAILY FORECAST - Google Weather style rows
+// DAILY FORECAST
 // ============================================================
 
 @Composable
@@ -531,6 +516,9 @@ private fun DailyForecastSection(
     dailyData: List<DailyWeather>,
     isCelsius: Boolean
 ) {
+    val allMin = remember(dailyData) { dailyData.minOf { it.minTemp }.roundToInt() }
+    val allMax = remember(dailyData) { dailyData.maxOf { it.maxTemp }.roundToInt() }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -546,11 +534,8 @@ private fun DailyForecastSection(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White.copy(alpha = 0.9f),
-                modifier = Modifier.padding(horizontal = 20.dp, bottom = 8.dp)
+                modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)
             )
-
-            val allMin = remember(dailyData) { dailyData.minOf { it.minTemp }.roundToInt() }
-            val allMax = remember(dailyData) { dailyData.maxOf { it.maxTemp }.roundToInt() }
 
             dailyData.forEach { day ->
                 DailyRow(
@@ -571,18 +556,21 @@ private fun DailyRow(
     globalMin: Int,
     globalMax: Int
 ) {
-    val dateLabel = remember(data.date) {
-        val date = try { java.time.LocalDate.parse(data.date) } catch (_: Exception) { java.time.LocalDate.now() }
-        val today = java.time.LocalDate.now()
+    val nowLabel = stringResource(R.string.now)
+    val today = java.time.LocalDate.now()
+    val tomorrow = today.plusDays(1)
+    val dateLabel = try {
+        val date = java.time.LocalDate.parse(data.date)
         when (date) {
-            today -> stringResource(R.string.now)
-            today.plusDays(1) -> "Tomorrow"
+            today -> nowLabel
+            tomorrow -> "Tomorrow"
             else -> date.format(DateTimeFormatter.ofPattern("EEE"))
         }
-    }
+    } catch (e: Exception) { "---" }
 
     val minTemp = convertTemp(data.minTemp, isCelsius)
     val maxTemp = convertTemp(data.maxTemp, isCelsius)
+    val precipText = data.precipitationProbability?.let { if (it > 0) "$it%" else "" } ?: ""
 
     Row(
         modifier = Modifier
@@ -590,7 +578,6 @@ private fun DailyRow(
             .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Day name
         Text(
             text = dateLabel,
             style = MaterialTheme.typography.bodyMedium,
@@ -600,7 +587,6 @@ private fun DailyRow(
             maxLines = 1
         )
 
-        // Weather icon
         Icon(
             imageVector = getWeatherIcon(data.weatherCode, true),
             contentDescription = null,
@@ -608,23 +594,18 @@ private fun DailyRow(
             tint = Color.White.copy(alpha = 0.8f)
         )
 
-        // Precipitation %
-        data.precipitationProbability?.let { precip ->
-            if (precip > 0) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "$precip%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF4FC3F7),
-                    modifier = Modifier.width(32.dp),
-                    textAlign = TextAlign.End
-                )
-            } else {
-                Spacer(modifier = Modifier.width(40.dp))
-            }
-        } ?: Spacer(modifier = Modifier.width(40.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
-        // Low temp
+        Text(
+            text = precipText,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFF4FC3F7),
+            modifier = Modifier.width(36.dp),
+            textAlign = TextAlign.End
+        )
+
+        Spacer(modifier = Modifier.width(4.dp))
+
         Text(
             text = "${minTemp}°",
             style = MaterialTheme.typography.bodyMedium,
@@ -635,7 +616,6 @@ private fun DailyRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Temp range bar
         TempRangeBar(
             globalMin = globalMin,
             globalMax = globalMax,
@@ -648,7 +628,6 @@ private fun DailyRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // High temp
         Text(
             text = "${maxTemp}°",
             style = MaterialTheme.typography.bodyMedium,
@@ -691,7 +670,7 @@ fun TempRangeBar(
 }
 
 // ============================================================
-// WEATHER DETAILS - 2-column grid
+// WEATHER DETAILS
 // ============================================================
 
 @Composable
@@ -715,7 +694,7 @@ private fun WeatherDetailsSection(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White.copy(alpha = 0.9f),
-                modifier = Modifier.padding(horizontal = 4.dp, bottom = 12.dp)
+                modifier = Modifier.padding(horizontal = 4.dp).padding(bottom = 12.dp)
             )
 
             Row(
