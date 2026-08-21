@@ -324,4 +324,17 @@ Try selecting a different severity level.</string>
     <string name="onboarding_notifications_desc">Enable notifications to receive weather alerts for severe conditions like storms, high winds, extreme UV, and temperature extremes.</string>
     <string name="onboarding_grant_notifications">Enable Notifications</string>
     <string name="onboarding_permission_granted">Permission Granted</string>
+
+    <!-- Weather History -->
+    <string name="weather_history_title">Weather History</string>
+    <string name="daily_breakdown">Daily Breakdown</string>
+    <string name="humidity_trends">Humidity Trends</string>
+    <string name="no_history_data">No history data yet</string>
+    <string name="history_data_will_appear">Weather snapshots will appear here as you check the forecast over the coming days.</string>
+    <string name="clear_history_title">Clear History?</string>
+    <string name="clear_history_message">This will permanently delete all stored weather history data. This action cannot be undone.</string>
+    <string name="avg_temp">Avg</string>
+    <string name="high">High</string>
+    <string name="low">Low</string>
+    <string name="days_tracked">Days</string>
 </resources>

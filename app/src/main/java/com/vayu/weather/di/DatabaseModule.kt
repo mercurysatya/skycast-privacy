@@ -50,6 +50,29 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS weather_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    cityName TEXT NOT NULL,
+                    latitude REAL NOT NULL,
+                    longitude REAL NOT NULL,
+                    temperature REAL NOT NULL,
+                    weatherCode INTEGER NOT NULL,
+                    humidity REAL,
+                    windSpeed REAL,
+                    apparentTemperature REAL,
+                    isDay INTEGER NOT NULL DEFAULT 1,
+                    surfacePressure REAL,
+                    uvIndex REAL,
+                    precipitationProbability INTEGER
+                )
+            """.trimIndent())
+        }
+    }
+
     @Provides
     @Singleton
     fun provideVayuDatabase(app: Application): VayuDatabase {
@@ -58,7 +81,7 @@ object DatabaseModule {
             VayuDatabase::class.java,
             "vayu_db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .fallbackToDestructiveMigrationOnDowngrade(true)
             .build()
     }

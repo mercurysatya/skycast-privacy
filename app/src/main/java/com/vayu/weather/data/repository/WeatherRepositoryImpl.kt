@@ -8,6 +8,7 @@ import com.vayu.weather.data.local.RecentSearchEntity
 import com.vayu.weather.data.local.WeatherAlertEntity
 import com.vayu.weather.data.local.WeatherCacheEntity
 import com.vayu.weather.data.local.WeatherDao
+import com.vayu.weather.data.local.WeatherHistoryEntity
 import com.vayu.weather.data.mapper.toAirQuality
 import com.vayu.weather.data.mapper.toCity
 import com.vayu.weather.data.mapper.toWeatherInfo
@@ -273,6 +274,68 @@ class WeatherRepositoryImpl @Inject constructor(
         dao.clearWeatherCache()
         dao.clearRecentSearches()
         dao.clearWeatherAlerts()
+        dao.clearWeatherHistory()
         dao.getFavoriteCities().first().forEach { dao.deleteFavoriteCity(it) }
     }
+
+    // ---- Weather History ----
+
+    override suspend fun saveWeatherSnapshot(snapshot: com.vayu.weather.domain.model.WeatherHistorySnapshot) {
+        dao.insertWeatherHistory(
+            WeatherHistoryEntity(
+                id = snapshot.id,
+                timestamp = snapshot.timestamp,
+                cityName = snapshot.cityName,
+                latitude = snapshot.latitude,
+                longitude = snapshot.longitude,
+                temperature = snapshot.temperature,
+                weatherCode = snapshot.weatherCode,
+                humidity = snapshot.humidity,
+                windSpeed = snapshot.windSpeed,
+                apparentTemperature = snapshot.apparentTemperature,
+                isDay = snapshot.isDay,
+                surfacePressure = snapshot.surfacePressure,
+                uvIndex = snapshot.uvIndex,
+                precipitationProbability = snapshot.precipitationProbability
+            )
+        )
+        // Keep only the most recent 2000 snapshots (~2 weeks at hourly saves)
+        val count = dao.getWeatherHistoryCount()
+        if (count > 2000) {
+            dao.deleteOldestWeatherHistory(count - 2000)
+        }
+    }
+
+    override fun getWeatherHistory(limit: Int): Flow<List<com.vayu.weather.domain.model.WeatherHistorySnapshot>> {
+        return dao.getWeatherHistory(limit).map { entities ->
+            entities.map { it.toSnapshot() }
+        }
+    }
+
+    override fun getWeatherHistorySince(since: Long): Flow<List<com.vayu.weather.domain.model.WeatherHistorySnapshot>> {
+        return dao.getWeatherHistorySince(since).map { entities ->
+            entities.map { it.toSnapshot() }
+        }
+    }
+
+    override suspend fun clearWeatherHistory() {
+        dao.clearWeatherHistory()
+    }
+
+    private fun WeatherHistoryEntity.toSnapshot() = com.vayu.weather.domain.model.WeatherHistorySnapshot(
+        id = id,
+        timestamp = timestamp,
+        cityName = cityName,
+        latitude = latitude,
+        longitude = longitude,
+        temperature = temperature,
+        weatherCode = weatherCode,
+        humidity = humidity,
+        windSpeed = windSpeed,
+        apparentTemperature = apparentTemperature,
+        isDay = isDay,
+        surfacePressure = surfacePressure,
+        uvIndex = uvIndex,
+        precipitationProbability = precipitationProbability
+    )
 }

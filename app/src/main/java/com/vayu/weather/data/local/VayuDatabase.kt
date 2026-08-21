@@ -8,9 +8,10 @@ import androidx.room.RoomDatabase
         FavoriteCityEntity::class,
         WeatherCacheEntity::class,
         RecentSearchEntity::class,
-        WeatherAlertEntity::class
+        WeatherAlertEntity::class,
+        WeatherHistoryEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class VayuDatabase : RoomDatabase() {

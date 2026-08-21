@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.NightsStay
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
@@ -171,6 +172,7 @@ fun WeatherDashboard(
     onOpenSettings: () -> Unit = {},
     onOpenAlerts: () -> Unit = {},
     onOpenDetail: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
     onShare: () -> Unit = {},
     onDismissRefreshError: () -> Unit = {},
     cityName: String? = null,
@@ -207,6 +209,7 @@ fun WeatherDashboard(
                             onToggleUnit = onToggleUnit,
                             onOpenSettings = onOpenSettings,
                             onOpenAlerts = onOpenAlerts,
+                            onOpenHistory = onOpenHistory,
                             onShare = onShare
                         )
                     }
@@ -301,6 +304,7 @@ private fun TopBar(
     onToggleUnit: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAlerts: () -> Unit,
+    onOpenHistory: () -> Unit,
     onShare: () -> Unit
 ) {
     Row(
@@ -314,6 +318,14 @@ private fun TopBar(
             Icon(
                 Icons.Rounded.NotificationsActive,
                 contentDescription = stringResource(R.string.weather_alerts),
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        IconButton(onClick = onOpenHistory) {
+            Icon(
+                Icons.Rounded.History,
+                contentDescription = stringResource(R.string.weather_history_title),
                 tint = Color.White.copy(alpha = 0.85f),
                 modifier = Modifier.size(22.dp)
             )

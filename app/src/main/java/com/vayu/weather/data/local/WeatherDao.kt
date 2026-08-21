@@ -54,4 +54,27 @@ interface WeatherDao {
 
     @Query("DELETE FROM weather_alerts")
     suspend fun clearWeatherAlerts()
+
+    // ---- Weather History ----
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWeatherHistory(snapshot: WeatherHistoryEntity)
+
+    @Query("SELECT * FROM weather_history ORDER BY timestamp DESC LIMIT :limit")
+    fun getWeatherHistory(limit: Int = 500): Flow<List<WeatherHistoryEntity>>
+
+    @Query("SELECT * FROM weather_history WHERE timestamp >= :since ORDER BY timestamp ASC")
+    fun getWeatherHistorySince(since: Long): Flow<List<WeatherHistoryEntity>>
+
+    @Query("SELECT * FROM weather_history WHERE latitude = :lat AND longitude = :lon AND timestamp >= :since ORDER BY timestamp ASC")
+    fun getWeatherHistoryForLocation(lat: Double, lon: Double, since: Long): Flow<List<WeatherHistoryEntity>>
+
+    @Query("DELETE FROM weather_history")
+    suspend fun clearWeatherHistory()
+
+    @Query("SELECT COUNT(*) FROM weather_history")
+    suspend fun getWeatherHistoryCount(): Int
+
+    @Query("DELETE FROM weather_history WHERE id IN (SELECT id FROM weather_history ORDER BY timestamp ASC LIMIT :count)")
+    suspend fun deleteOldestWeatherHistory(count: Int)
 }

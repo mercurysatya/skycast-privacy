@@ -24,6 +24,12 @@ interface WeatherRepository {
     suspend fun clearWeatherCache()
     suspend fun deleteStaleWeatherCache(maxAgeMs: Long)
     suspend fun deleteAllLocalData()
+
+    // Weather History
+    suspend fun saveWeatherSnapshot(snapshot: com.vayu.weather.domain.model.WeatherHistorySnapshot)
+    fun getWeatherHistory(limit: Int = 500): Flow<List<com.vayu.weather.domain.model.WeatherHistorySnapshot>>
+    fun getWeatherHistorySince(since: Long): Flow<List<com.vayu.weather.domain.model.WeatherHistorySnapshot>>
+    suspend fun clearWeatherHistory()
 }
 
 data class WeatherAlert(

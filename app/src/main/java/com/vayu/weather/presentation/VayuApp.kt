@@ -37,6 +37,9 @@ import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.WeatherDashboard
 import com.vayu.weather.presentation.weather.WeatherDetailScreen
 import com.vayu.weather.presentation.onboarding.OnboardingScreen
+import com.vayu.weather.presentation.history.WeatherHistoryScreen
+import com.vayu.weather.presentation.history.WeatherHistoryViewModel
+import com.vayu.weather.presentation.weather.WeatherCardRenderer
 import com.vayu.weather.presentation.weather.WeatherShareFormatter
 import com.vayu.weather.presentation.weather.WeatherViewModel
 import com.vayu.weather.ui.theme.SkyCastTheme
@@ -64,6 +67,7 @@ fun VayuApp() {
     val favoritesViewModel: FavoritesViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
     val alertsViewModel: AlertsViewModel = hiltViewModel()
+    val historyViewModel: WeatherHistoryViewModel = hiltViewModel()
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -73,6 +77,7 @@ fun VayuApp() {
     var showSettings by remember { mutableStateOf(false) }
     var showAlerts by remember { mutableStateOf(false) }
     var showDetail by remember { mutableStateOf(false) }
+    var showHistory by remember { mutableStateOf(false) }
     var showPrivacyPolicy by remember { mutableStateOf(false) }
     var privacyPolicyAnchor by remember { mutableStateOf<String?>(null) }
 
@@ -86,15 +91,19 @@ fun VayuApp() {
         privacyPolicyAnchor = null
     }
 
-    BackHandler(enabled = showDetail && !showAlerts && !showSettings && !showPrivacyPolicy) {
+    BackHandler(enabled = showDetail && !showAlerts && !showSettings && !showHistory && !showPrivacyPolicy) {
         showDetail = false
     }
 
-    BackHandler(enabled = showAlerts && !showSettings && !showPrivacyPolicy) {
+    BackHandler(enabled = showHistory && !showAlerts && !showSettings && !showPrivacyPolicy) {
+        showHistory = false
+    }
+
+    BackHandler(enabled = showAlerts && !showSettings && !showHistory && !showPrivacyPolicy) {
         showAlerts = false
     }
 
-    BackHandler(enabled = showSettings && !showPrivacyPolicy) {
+    BackHandler(enabled = showSettings && !showHistory && !showPrivacyPolicy) {
         showSettings = false
     }
 
@@ -145,6 +154,11 @@ fun VayuApp() {
                     settings = settingsState,
                     cityName = weatherViewModel.currentCityName,
                     onBack = { showDetail = false }
+                )
+            } else if (showHistory) {
+                WeatherHistoryScreen(
+                    viewModel = historyViewModel,
+                    onBack = { showHistory = false }
                 )
             } else if (showAlerts) {
                 AlertsScreen(
@@ -383,6 +397,7 @@ fun VayuApp() {
                                             onOpenSettings = { showSettings = true },
                                             onOpenAlerts = { showAlerts = true },
                                             onOpenDetail = { showDetail = true },
+                                            onOpenHistory = { showHistory = true },
                                             onShare = {
                                                 val weatherInfo = weatherViewModel.state.weatherInfo
                                                 if (weatherInfo != null) {
@@ -392,12 +407,39 @@ fun VayuApp() {
                                                         weatherInfo = weatherInfo,
                                                         isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS
                                                     )
-                                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                        type = "text/plain"
-                                                        putExtra(Intent.EXTRA_TEXT, shareText)
-                                                        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                                                    try {
+                                                        val bitmap = WeatherCardRenderer.generateWeatherCardBitmap(
+                                                            context = context,
+                                                            cityName = weatherViewModel.currentCityName ?: context.getString(R.string.default_city_name),
+                                                            weatherInfo = weatherInfo,
+                                                            isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS
+                                                        )
+                                                        val file = java.io.File(context.cacheDir, "weather_share.png")
+                                                        java.io.FileOutputStream(file).use { out ->
+                                                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                                                        }
+                                                        val uri = androidx.core.content.FileProvider.getUriForFile(
+                                                            context,
+                                                            "${context.packageName}.fileprovider",
+                                                            file
+                                                        )
+                                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                            type = "image/png"
+                                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                                            putExtra(Intent.EXTRA_TEXT, shareText)
+                                                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                        }
+                                                        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
+                                                    } catch (e: Exception) {
+                                                        // Fallback to text-only share
+                                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                            type = "text/plain"
+                                                            putExtra(Intent.EXTRA_TEXT, shareText)
+                                                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                                                        }
+                                                        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
                                                     }
-                                                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
                                                 }
                                             },
                                             onDismissRefreshError = { weatherViewModel.clearRefreshError() },

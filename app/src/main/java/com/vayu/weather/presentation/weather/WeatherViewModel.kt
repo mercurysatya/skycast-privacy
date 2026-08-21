@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.vayu.weather.data.local.SettingsManager
 import com.vayu.weather.domain.location.LocationTracker
 import com.vayu.weather.domain.model.AirQuality
+import com.vayu.weather.domain.model.WeatherHistorySnapshot
+import com.vayu.weather.domain.repository.WeatherRepository
 import com.vayu.weather.domain.use_case.GetAirQualityUseCase
 import com.vayu.weather.domain.use_case.GetWeatherUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +25,7 @@ import javax.inject.Inject
 class WeatherViewModel @Inject constructor(
     private val getWeatherUseCase: GetWeatherUseCase,
     private val getAirQualityUseCase: GetAirQualityUseCase,
+    private val repository: WeatherRepository,
     val locationTracker: LocationTracker,
     val settingsManager: SettingsManager
 ) : ViewModel() {
@@ -63,22 +66,22 @@ class WeatherViewModel @Inject constructor(
                     currentLat = location.latitude
                     currentLon = location.longitude
                     loadAirQuality(location.latitude, location.longitude)
-                    getWeatherUseCase(location.latitude, location.longitude)
-                        .onSuccess { weatherInfo ->
-                            state = state.copy(
-                                weatherInfo = weatherInfo,
-                                isLoading = false,
-                                error = null,
-                                lastUpdatedTime = currentTimeString()
-                            )
-                        }
-                        .onFailure { e ->
-                            state = state.copy(
-                                weatherInfo = null,
-                                isLoading = false,
-                                error = "Couldn't retrieve weather data: ${e.message}"
-                            )
-                        }
+                    getWeatherUseCase(location.latitude, location.longitude)                    .onSuccess { weatherInfo ->
+                        state = state.copy(
+                            weatherInfo = weatherInfo,
+                            isLoading = false,
+                            error = null,
+                            lastUpdatedTime = currentTimeString()
+                        )
+                        saveWeatherSnapshot(weatherInfo, location.latitude, location.longitude)
+                    }
+                    .onFailure { e ->
+                        state = state.copy(
+                            weatherInfo = null,
+                            isLoading = false,
+                            error = "Couldn't retrieve weather data: ${e.message}"
+                        )
+                    }
                 } else {
                     state = state.copy(
                         isLoading = false,
@@ -124,6 +127,7 @@ class WeatherViewModel @Inject constructor(
                             error = null,
                             lastUpdatedTime = currentTimeString()
                         )
+                        saveWeatherSnapshot(weatherInfo, lat, lon)
                     }
                     .onFailure { e ->
                         state = state.copy(
@@ -196,6 +200,33 @@ class WeatherViewModel @Inject constructor(
 
     fun clearRefreshError() {
         state = state.copy(refreshError = null)
+    }
+
+    private suspend fun saveWeatherSnapshot(
+        weatherInfo: com.vayu.weather.domain.model.WeatherInfo,
+        lat: Double,
+        lon: Double
+    ) {
+        try {
+            repository.saveWeatherSnapshot(
+                WeatherHistorySnapshot(
+                    cityName = currentCityName ?: "Unknown",
+                    latitude = lat,
+                    longitude = lon,
+                    temperature = weatherInfo.current.temperature,
+                    weatherCode = weatherInfo.current.weatherCode,
+                    humidity = weatherInfo.current.humidity,
+                    windSpeed = weatherInfo.current.windSpeed,
+                    apparentTemperature = weatherInfo.current.apparentTemperature,
+                    isDay = weatherInfo.current.isDay,
+                    surfacePressure = weatherInfo.current.surfacePressure,
+                    uvIndex = weatherInfo.daily.firstOrNull()?.uvIndex,
+                    precipitationProbability = weatherInfo.daily.firstOrNull()?.precipitationProbability
+                )
+            )
+        } catch (e: Exception) {
+            Log.e("WeatherViewModel", "Failed to save weather snapshot", e)
+        }
     }
 
     private fun currentTimeString(): String {
