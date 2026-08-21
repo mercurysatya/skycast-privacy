@@ -49,19 +49,36 @@ class WeatherRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getWeatherData(lat: Double, long: Double): Result<WeatherInfo> {
+        val locationId = "$lat,$long"
+
+        // Check cache first
+        val cached = dao.getWeatherCache(locationId)
+        val cacheAge = System.currentTimeMillis() - (cached?.lastUpdated ?: 0)
+        if (cached != null && cacheAge < CACHE_TTL_MS) {
+            return try {
+                Result.success(json.decodeFromString<WeatherInfo>(cached.weatherDataJson))
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Result.failure(e)
+            }
+        }
+
+        // Check network
+        if (!isNetworkAvailable()) {
+            // Try to use stale cache as fallback
+            if (cached != null) {
+                return try {
+                    Result.success(json.decodeFromString<WeatherInfo>(cached.weatherDataJson))
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    Result.failure(Exception("No internet connection"))
+                }
+            }
+            return Result.failure(Exception("No internet connection"))
+        }
+
+        // Fetch from network
         return try {
-            val locationId = "$lat,$long"
-            val cached = dao.getWeatherCache(locationId)
-            val cacheAge = System.currentTimeMillis() - (cached?.lastUpdated ?: 0)
-
-            if (cached != null && cacheAge < CACHE_TTL_MS) {
-                val weatherInfo = json.decodeFromString<WeatherInfo>(cached.weatherDataJson)
-                return Result.success(weatherInfo)
-            }
-
-            if (!isNetworkAvailable()) {
-                return@try Result.failure(Exception("No internet connection"))
-            }
             val response = api.getWeatherData(lat, long)
             val weatherInfo = response.toWeatherInfo()
             val cacheEntity = WeatherCacheEntity(
@@ -73,14 +90,12 @@ class WeatherRepositoryImpl @Inject constructor(
             Result.success(weatherInfo)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            try {
-                val locationId = "$lat,$long"
-                val cached = dao.getWeatherCache(locationId)
-                if (cached != null) {
-                    val weatherInfo = json.decodeFromString<WeatherInfo>(cached.weatherDataJson)
-                    return Result.success(weatherInfo)
-                }
-            } catch (_: Exception) {}
+            // Fallback to stale cache
+            if (cached != null) {
+                try {
+                    return Result.success(json.decodeFromString<WeatherInfo>(cached.weatherDataJson))
+                } catch (_: Exception) {}
+            }
             Result.failure(e)
         }
     }
