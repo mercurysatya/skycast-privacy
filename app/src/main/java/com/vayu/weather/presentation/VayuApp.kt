@@ -137,7 +137,9 @@ fun VayuApp() {
                 AlertsScreen(
                     state = alertsViewModel.state,
                     onDeleteAlert = alertsViewModel::deleteAlert,
-                    onClearAll = alertsViewModel::clearAllAlerts
+                    onClearAll = alertsViewModel::clearAllAlerts,
+                    onFilterChange = alertsViewModel::setSeverityFilter,
+                    onToggleExpand = alertsViewModel::toggleExpandAlert
                 )
             } else if (showSettings) {
                 SettingsScreen(
@@ -154,7 +156,8 @@ fun VayuApp() {
                         showPrivacyPolicy = true
                     },
                     onDeleteAllData = { settingsViewModel.deleteAllData() },
-                    onClearCache = { settingsViewModel.clearWeatherCache() }
+                    onClearCache = { settingsViewModel.clearWeatherCache() },
+                    onOpenAlerts = { showAlerts = true }
                 )
             } else {
                 Scaffold(

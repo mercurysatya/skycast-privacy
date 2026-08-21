@@ -44,4 +44,14 @@ class AlertsViewModel @Inject constructor(
             clearWeatherAlertsUseCase()
         }
     }
+
+    fun setSeverityFilter(filter: SeverityFilter) {
+        state = state.copy(severityFilter = filter)
+    }
+
+    fun toggleExpandAlert(alertId: Long) {
+        state = state.copy(
+            expandedAlertId = if (state.expandedAlertId == alertId) null else alertId
+        )
+    }
 }

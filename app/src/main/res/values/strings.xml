@@ -184,6 +184,17 @@
     <string name="map_pause">Pause animation</string>
     <string name="map_previous_frame">Previous frame</string>
     <string name="map_next_frame">Next frame</string>
+
+    <!-- Alerts History -->
+    <string name="alert_count">%1$d alerts</string>
+    <string name="filter_all">All</string>
+    <string name="no_matching_alerts">No matching alerts</string>
+    <string name="no_matching_alerts_subtitle">No alerts match the selected filter.
+Try selecting a different severity level.</string>
+    <string name="alert_time">Time:</string>
+    <string name="alert_location">Location:</string>
+    <string name="alert_history">Alert History</string>
+    <string name="alert_history_subtitle">View all past weather alerts</string>
     <string name="switched_to_fahrenheit">Switched to Fahrenheit</string>
     <string name="switched_to_celsius">Switched to Celsius</string>
     <string name="wind_speed_kph">Wind speed: km/h</string>

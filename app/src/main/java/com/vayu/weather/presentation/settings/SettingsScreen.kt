@@ -48,6 +48,7 @@ fun SettingsScreen(
     onOpenPrivacyPolicy: (String?) -> Unit = {},
     onDeleteAllData: () -> Unit = {},
     onClearCache: () -> Unit = {},
+    onOpenAlerts: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -367,6 +368,19 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.view_privacy_policy)
                 ) {
                     TextButton(onClick = { onOpenPrivacyPolicy(null) }) {
+                        Text(stringResource(R.string.open), color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                SettingsRow(
+                    icon = Icons.Rounded.NotificationsActive,
+                    title = stringResource(R.string.alert_history),
+                    subtitle = stringResource(R.string.alert_history_subtitle)
+                ) {
+                    TextButton(onClick = onOpenAlerts) {
                         Text(stringResource(R.string.open), color = MaterialTheme.colorScheme.primary)
                     }
                 }
