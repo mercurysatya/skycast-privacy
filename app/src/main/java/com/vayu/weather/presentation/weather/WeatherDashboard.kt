@@ -1,5 +1,6 @@
 package com.vayu.weather.presentation.weather
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,18 +9,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -30,7 +25,6 @@ import androidx.compose.material.icons.rounded.Air
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudQueue
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.NightsStay
 import androidx.compose.material.icons.rounded.NotificationsActive
@@ -38,14 +32,17 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Thunderstorm
 import androidx.compose.material.icons.rounded.Umbrella
 import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.WbTwilight
-import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,24 +50,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.res.stringResource
-import com.vayu.weather.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.vayu.weather.R
 import com.vayu.weather.domain.model.DailyWeather
 import com.vayu.weather.domain.model.HourlyWeather
 import com.vayu.weather.domain.model.WeatherDescription
@@ -78,7 +77,6 @@ import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.presentation.ads.AdBanner
 import com.vayu.weather.presentation.components.AirQualityCard
 import com.vayu.weather.presentation.components.WeatherBackground
-
 import com.vayu.weather.presentation.components.WeatherTrends
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
@@ -89,7 +87,6 @@ private object ConversionConstants {
     const val KPH_TO_KNOTS = 0.539957
     const val CELSIUS_TO_FAHRENHEIT_FACTOR = 9.0 / 5.0
     const val FAHRENHEIT_OFFSET = 32.0
-    const val METERS_TO_KM = 1000.0
 }
 
 private fun convertTemp(temp: Double, isCelsius: Boolean): Int {
@@ -134,11 +131,6 @@ fun getWeatherIcon(weatherCode: Int, isDay: Boolean): ImageVector {
     }
 }
 
-private fun getWeatherDescription(weatherCode: Int, isDay: Boolean): String {
-    return WeatherDescription.getWeatherDescription(weatherCode, isDay)
-}
-
-@Composable
 internal fun localizedWeatherDescription(weatherCode: Int, isDay: Boolean): String {
     val resId = when (weatherCode) {
         0 -> if (isDay) R.string.weather_clear_sky else R.string.weather_clear_night
@@ -163,8 +155,12 @@ internal fun localizedWeatherDescription(weatherCode: Int, isDay: Boolean): Stri
         99 -> R.string.weather_thunderstorm_heavy_hail
         else -> R.string.weather_cloudy
     }
-    return stringResource(resId)
+    return androidx.compose.ui.res.stringResource(resId)
 }
+
+// ============================================================
+// MAIN DASHBOARD
+// ============================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -192,9 +188,7 @@ fun WeatherDashboard(
         }
     }
 
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
         state.weatherInfo?.let { info ->
             WeatherBackground(
                 weatherCode = info.current.weatherCode,
@@ -210,10 +204,9 @@ fun WeatherDashboard(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
+                    // Top bar
                     item {
                         TopBar(
-                            cityName = cityName,
-                            isCelsius = isCelsius,
                             onToggleUnit = onToggleUnit,
                             onOpenSettings = onOpenSettings,
                             onOpenAlerts = onOpenAlerts,
@@ -221,88 +214,86 @@ fun WeatherDashboard(
                         )
                     }
 
+                    // Hero section - Google Weather style
                     item {
-                        CurrentWeatherSection(
+                        HeroSection(
                             info = info,
+                            cityName = cityName,
                             isCelsius = isCelsius,
                             onClick = onOpenDetail
                         )
-
-                        Spacer(modifier = Modifier.height(24.dp))
                     }
 
+                    // Hourly forecast
                     item {
-                        InfoGrid(
+                        Spacer(modifier = Modifier.height(32.dp))
+                        HourlyForecastSection(
+                            hourlyData = info.hourly,
+                            isCelsius = isCelsius
+                        )
+                    }
+
+                    // Daily forecast
+                    item {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        DailyForecastSection(
+                            dailyData = info.daily,
+                            isCelsius = isCelsius
+                        )
+                    }
+
+                    // Weather details
+                    item {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        WeatherDetailsSection(
                             info = info,
                             isCelsius = isCelsius,
                             windUnit = settings.windUnit
                         )
-
-                        Spacer(modifier = Modifier.height(24.dp))
                     }
 
+                    // Temperature trends chart
                     item {
-                        HourlyForecast(
-                            hourlyData = info.hourly,
-                            isCelsius = isCelsius
-                        )
-
                         Spacer(modifier = Modifier.height(24.dp))
-                    }
-
-                    item {
                         WeatherTrends(
                             hourlyData = info.hourly,
                             isCelsius = isCelsius,
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
-
-                        Spacer(modifier = Modifier.height(24.dp))
                     }
 
-                    item {
-                        DailyForecast(
-                            dailyData = info.daily,
-                            isCelsius = isCelsius
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-
-                    item {
-                        SunMoonSection(
-                            dailyData = info.daily
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-
+                    // Sun & Moon
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
-                        AirQualityCard(
-                            airQuality = state.airQuality,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
+                        SunMoonSection(dailyData = info.daily)
                     }
 
+                    // Air quality
+                    if (state.airQuality != null) {
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            AirQualityCard(
+                                airQuality = state.airQuality,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                        }
+                    }
+
+                    // Ad
                     item {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         AdBanner()
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }
         }
 
         if (state.isLoading) {
-            LoadingSkeleton()
+            LoadingState()
         }
 
         state.error?.let {
-            ErrorState(
-                message = it,
-                onRetry = onRetry
-            )
+            ErrorState(message = it, onRetry = onRetry)
         }
 
         SnackbarHost(
@@ -312,10 +303,12 @@ fun WeatherDashboard(
     }
 }
 
+// ============================================================
+// TOP BAR
+// ============================================================
+
 @Composable
 private fun TopBar(
-    cityName: String?,
-    isCelsius: Boolean,
     onToggleUnit: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAlerts: () -> Unit,
@@ -324,160 +317,148 @@ private fun TopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = 8.dp, top = 8.dp),
+        horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = if (cityName != null) cityName else stringResource(R.string.default_city_name),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            IconButton(onClick = onOpenAlerts) {
-                Icon(
-                    imageVector = Icons.Rounded.NotificationsActive,
-                    contentDescription = stringResource(R.string.weather_alerts),
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            IconButton(onClick = onShare) {
-                Icon(
-                    imageVector = Icons.Rounded.Share,
-                    contentDescription = stringResource(R.string.share_weather),
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            IconButton(onClick = onToggleUnit) {
-                Text(
-                    text = if (isCelsius) stringResource(R.string.celsius_label) else stringResource(R.string.fahrenheit_label),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            IconButton(onClick = onOpenSettings) {
-                Icon(
-                    imageVector = Icons.Rounded.Settings,
-                    contentDescription = stringResource(R.string.settings),
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
+        IconButton(onClick = onOpenAlerts) {
+            Icon(
+                Icons.Rounded.NotificationsActive,
+                contentDescription = stringResource(R.string.weather_alerts),
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.size(22.dp)
+            )
         }
-    }
-}
-
-@Composable
-private fun CurrentWeatherSection(
-    info: WeatherInfo,
-    isCelsius: Boolean,
-    onClick: () -> Unit = {}
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Icon(
-            imageVector = getWeatherIcon(info.current.weatherCode, info.current.isDay),
-            contentDescription = getWeatherDescription(info.current.weatherCode, info.current.isDay),
-            modifier = Modifier.size(72.dp),
-            tint = Color.White
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "${convertTemp(info.current.temperature, isCelsius)}\u00B0",
-            style = MaterialTheme.typography.displayLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        info.current.apparentTemperature?.let {
-            Spacer(modifier = Modifier.height(8.dp))
-
+        IconButton(onClick = onShare) {
+            Icon(
+                Icons.Rounded.Share,
+                contentDescription = stringResource(R.string.share_weather),
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        IconButton(onClick = onToggleUnit) {
             Text(
-                text = stringResource(R.string.feels_like, convertTemp(it, isCelsius)),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f)
+                text = "°",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = 0.85f)
+            )
+        }
+        IconButton(onClick = onOpenSettings) {
+            Icon(
+                Icons.Rounded.Settings,
+                contentDescription = stringResource(R.string.settings),
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.size(22.dp)
             )
         }
     }
 }
 
+// ============================================================
+// HERO SECTION - Google Weather inspired
+// ============================================================
+
 @Composable
-private fun HourlyForecast(
-    hourlyData: List<HourlyWeather>,
-    isCelsius: Boolean
+private fun HeroSection(
+    info: WeatherInfo,
+    cityName: String?,
+    isCelsius: Boolean,
+    onClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // City name
         Text(
-            text = stringResource(R.string.hourly_forecast),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 12.dp)
+            text = cityName ?: stringResource(R.string.default_city_name),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Medium,
+            color = Color.White.copy(alpha = 0.9f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    with(MaterialTheme.colorScheme) {
-                        val fadeColor = surface
-                        Modifier.drawWithContent {
-                            drawContent()
-                            val fadeWidth = size.width * 0.08f
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        fadeColor.copy(alpha = 0.6f)
-                                    ),
-                                    startX = size.width - fadeWidth * 2,
-                                    endX = size.width
-                                )
-                            )
-                        }
-                    }
-                )
-        ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Huge temperature
+        Text(
+            text = "${convertTemp(info.current.temperature, isCelsius)}°",
+            fontSize = 96.sp,
+            fontWeight = FontWeight.Thin,
+            color = Color.White,
+            lineHeight = 96.sp
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Weather condition
+        Text(
+            text = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Normal,
+            color = Color.White.copy(alpha = 0.85f)
+        )
+
+        // High / Low
+        info.daily.firstOrNull()?.let { today ->
+            val high = convertTemp(today.maxTemp, isCelsius)
+            val low = convertTemp(today.minTemp, isCelsius)
+            Text(
+                text = "H:${high}°  L:${low}°",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White.copy(alpha = 0.7f)
+            )
+        }
+
+        // Feels like
+        info.current.apparentTemperature?.let { apparent ->
+            Text(
+                text = stringResource(R.string.feels_like, convertTemp(apparent, isCelsius)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+// ============================================================
+// HOURLY FORECAST - Pill-shaped cards
+// ============================================================
+
+@Composable
+private fun HourlyForecastSection(
+    hourlyData: List<HourlyWeather>,
+    isCelsius: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.15f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+            Text(
+                text = stringResource(R.string.hourly_forecast),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.9f),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 0.dp, bottom = 12.dp)
+            )
+
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(horizontal = 0.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(hourlyData.sortedBy { it.time }.take(24)) { hour ->
-                    HourlyCard(
-                        data = hour,
-                        isCelsius = isCelsius
-                    )
+                    HourlyPillCard(data = hour, isCelsius = isCelsius)
                 }
             }
         }
@@ -485,68 +466,206 @@ private fun HourlyForecast(
 }
 
 @Composable
-private fun HourlyCard(
+private fun HourlyPillCard(
     data: HourlyWeather,
     isCelsius: Boolean
 ) {
-    val currentHour = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
+    val currentHour = java.time.LocalDateTime.now()
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
     val isNow = data.time == currentHour
-    val containerAlpha = if (isNow) 0.9f else 0.5f
-    val borderColor = if (isNow) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else androidx.compose.ui.graphics.Color.Transparent
 
+    Column(
+        modifier = Modifier
+            .width(64.dp)
+            .then(
+                if (isNow) Modifier.background(
+                    Color.White.copy(alpha = 0.2f),
+                    RoundedCornerShape(20.dp)
+                ) else Modifier
+            )
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Time
+        Text(
+            text = if (isNow) stringResource(R.string.now) else {
+                try {
+                    java.time.LocalDateTime.parse(data.time, DateTimeFormatter.ISO_DATE_TIME)
+                        .format(DateTimeFormatter.ofPattern("ha"))
+                } catch (e: Exception) { data.time.takeLast(5) }
+            },
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isNow) FontWeight.Bold else FontWeight.Normal,
+            color = Color.White.copy(alpha = if (isNow) 1f else 0.7f),
+            fontSize = 11.sp
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Icon
+        Icon(
+            imageVector = getWeatherIcon(data.weatherCode, true),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = Color.White.copy(alpha = 0.9f)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Temperature
+        Text(
+            text = "${convertTemp(data.temperature, isCelsius)}°",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
+    }
+}
+
+// ============================================================
+// DAILY FORECAST - Google Weather style rows
+// ============================================================
+
+@Composable
+private fun DailyForecastSection(
+    dailyData: List<DailyWeather>,
+    isCelsius: Boolean
+) {
     Card(
         modifier = Modifier
-            .width(72.dp),
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = containerAlpha)
-        ),
-        shape = RoundedCornerShape(16.dp)
+            containerColor = Color.White.copy(alpha = 0.15f)
+        )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 10.dp, horizontal = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            val timeLabel = try {
-                java.time.LocalDateTime.parse(data.time, java.time.format.DateTimeFormatter.ISO_DATE_TIME)
-                    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
-            } catch (e: Exception) {
-                data.time.takeLast(5)
-            }
-
+        Column(modifier = Modifier.padding(vertical = 16.dp)) {
             Text(
-                text = if (isNow) stringResource(R.string.now) else timeLabel,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (isNow) FontWeight.Bold else FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Icon(
-                imageVector = getWeatherIcon(data.weatherCode, true),
-                contentDescription = localizedWeatherDescription(data.weatherCode, true),
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "${convertTemp(data.temperature, isCelsius)}\u00B0",
-                style = MaterialTheme.typography.bodySmall,
+                text = stringResource(R.string.seven_day_forecast),
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = Color.White.copy(alpha = 0.9f),
+                modifier = Modifier.padding(horizontal = 20.dp, bottom = 8.dp)
             )
+
+            val allMin = remember(dailyData) { dailyData.minOf { it.minTemp }.roundToInt() }
+            val allMax = remember(dailyData) { dailyData.maxOf { it.maxTemp }.roundToInt() }
+
+            dailyData.forEach { day ->
+                DailyRow(
+                    data = day,
+                    isCelsius = isCelsius,
+                    globalMin = allMin,
+                    globalMax = allMax
+                )
+            }
         }
     }
 }
 
 @Composable
+private fun DailyRow(
+    data: DailyWeather,
+    isCelsius: Boolean,
+    globalMin: Int,
+    globalMax: Int
+) {
+    val dateLabel = remember(data.date) {
+        val date = try { java.time.LocalDate.parse(data.date) } catch (_: Exception) { java.time.LocalDate.now() }
+        val today = java.time.LocalDate.now()
+        when (date) {
+            today -> stringResource(R.string.now)
+            today.plusDays(1) -> "Tomorrow"
+            else -> date.format(DateTimeFormatter.ofPattern("EEE"))
+        }
+    }
+
+    val minTemp = convertTemp(data.minTemp, isCelsius)
+    val maxTemp = convertTemp(data.maxTemp, isCelsius)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Day name
+        Text(
+            text = dateLabel,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = Color.White,
+            modifier = Modifier.width(72.dp),
+            maxLines = 1
+        )
+
+        // Weather icon
+        Icon(
+            imageVector = getWeatherIcon(data.weatherCode, true),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = Color.White.copy(alpha = 0.8f)
+        )
+
+        // Precipitation %
+        data.precipitationProbability?.let { precip ->
+            if (precip > 0) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "$precip%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF4FC3F7),
+                    modifier = Modifier.width(32.dp),
+                    textAlign = TextAlign.End
+                )
+            } else {
+                Spacer(modifier = Modifier.width(40.dp))
+            }
+        } ?: Spacer(modifier = Modifier.width(40.dp))
+
+        // Low temp
+        Text(
+            text = "${minTemp}°",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.6f),
+            modifier = Modifier.width(32.dp),
+            textAlign = TextAlign.End
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Temp range bar
+        TempRangeBar(
+            globalMin = globalMin,
+            globalMax = globalMax,
+            dayMin = minTemp.coerceAtMost(maxTemp),
+            dayMax = maxTemp.coerceAtLeast(minTemp),
+            modifier = Modifier
+                .weight(1f)
+                .height(4.dp)
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // High temp
+        Text(
+            text = "${maxTemp}°",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            modifier = Modifier.width(32.dp),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+@Composable
 fun TempRangeBar(
-    globalMin: Int, globalMax: Int,
-    dayMin: Int, dayMax: Int,
+    globalMin: Int,
+    globalMax: Int,
+    dayMin: Int,
+    dayMax: Int,
     modifier: Modifier = Modifier
 ) {
     val range = (globalMax - globalMin).toFloat()
@@ -555,10 +674,15 @@ fun TempRangeBar(
 
     Canvas(modifier = modifier) {
         val trackColor = Color.White.copy(alpha = 0.15f)
-        val barColor = Color(0xFFF97316)
+        val warmColor = Color(0xFFFFB74D)
+        val coolColor = Color(0xFF4FC3F7)
         drawRoundRect(color = trackColor, cornerRadius = CornerRadius(4f))
         drawRoundRect(
-            color = barColor,
+            brush = Brush.horizontalGradient(
+                colors = listOf(coolColor, warmColor),
+                startX = size.width * startFraction,
+                endX = size.width * (startFraction + widthFraction)
+            ),
             topLeft = Offset(size.width * startFraction, 0f),
             size = Size(size.width * widthFraction, size.height),
             cornerRadius = CornerRadius(4f)
@@ -566,214 +690,88 @@ fun TempRangeBar(
     }
 }
 
-@Composable
-private fun DailyForecast(
-    dailyData: List<DailyWeather>,
-    isCelsius: Boolean
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-    ) {
-        Text(
-            text = stringResource(R.string.seven_day_forecast),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            val allMin = remember(dailyData) {
-                dailyData.minOf { it.minTemp }.roundToInt()
-            }
-            val allMax = remember(dailyData) {
-                dailyData.maxOf { it.maxTemp }.roundToInt()
-            }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                dailyData.forEach { day ->
-                    DailyItem(
-                        data = day,
-                        isCelsius = isCelsius,
-                        allMin = allMin,
-                        allMax = allMax
-                    )
-                }
-            }
-        }
-    }
-}
+// ============================================================
+// WEATHER DETAILS - 2-column grid
+// ============================================================
 
 @Composable
-private fun DailyItem(
-    data: DailyWeather,
-    isCelsius: Boolean,
-    allMin: Int,
-    allMax: Int
-) {
-    val dateLabel: String = remember(data.date) {
-        val date = try {
-            java.time.LocalDate.parse(data.date)
-        } catch (e: Exception) {
-            java.time.LocalDate.now()
-        }
-        val today = java.time.LocalDate.now()
-        val tomorrow = today.plusDays(1)
-        when (date) {
-            today -> "Today"
-            tomorrow -> "Tomorrow"
-            else -> date.format(DateTimeFormatter.ofPattern("EEE"))
-        }
-    }
-
-    val minTemp = convertTemp(data.minTemp, isCelsius)
-    val maxTemp = convertTemp(data.maxTemp, isCelsius)
-
-    val mutedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-    val rainTextColor = MaterialTheme.colorScheme.primary
-    val smallStyle = MaterialTheme.typography.bodySmall
-    val labelStyle = MaterialTheme.typography.bodyMedium
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-    ) {
-        Text(
-            text = dateLabel,
-            modifier = Modifier.width(80.dp),
-            style = labelStyle,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Icon(
-            imageVector = getWeatherIcon(data.weatherCode, true),                contentDescription = "$dateLabel: ${localizedWeatherDescription(data.weatherCode, true)}",
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        )
-
-        Spacer(Modifier.width(6.dp))
-
-        Text(
-            text = "$minTemp\u00B0",
-            color = mutedTextColor,
-            modifier = Modifier.width(32.dp),
-            textAlign = TextAlign.End,
-            style = smallStyle
-        )
-
-        Spacer(Modifier.width(4.dp))
-
-        TempRangeBar(
-            globalMin = allMin, globalMax = allMax,
-            dayMin = convertTemp(data.minTemp, true).coerceAtMost(convertTemp(data.maxTemp, true)),
-            dayMax = convertTemp(data.maxTemp, true).coerceAtLeast(convertTemp(data.minTemp, true)),
-            modifier = Modifier.weight(1f).height(5.dp)
-        )
-
-        Spacer(Modifier.width(4.dp))
-
-        Text(
-            text = "$maxTemp\u00B0",
-            modifier = Modifier.width(32.dp),
-            textAlign = TextAlign.End,
-            style = smallStyle,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(Modifier.width(4.dp))
-
-        Text(
-            text = "${data.precipitationProbability?.let { if (it > 0) "$it%" else "--" } ?: "--"}",
-            color = rainTextColor,
-            modifier = Modifier.width(36.dp),
-            textAlign = TextAlign.End,
-            style = smallStyle
-        )
-    }
-}
-
-@Composable
-private fun InfoGrid(
+private fun WeatherDetailsSection(
     info: WeatherInfo,
     isCelsius: Boolean,
-    windUnit: WindUnit = WindUnit.KPH
+    windUnit: WindUnit
 ) {
-    val windValue = "${convertWind(info.current.windSpeed, windUnit)} ${windUnitLabel(windUnit)}"
-    val visibilityValue = info.current.visibility?.let { "${(it / 1000).roundToInt()} km" }
-    val pressureValue = info.current.surfacePressure?.let { "${it.roundToInt()} hPa" }
-    val windGustValue = info.current.windGusts?.let { "${convertWind(it, windUnit)} ${windUnitLabel(windUnit)}" }
-    val dewPointValue = info.current.dewPoint?.let { "${convertTemp(it, isCelsius)}\u00B0" }
-
-    val hasVisibility = visibilityValue != null
-    val hasPressure = pressureValue != null
-    val hasWindGust = windGustValue != null
-    val hasDewPoint = dewPointValue != null
-
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.15f)
+        )
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            InfoCard(
-                data = InfoItemData(stringResource(R.string.humidity), "${info.current.humidity?.roundToInt() ?: "--"}%", Icons.Rounded.WaterDrop),
-                modifier = Modifier.weight(1f)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.weather_details),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.9f),
+                modifier = Modifier.padding(horizontal = 4.dp, bottom = 12.dp)
             )
-            InfoCard(
-                data = InfoItemData(stringResource(R.string.wind), windValue, Icons.Rounded.Air),
-                modifier = Modifier.weight(1f)
-            )
-            InfoCard(
-                data = InfoItemData(stringResource(R.string.uv_index), "${info.daily.firstOrNull()?.uvIndex?.roundToInt() ?: "--"}", Icons.Rounded.WbSunny),
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (hasVisibility) {
-                InfoCard(
-                    data = InfoItemData(stringResource(R.string.visibility), visibilityValue!!, Icons.Rounded.Visibility),
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DetailCard(
+                    icon = Icons.Rounded.WaterDrop,
+                    label = stringResource(R.string.humidity),
+                    value = "${info.current.humidity?.roundToInt() ?: "--"}%",
+                    modifier = Modifier.weight(1f)
+                )
+                DetailCard(
+                    icon = Icons.Rounded.Air,
+                    label = stringResource(R.string.wind),
+                    value = "${convertWind(info.current.windSpeed, windUnit)} ${windUnitLabel(windUnit)}",
                     modifier = Modifier.weight(1f)
                 )
             }
-            if (hasPressure) {
-                InfoCard(
-                    data = InfoItemData(stringResource(R.string.pressure), pressureValue!!, Icons.Rounded.Speed),
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DetailCard(
+                    icon = Icons.Rounded.Thermostat,
+                    label = stringResource(R.string.pressure),
+                    value = info.current.surfacePressure?.let { "${it.roundToInt()} hPa" } ?: "--",
+                    modifier = Modifier.weight(1f)
+                )
+                DetailCard(
+                    icon = Icons.Rounded.Visibility,
+                    label = stringResource(R.string.visibility),
+                    value = info.current.visibility?.let { "${(it / 1000).roundToInt()} km" } ?: "--",
                     modifier = Modifier.weight(1f)
                 )
             }
-            if (hasWindGust) {
-                InfoCard(
-                    data = InfoItemData(stringResource(R.string.wind_gust), windGustValue!!, Icons.Rounded.Air),
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DetailCard(
+                    icon = Icons.Rounded.WbSunny,
+                    label = stringResource(R.string.uv_index),
+                    value = "${info.daily.firstOrNull()?.uvIndex?.roundToInt() ?: "--"}",
                     modifier = Modifier.weight(1f)
                 )
-            }
-            if (hasDewPoint) {
-                InfoCard(
-                    data = InfoItemData(stringResource(R.string.dew_point), dewPointValue!!, Icons.Rounded.AcUnit),
+                DetailCard(
+                    icon = Icons.Rounded.AcUnit,
+                    label = stringResource(R.string.dew_point),
+                    value = info.current.dewPoint?.let { "${convertTemp(it, isCelsius)}°" } ?: "--",
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -781,61 +779,56 @@ private fun InfoGrid(
     }
 }
 
-private data class InfoItemData(
-    val title: String,
-    val value: String,
-    val icon: ImageVector
-)
-
 @Composable
-private fun InfoCard(
-    data: InfoItemData,
+private fun DetailCard(
+    icon: ImageVector,
+    label: String,
+    value: String,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-        ),
-        shape = RoundedCornerShape(16.dp)
+            containerColor = Color.White.copy(alpha = 0.1f)
+        )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(12.dp)
         ) {
-        Icon(
-            imageVector = data.icon,
-            contentDescription = data.title,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f)
-        )
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = Color.White.copy(alpha = 0.7f)
+            )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = data.value,
+                text = value,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = data.title,
+                text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                color = Color.White.copy(alpha = 0.6f),
+                maxLines = 1
             )
         }
     }
 }
 
+// ============================================================
+// SUN & MOON
+// ============================================================
+
 @Composable
-private fun SunMoonSection(
-    dailyData: List<DailyWeather>
-) {
+private fun SunMoonSection(dailyData: List<DailyWeather>) {
     val today = dailyData.firstOrNull() ?: return
     val sunrise = today.sunrise ?: return
     val sunset = today.sunset ?: return
@@ -843,122 +836,48 @@ private fun SunMoonSection(
     val sunriseTime = remember(sunrise) {
         try {
             java.time.LocalTime.parse(sunrise.substringAfter("T"))
-                .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+                .format(DateTimeFormatter.ofPattern("HH:mm"))
         } catch (e: Exception) { sunrise }
     }
     val sunsetTime = remember(sunset) {
         try {
             java.time.LocalTime.parse(sunset.substringAfter("T"))
-                .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+                .format(DateTimeFormatter.ofPattern("HH:mm"))
         } catch (e: Exception) { sunset }
     }
 
-    val now = java.time.LocalTime.now()
-    val sunriseLocal = try { java.time.LocalTime.parse(sunrise.substringAfter("T")) } catch (e: Exception) { null }
-    val sunsetLocal = try { java.time.LocalTime.parse(sunset.substringAfter("T")) } catch (e: Exception) { null }
-
-    val daylightStatus = remember(now, sunriseLocal, sunsetLocal) {
-        when {
-            sunriseLocal == null || sunsetLocal == null -> "Unknown"
-            now.isBefore(sunriseLocal) -> "Before sunrise"
-            now.isAfter(sunsetLocal) -> "After sunset"
-            else -> "Daylight"
-        }
-    }
-
-    val remainingDaylight = remember(now, sunsetLocal) {
-        if (sunsetLocal == null) null
-        else {
-            val minutes = java.time.Duration.between(now, sunsetLocal).toMinutes()
-            if (minutes < 0) null
-            else {
-                val hours = minutes / 60
-                val mins = minutes % 60
-                "${hours}h ${mins}m remaining"
-            }
-        }
-    }
-
-    val daylightDuration = remember(sunriseLocal, sunsetLocal) {
-        if (sunriseLocal == null || sunsetLocal == null) null
-        else {
-            val minutes = java.time.Duration.between(sunriseLocal, sunsetLocal).toMinutes()
-            val hours = minutes / 60
-            val mins = minutes % 60
-            "${hours}h ${mins}m"
-        }
-    }
-
-    val goldenHourMorning = remember(sunriseLocal) {
-        sunriseLocal?.plusMinutes(30)?.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
-    }
-    val goldenHourEvening = remember(sunsetLocal) {
-        sunsetLocal?.minusMinutes(30)?.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
-    }
-
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-    ) {
-        Text(
-            text = stringResource(R.string.sun_and_moon),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 12.dp)
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.15f)
         )
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = stringResource(R.string.sun_and_moon),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.9f),
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    SunMoonItem(
-                        icon = Icons.Rounded.WbSunny,
-                        label = stringResource(R.string.sunrise),
-                        value = sunriseTime,
-                        subValue = daylightStatus
-                    )
-                    SunMoonItem(
-                        icon = Icons.Rounded.NightsStay,
-                        label = stringResource(R.string.sunset),
-                        value = sunsetTime,
-                        subValue = remainingDaylight ?: ""
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    SunMoonItem(
-                        icon = Icons.Rounded.LightMode,
-                        label = stringResource(R.string.day_length),
-                        value = daylightDuration ?: "--"
-                    )
-                    SunMoonItem(
-                        icon = Icons.Rounded.WbTwilight,
-                        label = stringResource(R.string.golden_hour),
-                        value = goldenHourMorning ?: "--",
-                        subValue = goldenHourEvening?.let { stringResource(R.string.evening_time, it) } ?: ""
-                    )
-                }
+                SunMoonItem(
+                    icon = Icons.Rounded.WbSunny,
+                    label = stringResource(R.string.sunrise),
+                    value = sunriseTime
+                )
+                SunMoonItem(
+                    icon = Icons.Rounded.NightsStay,
+                    label = stringResource(R.string.sunset),
+                    value = sunsetTime
+                )
             }
         }
     }
@@ -968,95 +887,79 @@ private fun SunMoonSection(
 private fun SunMoonItem(
     icon: ImageVector,
     label: String,
-    value: String,
-    subValue: String = ""
+    value: String
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(28.dp)
+            tint = Color(0xFFFFD54F),
+            modifier = Modifier.size(24.dp)
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = Color.White
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+            color = Color.White.copy(alpha = 0.6f)
         )
-        if (subValue.isNotBlank()) {
-            Text(
-                text = subValue,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-        }
     }
 }
 
+// ============================================================
+// LOADING & ERROR
+// ============================================================
+
 @Composable
-private fun LoadingSkeleton() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+private fun LoadingState() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
+                color = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier.size(48.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.loading_weather),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                color = Color.White.copy(alpha = 0.7f)
             )
         }
     }
 }
 
 @Composable
-private fun ErrorState(
-    message: String,
-    onRetry: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+private fun ErrorState(message: String, onRetry: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(32.dp)
         ) {
             Icon(
-                imageVector = Icons.Rounded.CloudOff,
+                Icons.Rounded.CloudOff,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+                tint = Color.White.copy(alpha = 0.5f)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.error,
+                color = Color.White.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(16.dp))
-            IconButton(
-                onClick = onRetry,
-                modifier = Modifier.size(48.dp)
-            ) {
-            Icon(
-                imageVector = Icons.Rounded.Refresh,
-                contentDescription = stringResource(R.string.retry_loading),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            IconButton(onClick = onRetry, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    Icons.Rounded.Refresh,
+                    contentDescription = stringResource(R.string.retry_loading),
+                    tint = Color.White.copy(alpha = 0.8f)
+                )
             }
         }
     }

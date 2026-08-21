@@ -85,21 +85,23 @@ fun WeatherAnimation(
 }
 
 fun computeSkyGradient(code: Int, isDay: Boolean): List<Color> {
-    if (!isDay) return listOf(
-        Color(0xFF0A0E27),
-        Color(0xFF12163A),
-        Color(0xFF1A1F4E)
-    )
+    if (!isDay) return when (code) {
+        0 -> listOf(Color(0xFF0A1628), Color(0xFF0D1B3E), Color(0xFF122650))
+        1, 2, 3 -> listOf(Color(0xFF0E1A30), Color(0xFF132040), Color(0xFF1A2850))
+        51, 53, 55, 61, 63, 65, 80, 81, 82 -> listOf(Color(0xFF0E1520), Color(0xFF121C30), Color(0xFF162240))
+        95, 96, 99 -> listOf(Color(0xFF0A0E18), Color(0xFF0E1220), Color(0xFF121628))
+        else -> listOf(Color(0xFF0A1628), Color(0xFF0D1B3E), Color(0xFF122650))
+    }
 
     return when (code) {
-        0 -> listOf(Color(0xFF4FC3F7), Color(0xFF29B6F6), Color(0xFF81D4FA))
-        1 -> listOf(Color(0xFF90CAF9), Color(0xFF64B5F6), Color(0xFF90CAF9))
-        2, 3 -> listOf(Color(0xFF78909C), Color(0xFF607D8B), Color(0xFF546E7A))
-        45, 48 -> listOf(Color(0xFFB0BEC5), Color(0xFF90A4AE), Color(0xFF78909C))
-        51, 53, 55, 61, 63, 65, 80, 81, 82 -> listOf(Color(0xFF546E7A), Color(0xFF455A64), Color(0xFF37474F))
-        71, 73, 75 -> listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color(0xFF90CAF9))
-        95, 96, 99 -> listOf(Color(0xFF263238), Color(0xFF1B2631), Color(0xFF111B21))
-        else -> listOf(Color(0xFF90CAF9), Color(0xFF64B5F6), Color(0xFF90CAF9))
+        0 -> listOf(Color(0xFF4AA3DF), Color(0xFF5BB5EC), Color(0xFF7EC8F0))
+        1 -> listOf(Color(0xFF6AAFDB), Color(0xFF7BBDE8), Color(0xFF8EC9EF))
+        2, 3 -> listOf(Color(0xFF7DA0BE), Color(0xFF8AAFC8), Color(0xFF97BED1))
+        45, 48 -> listOf(Color(0xFF9BADB8), Color(0xFFA8BAC3), Color(0xFFB5C7CE))
+        51, 53, 55, 61, 63, 65, 80, 81, 82 -> listOf(Color(0xFF5A7A8C), Color(0xFF6B8B9C), Color(0xFF7C9CAC))
+        71, 73, 75 -> listOf(Color(0xFFB8D4E8), Color(0xFFC8DEF0), Color(0xFFD8E8F5))
+        95, 96, 99 -> listOf(Color(0xFF2C3E50), Color(0xFF34495E), Color(0xFF3D566E))
+        else -> listOf(Color(0xFF6AAFDB), Color(0xFF7BBDE8), Color(0xFF8EC9EF))
     }
 }
 

@@ -15,6 +15,7 @@
     <string name="now">Now</string>
     <string name="seven_day_forecast">7-Day Forecast</string>
     <string name="temperature_trends">Temperature Trends</string>
+    <string name="weather_details">Weather Details</string>
     <string name="sun_and_moon">Sun &amp; Moon</string>
     <string name="sunrise">Sunrise</string>
     <string name="sunset">Sunset</string>
