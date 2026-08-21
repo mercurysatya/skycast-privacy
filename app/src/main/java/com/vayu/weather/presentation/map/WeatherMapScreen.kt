@@ -7,13 +7,55 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material.icons.rounded.Map
+import androidx.compose.material.icons.rounded.MyLocation
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SatelliteAlt
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Terrain
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,7 +63,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayu.weather.R
@@ -116,22 +157,24 @@ fun WeatherMapScreen(
             options = mapOptions
         ) {
             if (tileUrl != null && isRadarVisible) {
-                val source = rememberRasterSource(
-                    tiles = listOf(tileUrl),
-                    options = TileSetOptions(
-                        minZoom = 3,
-                        maxZoom = 18
-                    ),
-                    tileSize = 256
-                )
-                RasterLayer(
-                    id = "rainviewer-radar",
-                    source = source,
-                    visible = true,
-                    minZoom = 3f,
-                    maxZoom = 18f,
-                    opacity = const(0.65f)
-                )
+                key(tileUrl) {
+                    val source = rememberRasterSource(
+                        tiles = listOf(tileUrl),
+                        options = TileSetOptions(
+                            minZoom = 3,
+                            maxZoom = 18
+                        ),
+                        tileSize = 256
+                    )
+                    RasterLayer(
+                        id = "rainviewer-radar",
+                        source = source,
+                        visible = true,
+                        minZoom = 3f,
+                        maxZoom = 18f,
+                        opacity = const(0.65f)
+                    )
+                }
             }
         }
 
@@ -163,7 +206,8 @@ fun WeatherMapScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 140.dp),
+                .padding(end = 16.dp)
+                .padding(bottom = 140.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             FloatingActionButton(
@@ -217,7 +261,9 @@ fun WeatherMapScreen(
                 isAutoPlaying = mapViewModel.isAutoPlaying(),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+                    .padding(bottom = 16.dp)
+                    .padding(start = 16.dp)
+                    .padding(end = 16.dp)
             )
         }
     }
@@ -256,7 +302,8 @@ private fun LayerSelectorPanel(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .clickable(onClick = onRadarToggle)
-                    .padding(vertical = 8.dp, horizontal = 8.dp),
+                    .padding(vertical = 8.dp)
+                    .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -285,7 +332,8 @@ private fun LayerSelectorPanel(
                 text = stringResource(R.string.map_base_map),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                modifier = Modifier.padding(top = 4.dp)
+                    .padding(bottom = 2.dp)
             )
 
             BaseMapStyle.entries.forEach { style ->
@@ -303,7 +351,8 @@ private fun LayerSelectorPanel(
                             else
                                 Color.Transparent
                         )
-                        .padding(vertical = 8.dp, horizontal = 8.dp),
+                        .padding(vertical = 8.dp)
+                        .padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -428,7 +477,6 @@ private fun RadarTimeSlider(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Previous
                 IconButton(
                     onClick = onPreviousFrame,
                     modifier = Modifier.size(36.dp)
@@ -442,7 +490,6 @@ private fun RadarTimeSlider(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Play/Pause
                 FilledTonalIconButton(
                     onClick = onToggleAutoPlay,
                     modifier = Modifier.size(44.dp)
@@ -456,7 +503,6 @@ private fun RadarTimeSlider(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Next
                 IconButton(
                     onClick = onNextFrame,
                     modifier = Modifier.size(36.dp)

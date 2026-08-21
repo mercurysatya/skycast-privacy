@@ -4,14 +4,13 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayu.weather.data.remote.RainViewerApi
-import com.vayu.weather.data.remote.dto.RainViewerFrameDto
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -27,7 +26,7 @@ enum class BaseMapStyle(val displayName: String, val styleUrl: String) {
     ),
     SATELLITE(
         "Satellite",
-        "https://api.mapbox.com/styles/v1/mapbox/satellite-v9?access_token="
+        "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
     ),
     TERRAIN(
         "Terrain",
@@ -106,7 +105,6 @@ class MapViewModel @Inject constructor(
                 }.sortedBy { it.time }
 
                 val selectedIndex = if (allFrames.isNotEmpty()) {
-                    // Select the latest past frame (not nowcast) by default
                     val pastOnly = allFrames.filter { frame ->
                         pastFrames.any { it.time == frame.time }
                     }
@@ -171,7 +169,6 @@ class MapViewModel @Inject constructor(
                     if (state.selectedFrameIndex < state.frames.size - 1) {
                         selectNextFrame()
                     } else {
-                        // Loop back to the first frame
                         selectFrame(0)
                     }
                 }
