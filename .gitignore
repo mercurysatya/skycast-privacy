@@ -1,3 +1,25 @@
-/*
+# Build outputs
+/build/
+/app/build/
+/.gradle/
+/.kotlin/
+/local.properties
+
+# IDE
+/.idea/
+*.iml
+
+# Keystore secrets
+*.jks
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Agent/tool directories
+/.agent/
+/.mimocode/
+
+# Keep privacy policy and gitignore
 !/privacy-policy.html
 !/.gitignore

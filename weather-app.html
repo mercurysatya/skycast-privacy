@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    ::-webkit-scrollbar { height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+    body { margin: 0; font-family: 'Inter', system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.2.0?bundle",
+      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?bundle",
+      "framer-motion": "https://esm.sh/framer-motion@10.18.0?bundle",
+      "lucide-react": "https://esm.sh/lucide-react@0.294.0?bundle",
+      "htm": "https://esm.sh/htm@3.1.1?bundle"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import React, { useState, useEffect, useMemo, useCallback } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { motion, AnimatePresence } from 'framer-motion';
+    import * as Icons from 'lucide-react';
+    import htm from 'htm';
+
+    const html = htm.bind(React.createElement);
+    const {
+      Sun, Moon, Cloud, CloudRain, CloudSnow, CloudLightning,
+      Wind, Droplets, Eye, Thermometer, MapPin, Navigation, Gauge,
+      ArrowUp, ArrowDown
+    } = Icons;
+
+    // ─── Mock Data Generator ───────────────────────────────────────────
+
+    const CONDITIONS = ['Sunny', 'Rainy', 'Snowy', 'Stormy'];
+
+    const generateMockData = (condition) => {
+      const now = new Date();
+      const hr = now.getHours();
+
+      const temps = {
+        Sunny:  { current: 82, feels: 78, high: 88, low: 66, humidity: 32, wind: 8, uv: 7, vis: 10 },
+        Rainy:  { current: 58, feels: 54, high: 62, low: 50, humidity: 88, wind: 18, uv: 1, vis: 3 },
+        Snowy:  { current: 26, feels: 18, high: 30, low: 18, humidity: 72, wind: 12, uv: 1, vis: 1 },
+        Stormy: { current: 68, feels: 64, high: 72, low: 56, humidity: 92, wind: 28, uv: 0, vis: 2 },
+      };
+      const t = temps[condition];
+
+      const hourlyIcons = {
+        Sunny:  ['Moon','Moon','Moon','Moon','Moon','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Moon','Moon','Moon','Moon'],
+        Rainy:  ['CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain'],
+        Snowy:  ['CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow'],
+        Stormy: ['CloudLightning','CloudLightning','Cloud','CloudLightning','CloudLightning','CloudRain','CloudLightning','CloudLightning','Cloud','CloudLightning','CloudRain','CloudLightning','CloudLightning','Cloud','CloudLightning','CloudRain','CloudLightning','CloudLightning','Cloud','CloudLightning','CloudRain','CloudLightning','CloudLightning','Cloud'],
+      };
+
+      const hourly = Array.from({ length: 24 }, (_, i) => {
+        const hour = (hr + i) % 24;
+        const label = hour === 0 ? '12 AM' : hour < 12 ? hour + ' AM' : hour === 12 ? '12 PM' : (hour - 12) + ' PM';
+        const variation = Math.sin(i * 0.3) * 6;
+        return {
+          time: label,
+          temp: Math.round(t.current + variation),
+          icon: hourlyIcons[condition][i],
+        };
+      });
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const today = new Date();
+      const daily = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        const dayLabel = i === 0 ? 'Today' : dayNames[d.getDay()];
+        const dateLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const dailyHigh = t.high + (i % 3 === 0 ? -4 : i % 3 === 1 ? -2 : 0);
+        const dailyLow = t.low + (i % 2 === 0 ? 2 : 0);
+        const dailyIcons = [condition === 'Sunny' ? 'Sun' : condition === 'Rainy' ? 'CloudRain' : condition === 'Snowy' ? 'CloudSnow' : 'CloudLightning'];
+        return {
+          day: dayLabel,
+          date: dateLabel,
+          high: dailyHigh,
+          low: dailyLow,
+          icon: dailyIcons[0],
+          precip: condition === 'Sunny' ? 0 : condition === 'Rainy' ? 65 + Math.floor(Math.random() * 30) : condition === 'Snowy' ? 40 + Math.floor(Math.random() * 40) : 55 + Math.floor(Math.random() * 35),
+        };
+      });
+
+      return {
+        location: 'San Francisco, CA',
+        condition,
+        current: t,
+        hourly,
+        daily,
+      };
+    };
+
+    // ─── Background Animations ──────────────────────────────────────────
+
+    const Raindrops = ({ count = 30 }) => {
+      const drops = useMemo(() =>
+        Array.from({ length: count }, (_, i) => ({
+          x: Math.random() * 100,
+          delay: Math.random() * 2,
+          duration: 0.6 + Math.random() * 0.4,
+          height: 20 + Math.random() * 30,
+          opacity: 0.15 + Math.random() * 0.25,
+        })), [count]);
+
+      return html`<div className="absolute inset-0 overflow-hidden pointer-events-none">
+        ${drops.map((d, i) => html`
+          <${motion.div}
+            key=${'drop-' + i}
+            className="absolute top-0 w-0.5 bg-white/30 rounded-full"
+            style=${{
+              left: d.x + '%',
+              height: d.height + 'px',
+              opacity: d.opacity,
+            }}
+            animate=${{ y: ['-20vh', '110vh'] }}
+            transition=${{
+              duration: d.duration,
+              repeat: Infinity,
+              delay: d.delay,
+              ease: 'linear',
+            }}
+          />
+        `)}
+      </div>`;
+    };
+
+    const Snowflakes = ({ count = 35 }) => {
+      const flakes = useMemo(() =>
+        Array.from({ length: count }, (_, i) => ({
+          x: Math.random() * 100,
+          delay: Math.random() * 5,
+          duration: 4 + Math.random() * 4,
+          size: 2 + Math.random() * 4,
+          sway: 20 + Math.random() * 40,
+          swayDuration: 2 + Math.random() * 3,
+          opacity: 0.3 + Math.random() * 0.5,
+        })), [count]);
+
+      return html`<div className="absolute inset-0 overflow-hidden pointer-events-none">
+        ${flakes.map((f, i) => html`
+          <${motion.div}
+            key=${'flake-' + i}
+            className="absolute top-0 rounded-full bg-white"
+            style=${{
+              left: f.x + '%',
+              width: f.size + 'px',
+              height: f.size + 'px',
+              opacity: f.opacity,
+            }}
+            animate=${{
+              y: ['-5vh', '105vh'],
+              x: [0, f.sway, -f.sway * 0.5, f.sway * 0.3, 0],
+            }}
+            transition=${{
+              duration: f.duration,
+              repeat: Infinity,
+              delay: f.delay,
+              ease: 'linear',
+              x: {
+                duration: f.swayDuration,
+                repeat: Infinity,
+                delay: f.delay,
+                ease: 'easeInOut',
+              },
+            }}
+          />
+        `)}
+      </div>`;
+    };
+
+    const ThunderstormEffects = () => {
+      const [flash, setFlash] = useState({ show: false, opacity: 0 });
+
+      useEffect(() => {
+        let timeout;
+        const scheduleFlash = () => {
+          const delay = 1500 + Math.random() * 4000;
+          timeout = setTimeout(() => {
+            setFlash({ show: true, opacity: 0.6 });
+            setTimeout(() => setFlash({ show: true, opacity: 0 }), 80);
+            setTimeout(() => setFlash({ show: true, opacity: 0.4 }), 150);
+            setTimeout(() => {
+              setFlash({ show: false, opacity: 0 });
+              scheduleFlash();
+            }, 220);
+          }, delay);
+        };
+        scheduleFlash();
+        return () => clearTimeout(timeout);
+      }, []);
+
+      return html`
+        <${Raindrops} count=${50} />
+        ${flash.show && html`
+          <${motion.div}
+            className="absolute inset-0 pointer-events-none"
+            style=${{ backgroundColor: 'white' }}
+            animate=${{ opacity: flash.opacity }}
+            transition=${{ duration: 0.05 }}
+          />
+        `}
+      `;
+    };
+
+    const SunnyEffects = () => html`
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <${motion.div}
+          className="absolute -top-20 -right-20"
+          animate=${{ rotate: 360 }}
+          transition=${{ duration: 25, repeat: Infinity, ease: 'linear' }}
+        >
+          <${Sun} size=${180} className="text-yellow-400/15" />
+        </${motion.div}>
+        <${motion.div}
+          className="absolute -top-16 -right-16 w-48 h-48 rounded-full"
+          style=${{ background: 'radial-gradient(circle, rgba(251,191,36,0.15) 0%, transparent 70%)' }}
+          animate=${{ scale: [1, 1.08, 1] }}
+          transition=${{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <${motion.div}
+          className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full"
+          style=${{ background: 'radial-gradient(circle, rgba(251,191,36,0.08) 0%, transparent 70%)' }}
+          animate=${{ scale: [1, 1.12, 1] }}
+          transition=${{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        />
+      </div>
+    `;
+
+    const BackgroundLayer = ({ condition }) => {
+      const gradients = {
+        Sunny: 'from-amber-500/90 via-orange-400/80 to-sky-300/90',
+        Rainy: 'from-slate-800/95 via-blue-900/90 to-indigo-900/95',
+        Snowy: 'from-blue-200/90 via-indigo-100/85 to-white/90',
+        Stormy: 'from-violet-950/95 via-slate-900/95 to-indigo-950/95',
+      };
+
+      return html`
+        <div className="fixed inset-0 bg-gradient-to-br ${gradients[condition] || gradients.Sunny} transition-all duration-700" />
+        <div className="fixed inset-0 backdrop-blur-[2px]" />
+        <AnimatePresence mode="wait">
+          <${motion.div}
+            key=${condition}
+            initial=${{ opacity: 0 }}
+            animate=${{ opacity: 1 }}
+            exit=${{ opacity: 0 }}
+            transition=${{ duration: 0.6 }}
+            className="fixed inset-0"
+          >
+            ${condition === 'Sunny' && html`<${SunnyEffects} />`}
+            ${condition === 'Rainy' && html`<${Raindrops} count=${35} />`}
+            ${condition === 'Snowy' && html`<${Snowflakes} count=${40} />`}
+            ${condition === 'Stormy' && html`<${ThunderstormEffects} />`}
+          </${motion.div}>
+        </AnimatePresence>
+      `;
+    };
+
+    // ─── Icon mapping ─────────────────────────────────────────────────
+
+    const IconMap = {
+      Sun:        html`<${Sun} className="w-6 h-6" />`,
+      Moon:       html`<${Moon} className="w-6 h-6" />`,
+      Cloud:      html`<${Cloud} className="w-6 h-6" />`,
+      CloudRain:  html`<${CloudRain} className="w-6 h-6" />`,
+      CloudSnow:  html`<${CloudSnow} className="w-6 h-6" />`,
+      CloudLightning: html`<${CloudLightning} className="w-6 h-6" />`,
+    };
+
+    const getIcon = (name, size = 'w-6 h-6') => {
+      const cls = size + ' ' + (name === 'Sun' ? 'text-amber-300' : 'text-white/80');
+      const iconMap = {
+        Sun:        html`<${Sun} className=${cls} />`,
+        Moon:       html`<${Moon} className=${cls} />`,
+        Cloud:      html`<${Cloud} className=${cls} />`,
+        CloudRain:  html`<${CloudRain} className=${cls} />`,
+        CloudSnow:  html`<${CloudSnow} className=${cls} />`,
+        CloudLightning: html`<${CloudLightning} className=${cls} />`,
+      };
+      return iconMap[name] || iconMap.Sun;
+    };
+
+    // ─── Glass Card wrapper ────────────────────────────────────────────
+
+    const GlassCard = ({ children, className = '', padding = 'p-5' }) => html`
+      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl ${padding} ${className}">
+        ${children}
+      </div>
+    `;
+
+    // ─── Current Weather ────────────────────────────────────────────────
+
+    const CurrentWeather = ({ data }) => {
+      const iconName = data.condition === 'Sunny' ? 'Sun'
+        : data.condition === 'Rainy' ? 'CloudRain'
+        : data.condition === 'Snowy' ? 'CloudSnow'
+        : 'CloudLightning';
+
+      const tempColor = data.condition === 'Sunny' ? 'text-amber-200'
+        : data.condition === 'Snowy' ? 'text-blue-200'
+        : 'text-white';
+
+      const secondaryText = data.condition === 'Snowy' ? 'text-slate-700/70' : 'text-white/70';
+
+      return html`
+        <${GlassCard} className="relative overflow-hidden" padding="p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <${MapPin} size=${14} className=${secondaryText} />
+                <span className="text-xs font-medium ${secondaryText} tracking-wide uppercase">${data.location}</span>
+              </div>
+              <div className="flex items-start gap-1">
+                <span className="text-7xl sm:text-8xl font-extralight tracking-tighter ${tempColor}">
+                  ${data.current.temp}
+                </span>
+                <span className="text-2xl font-light ${secondaryText} mt-2">°F</span>
+              </div>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-sm font-medium ${secondaryText}">${data.condition}</span>
+                <span className="text-xs ${secondaryText}">•</span>
+                <span className="text-xs ${secondaryText}">Feels like ${data.current.feels}°</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="mb-1">${getIcon(iconName, 'w-14 h-14')}</div>
+              <div className="flex items-center justify-end gap-2 text-xs font-medium ${secondaryText}">
+                <span class="flex items-center gap-0.5"><${ArrowUp} size=${12} />${data.current.high}°</span>
+                <span class="flex items-center gap-0.5 text-white/50"><${ArrowDown} size=${12} />${data.current.low}°</span>
+              </div>
+            </div>
+          </div>
+        </${GlassCard}>
+      `;
+    };
+
+    // ─── Hourly Forecast ──────────────────────────────────────────────
+
+    const HourlyForecast = ({ hourly }) => html`
+      <${GlassCard} padding="p-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/50 mb-4">Hourly Forecast</h3>
+        <div className="flex gap-5 overflow-x-auto pb-1">
+          ${hourly.map((h, i) => html`
+            <${motion.div}
+              key=${'h-' + i}
+              className="flex flex-col items-center gap-2 min-w-[56px] flex-shrink-0"
+              initial=${{ opacity: 0, y: 10 }}
+              animate=${{ opacity: 1, y: 0 }}
+              transition=${{ duration: 0.3, delay: i * 0.02 }}
+            >
+              <span className="text-xs font-medium text-white/60">${h.time}</span>
+              ${getIcon(h.icon, 'w-5 h-5')}
+              <span className="text-sm font-semibold text-white/90">${h.temp}°</span>
+            </${motion.div}>
+          `)}
+        </div>
+      </${GlassCard}>
+    `;
+
+    // ─── 7-Day Forecast ───────────────────────────────────────────────
+
+    const WeeklyForecast = ({ daily }) => html`
+      <${GlassCard} padding="p-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">7-Day Forecast</h3>
+        <div className="divide-y divide-white/10">
+          ${daily.map((d, i) => html`
+            <${motion.div}
+              key=${'d-' + i}
+              className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+              initial=${{ opacity: 0, x: -10 }}
+              animate=${{ opacity: 1, x: 0 }}
+              transition=${{ duration: 0.3, delay: i * 0.05 }}
+            >
+              <span className="w-12 text-sm font-medium ${i === 0 ? 'text-white' : 'text-white/70'}">${d.day}</span>
+              <span className="w-16 text-xs text-white/40">${d.date}</span>
+              <div className="flex-1 flex justify-center">${getIcon(d.icon, 'w-5 h-5')}</div>
+              <span className="w-8 text-right text-xs text-white/40">${d.precip}%</span>
+              <div className="flex items-center gap-2 w-20 justify-end">
+                <span className="text-sm font-semibold text-white/90">${d.high}°</span>
+                <span className="text-xs text-white/40 w-1 text-center">/</span>
+                <span className="text-sm text-white/50">${d.low}°</span>
+              </div>
+            </${motion.div}>
+          `)}
+        </div>
+      </${GlassCard}>
+    `;
+
+    // ─── Details Grid ─────────────────────────────────────────────────
+
+    const DetailCard = ({ icon: Icon, label, value, unit }) => html`
+      <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+        <div className="flex items-center gap-2 mb-2">
+          <${Icon} size=${16} className="text-white/50" />
+          <span className="text-xs font-medium text-white/50 uppercase tracking-wide">${label}</span>
+        </div>
+        <div className="flex items-baseline gap-1">
+          <span className="text-2xl font-semibold text-white/90">${value}</span>
+          ${unit && html`<span className="text-xs text-white/40">${unit}</span>`}
+        </div>
+      </div>
+    `;
+
+    const DetailsGrid = ({ data }) => html`
+      <${GlassCard} padding="p-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">Details</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <${DetailCard} icon=${Wind} label="Wind Speed" value=${data.current.wind} unit="mph" />
+          <${DetailCard} icon=${Droplets} label="Humidity" value=${data.current.humidity} unit="%" />
+          <${DetailCard} icon=${Sun} label="UV Index" value=${data.current.uv} />
+          <${DetailCard} icon=${Eye} label="Visibility" value=${data.current.vis} unit="mi" />
+        </div>
+      </${GlassCard}>
+    `;
+
+    // ─── Condition Toggle ─────────────────────────────────────────────
+
+    const ConditionToggle = ({ current, onChange }) => html`
+      <div className="flex items-center justify-center gap-2 mb-6">
+        ${CONDITIONS.map((c) => {
+          const colors = {
+            Sunny: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+            Rainy: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+            Snowy: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+            Stormy: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+          };
+          const activeColors = {
+            Sunny: 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/25',
+            Rainy: 'bg-blue-500 text-white border-blue-500 shadow-lg shadow-blue-500/25',
+            Snowy: 'bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/25',
+            Stormy: 'bg-violet-500 text-white border-violet-500 shadow-lg shadow-violet-500/25',
+          };
+          const isActive = current === c;
+          return html`
+            <button
+              key=${c}
+              onClick=${() => onChange(c)}
+              className="px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-300 ${isActive ? activeColors[c] : 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white/70'}"
+            >
+              ${c}
+            </button>
+          `;
+        })}
+      </div>
+    `;
+
+    // ─── App Shell ─────────────────────────────────────────────────────
+
+    const WeatherApp = () => {
+      const [condition, setCondition] = useState('Sunny');
+      const data = useMemo(() => generateMockData(condition), [condition]);
+
+      return html`
+        <div className="min-h-screen relative">
+          <${BackgroundLayer} condition=${condition} />
+
+          <div className="relative z-10 max-w-md mx-auto px-4 py-8 pb-12">
+            <${ConditionToggle} current=${condition} onChange=${setCondition} />
+
+            <${motion.div}
+              key=${condition + '-content'}
+              initial=${{ opacity: 0, y: 20 }}
+              animate=${{ opacity: 1, y: 0 }}
+              transition=${{ duration: 0.5, ease: 'easeOut' }}
+              className="space-y-4"
+            >
+              <${CurrentWeather} data=${data} />
+              <${HourlyForecast} hourly=${data.hourly} />
+              <${WeeklyForecast} daily=${data.daily} />
+              <${DetailsGrid} data=${data} />
+            </${motion.div}>
+
+            <p className="text-center text-xs text-white/30 mt-6">
+              Toggle conditions above to test situational animations
+            </p>
+          </div>
+        </div>
+      `;
+    };
+
+    // ─── Mount ─────────────────────────────────────────────────────────
+
+    const root = createRoot(document.getElementById('root'));
+    root.render(html`<${WeatherApp} />`);
+  </script>
+</body>
+</html>

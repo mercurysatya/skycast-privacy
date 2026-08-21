@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">SkyCast Weather</string>
+    <string name="weather">வானிலை</string>
+    <string name="search">தேடு</string>
+    <string name="search_city">நகரத்தை தேடுங்கள்…</string>
+    <string name="no_cities_found">நகரங்கள் எதுவும் கிடைக்கவில்லை</string>
+    <string name="today">இன்று</string>
+    <string name="hourly_forecast">மணிநேர முன்னறிவிப்பு</string>
+    <string name="seven_day_forecast">7-நாள் முன்னறிவிப்பு</string>
+    <string name="humidity">ஈரப்பதம்</string>
+    <string name="wind">காற்று</string>
+    <string name="error_weather">வானிலை தரவை பெற முடியவில்லை.</string>
+    <string name="error_location">இருப்பிடத்தை பெற முடியவில்லை. அனுமதி வழங்கி GPSஐ இயக்கவும்.</string>
+    <string name="error_search">தேடல் தோல்வியடைந்தது.</string>
+</resources>

@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">SkyCast Weather</string>
+    <string name="weather">ಹವಾಮಾನ</string>
+    <string name="search">ಹುಡುಕು</string>
+    <string name="search_city">ನಗರವನ್ನು ಹುಡುಕಿ…</string>
+    <string name="no_cities_found">ಯಾವುದೇ ನಗರಗಳು ಕಂಡುಬಂದಿಲ್ಲ</string>
+    <string name="today">ಇಂದು</string>
+    <string name="hourly_forecast">ಗಂಟೆಯ ಮುನ್ಸೂಚನೆ</string>
+    <string name="seven_day_forecast">7-ದಿನಗಳ ಮುನ್ಸೂಚನೆ</string>
+    <string name="humidity">ಆರ್ದ್ರತೆ</string>
+    <string name="wind">ಗಾಳಿ</string>
+    <string name="error_weather">ಹವಾಮಾನ ದಶಮಾಂಶವನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.</string>
+    <string name="error_location">ಸ್ಥಳವನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಅನುಮತಿ ನೀಡಿ ಮತ್ತು GPS ಅನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಿ.</string>
+    <string name="error_search">ಹುಡುಕಾಟ ವಿಫಲವಾಗಿದೆ.</string>
+</resources>

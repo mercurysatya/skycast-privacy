@@ -1,0 +1,53 @@
+package com.vayu.weather.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val SkyBlue = Color(0xFF4FC3F7)
+val DeepBlue = Color(0xFF1565C0)
+val WarmOrange = Color(0xFFFF9800)
+val AmberGlow = Color(0xFFFFD54F)
+val SunsetRed = Color(0xFFE53935)
+val NightIndigo = Color(0xFF1A237E)
+val StormGray = Color(0xFF37474F)
+val FreshGreen = Color(0xFF66BB6A)
+val FrostWhite = Color(0xFFE8EAF6)
+val SoftLavender = Color(0xFFB39DDB)
+
+val GlassWhite = Color(0x66FFFFFF)
+val GlassWhiteLight = Color(0x33FFFFFF)
+val GlassWhiteHeavy = Color(0xCCFFFFFF)
+val GlassDark = Color(0x66000000)
+val GlassDarkLight = Color(0x33000000)
+val GlassDarkHeavy = Color(0xCC000000)
+
+val SunnyStart = Color(0xFF87CEEB)
+val SunnyEnd = Color(0xFF4FC3F7)
+val PartlyCloudyStart = Color(0xFF90CAF9)
+val PartlyCloudyEnd = Color(0xFF64B5F6)
+val CloudyStart = Color(0xFF78909C)
+val CloudyEnd = Color(0xFF546E7A)
+val RainStart = Color(0xFF546E7A)
+val RainEnd = Color(0xFF37474F)
+val SnowStart = Color(0xFFE3F2FD)
+val SnowEnd = Color(0xFFBBDEFB)
+val FogStart = Color(0xFFB0BEC5)
+val FogEnd = Color(0xFF90A4AE)
+val ThunderStart = Color(0xFF263238)
+val ThunderEnd = Color(0xFF1B2631)
+val NightStart = Color(0xFF0D47A1)
+val NightEnd = Color(0xFF1A237E)
+
+val SunGlow = Color(0xFFFFD54F)
+val SunGlowLight = Color(0x40FFD54F)
+val CloudWhite = Color(0x55FFFFFF)
+val RainBlue = Color(0xFF4FC3F7)
+val SnowWhite = Color(0xAAFFFFFF)
+val LightningWhite = Color(0xCCFFFFFF)
+val FogGray = Color(0x33ECEFF1)
+val StarWhite = Color(0xCCFFFFFF)
+val MoonGlow = Color(0xFFF5F5DC)
+
+val CardBackgroundLight = Color(0xE6F5F5F5)
+val CardBackgroundDark = Color(0xE61E1E2E)
+
+val SkeletonShimmer = Color(0x33FFFFFF)
