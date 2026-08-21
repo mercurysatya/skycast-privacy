@@ -56,7 +56,15 @@ class SettingsViewModel @Inject constructor(
                 rainAlertThreshold = settingsManager.getRainAlertThreshold(),
                 checkIntervalHours = settingsManager.getCheckIntervalHours(),
                 severityFilter = severity,
-                widgetSize = widgetSz
+                widgetSize = widgetSz,
+                windAlertThreshold = settingsManager.getWindAlertThreshold(),
+                enableWindAlerts = settingsManager.getEnableWindAlerts(),
+                uvAlertThreshold = settingsManager.getUvAlertThreshold(),
+                enableUvAlerts = settingsManager.getEnableUvAlerts(),
+                heatAlertThreshold = settingsManager.getHeatAlertThreshold(),
+                enableHeatAlerts = settingsManager.getEnableHeatAlerts(),
+                coldAlertThreshold = settingsManager.getColdAlertThreshold(),
+                enableColdAlerts = settingsManager.getEnableColdAlerts()
             )
         }
     }
@@ -102,6 +110,62 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsManager.setRainAlertThreshold(value)
             _state.update { it.copy(rainAlertThreshold = value) }
+        }
+    }
+
+    fun setWindAlertThreshold(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setWindAlertThreshold(value)
+            _state.update { it.copy(windAlertThreshold = value) }
+        }
+    }
+
+    fun setEnableWindAlerts(value: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setEnableWindAlerts(value)
+            _state.update { it.copy(enableWindAlerts = value) }
+        }
+    }
+
+    fun setUvAlertThreshold(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setUvAlertThreshold(value)
+            _state.update { it.copy(uvAlertThreshold = value) }
+        }
+    }
+
+    fun setEnableUvAlerts(value: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setEnableUvAlerts(value)
+            _state.update { it.copy(enableUvAlerts = value) }
+        }
+    }
+
+    fun setHeatAlertThreshold(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setHeatAlertThreshold(value)
+            _state.update { it.copy(heatAlertThreshold = value) }
+        }
+    }
+
+    fun setEnableHeatAlerts(value: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setEnableHeatAlerts(value)
+            _state.update { it.copy(enableHeatAlerts = value) }
+        }
+    }
+
+    fun setColdAlertThreshold(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setColdAlertThreshold(value)
+            _state.update { it.copy(coldAlertThreshold = value) }
+        }
+    }
+
+    fun setEnableColdAlerts(value: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setEnableColdAlerts(value)
+            _state.update { it.copy(enableColdAlerts = value) }
         }
     }
 

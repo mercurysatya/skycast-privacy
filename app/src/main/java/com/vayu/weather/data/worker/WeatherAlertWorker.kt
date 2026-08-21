@@ -17,7 +17,6 @@ import com.vayu.weather.domain.location.LocationTracker
 import com.vayu.weather.domain.repository.WeatherAlert
 import com.vayu.weather.domain.repository.WeatherRepository
 import com.vayu.weather.domain.use_case.GetWeatherUseCase
-import com.vayu.weather.presentation.weather.AlertSeverity
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -43,38 +42,104 @@ class WeatherAlertWorker @AssistedInject constructor(
         val result = getWeatherUseCase(location.latitude, location.longitude)
         val weatherInfo = result.getOrNull() ?: return Result.retry()
 
+        val severityFilter = settingsManager.getSeverityFilter()
+
+        // ===== RAIN ALERT =====
         val nextRainProb = weatherInfo.daily.firstOrNull()?.precipitationProbability ?: 0
         if (nextRainProb >= settingsManager.getRainAlertThreshold()) {
             val severity = if (nextRainProb >= 80) "high" else "medium"
-
-            // Check if this severity level passes the user's filter
-            val severityFilter = settingsManager.getSeverityFilter()
-            val passesFilter = when (severityFilter) {
-                "HIGH" -> severity == "high"
-                "HIGH_MEDIUM" -> severity == "high" || severity == "medium"
-                else -> true // ALL
+            if (passesFilter(severity, severityFilter)) {
+                val title = applicationContext.getString(R.string.rain_alert_title)
+                val message = applicationContext.getString(R.string.rain_alert_message, nextRainProb)
+                storeAndNotify(title, message, severity, location.latitude, location.longitude)
             }
+        }
 
-            if (!passesFilter) return Result.success()
+        // ===== WIND ALERT =====
+        if (settingsManager.getEnableWindAlerts()) {
+            val windSpeed = weatherInfo.current.windSpeed ?: 0.0
+            val windThreshold = settingsManager.getWindAlertThreshold()
+            if (windSpeed >= windThreshold) {
+                val severity = if (windSpeed >= windThreshold * 1.5) "high" else "medium"
+                if (passesFilter(severity, severityFilter)) {
+                    val windKph = windSpeed.roundToInt()
+                    val title = applicationContext.getString(R.string.wind_alert_title)
+                    val message = applicationContext.getString(R.string.wind_alert_message, windKph)
+                    storeAndNotify(title, message, severity, location.latitude, location.longitude)
+                }
+            }
+        }
 
-            val title = applicationContext.getString(R.string.rain_alert_title)
-            val message = applicationContext.getString(R.string.rain_alert_message, nextRainProb)
+        // ===== UV ALERT =====
+        if (settingsManager.getEnableUvAlerts()) {
+            val uvIndex = weatherInfo.daily.firstOrNull()?.uvIndex?.toInt() ?: 0
+            val uvThreshold = settingsManager.getUvAlertThreshold()
+            if (uvIndex >= uvThreshold) {
+                val severity = if (uvIndex >= 11) "high" else "medium"
+                if (passesFilter(severity, severityFilter)) {
+                    val title = applicationContext.getString(R.string.uv_alert_title)
+                    val message = applicationContext.getString(R.string.uv_alert_message, uvIndex)
+                    storeAndNotify(title, message, severity, location.latitude, location.longitude)
+                }
+            }
+        }
 
-            // Store alert in database
-            weatherRepository.addWeatherAlert(
-                WeatherAlert(
-                    title = title,
-                    message = message,
-                    severity = severity,
-                    latitude = location.latitude,
-                    longitude = location.longitude
-                )
-            )
+        // ===== HEAT ALERT =====
+        if (settingsManager.getEnableHeatAlerts()) {
+            val maxTemp = weatherInfo.daily.firstOrNull()?.maxTemp?.toInt() ?: 0
+            val heatThreshold = settingsManager.getHeatAlertThreshold()
+            if (maxTemp >= heatThreshold) {
+                val severity = if (maxTemp >= heatThreshold + 5) "high" else "medium"
+                if (passesFilter(severity, severityFilter)) {
+                    val title = applicationContext.getString(R.string.heat_alert_title)
+                    val message = applicationContext.getString(R.string.heat_alert_message, maxTemp)
+                    storeAndNotify(title, message, severity, location.latitude, location.longitude)
+                }
+            }
+        }
 
-            showNotification(title, message)
+        // ===== COLD ALERT =====
+        if (settingsManager.getEnableColdAlerts()) {
+            val minTemp = weatherInfo.daily.firstOrNull()?.minTemp?.toInt() ?: 0
+            val coldThreshold = settingsManager.getColdAlertThreshold()
+            if (minTemp <= coldThreshold) {
+                val severity = if (minTemp <= coldThreshold - 5) "high" else "medium"
+                if (passesFilter(severity, severityFilter)) {
+                    val title = applicationContext.getString(R.string.cold_alert_title)
+                    val message = applicationContext.getString(R.string.cold_alert_message, minTemp)
+                    storeAndNotify(title, message, severity, location.latitude, location.longitude)
+                }
+            }
         }
 
         return Result.success()
+    }
+
+    private fun passesFilter(severity: String, filter: String): Boolean {
+        return when (filter) {
+            "HIGH" -> severity == "high"
+            "HIGH_MEDIUM" -> severity == "high" || severity == "medium"
+            else -> true
+        }
+    }
+
+    private suspend fun storeAndNotify(
+        title: String,
+        message: String,
+        severity: String,
+        latitude: Double,
+        longitude: Double
+    ) {
+        weatherRepository.addWeatherAlert(
+            WeatherAlert(
+                title = title,
+                message = message,
+                severity = severity,
+                latitude = latitude,
+                longitude = longitude
+            )
+        )
+        showNotification(title, message)
     }
 
     private fun showNotification(title: String, message: String) {

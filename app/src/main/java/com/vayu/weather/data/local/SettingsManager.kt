@@ -37,6 +37,14 @@ class SettingsManager @Inject constructor(
         val CHECK_INTERVAL_HOURS = intPreferencesKey("check_interval_hours")
         val SEVERITY_FILTER = stringPreferencesKey("severity_filter")
         val WIDGET_SIZE = stringPreferencesKey("widget_size")
+        val WIND_ALERT_THRESHOLD = intPreferencesKey("wind_alert_threshold")
+        val UV_ALERT_THRESHOLD = intPreferencesKey("uv_alert_threshold")
+        val HEAT_ALERT_THRESHOLD = intPreferencesKey("heat_alert_threshold")
+        val COLD_ALERT_THRESHOLD = intPreferencesKey("cold_alert_threshold")
+        val ENABLE_WIND_ALERTS = booleanPreferencesKey("enable_wind_alerts")
+        val ENABLE_UV_ALERTS = booleanPreferencesKey("enable_uv_alerts")
+        val ENABLE_HEAT_ALERTS = booleanPreferencesKey("enable_heat_alerts")
+        val ENABLE_COLD_ALERTS = booleanPreferencesKey("enable_cold_alerts")
     }
 
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -150,5 +158,65 @@ class SettingsManager @Inject constructor(
 
     suspend fun setWidgetSize(value: String) {
         dataStore.edit { it[Keys.WIDGET_SIZE] = value }
+    }
+
+    // Wind alert
+    suspend fun getWindAlertThreshold(): Int =
+        dataStore.data.first()[Keys.WIND_ALERT_THRESHOLD] ?: 60
+
+    suspend fun setWindAlertThreshold(value: Int) {
+        dataStore.edit { it[Keys.WIND_ALERT_THRESHOLD] = value }
+    }
+
+    suspend fun getEnableWindAlerts(): Boolean =
+        dataStore.data.first()[Keys.ENABLE_WIND_ALERTS] ?: true
+
+    suspend fun setEnableWindAlerts(value: Boolean) {
+        dataStore.edit { it[Keys.ENABLE_WIND_ALERTS] = value }
+    }
+
+    // UV alert
+    suspend fun getUvAlertThreshold(): Int =
+        dataStore.data.first()[Keys.UV_ALERT_THRESHOLD] ?: 8
+
+    suspend fun setUvAlertThreshold(value: Int) {
+        dataStore.edit { it[Keys.UV_ALERT_THRESHOLD] = value }
+    }
+
+    suspend fun getEnableUvAlerts(): Boolean =
+        dataStore.data.first()[Keys.ENABLE_UV_ALERTS] ?: true
+
+    suspend fun setEnableUvAlerts(value: Boolean) {
+        dataStore.edit { it[Keys.ENABLE_UV_ALERTS] = value }
+    }
+
+    // Heat alert
+    suspend fun getHeatAlertThreshold(): Int =
+        dataStore.data.first()[Keys.HEAT_ALERT_THRESHOLD] ?: 40
+
+    suspend fun setHeatAlertThreshold(value: Int) {
+        dataStore.edit { it[Keys.HEAT_ALERT_THRESHOLD] = value }
+    }
+
+    suspend fun getEnableHeatAlerts(): Boolean =
+        dataStore.data.first()[Keys.ENABLE_HEAT_ALERTS] ?: true
+
+    suspend fun setEnableHeatAlerts(value: Boolean) {
+        dataStore.edit { it[Keys.ENABLE_HEAT_ALERTS] = value }
+    }
+
+    // Cold alert
+    suspend fun getColdAlertThreshold(): Int =
+        dataStore.data.first()[Keys.COLD_ALERT_THRESHOLD] ?: 0
+
+    suspend fun setColdAlertThreshold(value: Int) {
+        dataStore.edit { it[Keys.COLD_ALERT_THRESHOLD] = value }
+    }
+
+    suspend fun getEnableColdAlerts(): Boolean =
+        dataStore.data.first()[Keys.ENABLE_COLD_ALERTS] ?: true
+
+    suspend fun setEnableColdAlerts(value: Boolean) {
+        dataStore.edit { it[Keys.ENABLE_COLD_ALERTS] = value }
     }
 }

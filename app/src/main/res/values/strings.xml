@@ -269,6 +269,29 @@ Try selecting a different severity level.</string>
     <string name="notification_channel_weather">Weather Alerts</string>
     <string name="rain_alert_title">Rain Alert</string>
     <string name="rain_alert_message">High chance of rain today (%1$d%%). Don\u2019t forget your umbrella!</string>
+    <string name="wind_alert_title">Wind Alert</string>
+    <string name="wind_alert_message">Strong winds expected today (%1$d km/h). Stay safe!</string>
+    <string name="uv_alert_title">UV Alert</string>
+    <string name="uv_alert_message">Very high UV index today (UV %1$d). Wear sunscreen!</string>
+    <string name="heat_alert_title">Heat Alert</string>
+    <string name="heat_alert_message">Extreme heat expected today (%1$d°C). Stay hydrated!</string>
+    <string name="cold_alert_title">Cold Alert</string>
+    <string name="cold_alert_message">Freezing temperatures expected today (%1$d°C). Stay warm!</string>
+
+    <!-- Alert Settings -->
+    <string name="severe_alerts_group">Severe Weather Alerts</string>
+    <string name="wind_alerts">Wind Alerts</string>
+    <string name="wind_alerts_subtitle">Alert when wind exceeds threshold</string>
+    <string name="wind_threshold">Wind threshold: %1$d km/h</string>
+    <string name="uv_alerts">UV Alerts</string>
+    <string name="uv_alerts_subtitle">Alert when UV index exceeds threshold</string>
+    <string name="uv_threshold">UV threshold: %1$d</string>
+    <string name="heat_alerts">Heat Alerts</string>
+    <string name="heat_alerts_subtitle">Alert when temperature exceeds threshold</string>
+    <string name="heat_threshold">Heat threshold: %1$d°C</string>
+    <string name="cold_alerts">Cold Alerts</string>
+    <string name="cold_alerts_subtitle">Alert when temperature drops below threshold</string>
+    <string name="cold_threshold">Cold threshold: %1$d°C</string>
 
     <!-- Air Quality -->
     <string name="air_quality">Air Quality</string>

@@ -153,6 +153,14 @@ fun VayuApp() {
                     onCheckIntervalChange = settingsViewModel::setCheckIntervalHours,
                     onSeverityFilterChange = settingsViewModel::setSeverityFilter,
                     onWidgetSizeChange = settingsViewModel::setWidgetSize,
+                    onWindAlertThresholdChange = settingsViewModel::setWindAlertThreshold,
+                    onEnableWindAlertsChange = settingsViewModel::setEnableWindAlerts,
+                    onUvAlertThresholdChange = settingsViewModel::setUvAlertThreshold,
+                    onEnableUvAlertsChange = settingsViewModel::setEnableUvAlerts,
+                    onHeatAlertThresholdChange = settingsViewModel::setHeatAlertThreshold,
+                    onEnableHeatAlertsChange = settingsViewModel::setEnableHeatAlerts,
+                    onColdAlertThresholdChange = settingsViewModel::setColdAlertThreshold,
+                    onEnableColdAlertsChange = settingsViewModel::setEnableColdAlerts,
                     onBack = { showSettings = false },
                     onOpenPrivacyPolicy = { anchor ->
                         privacyPolicyAnchor = anchor

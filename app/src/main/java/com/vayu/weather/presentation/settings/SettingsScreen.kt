@@ -79,6 +79,14 @@ fun SettingsScreen(
     onCheckIntervalChange: (Int) -> Unit = {},
     onSeverityFilterChange: (AlertSeverity) -> Unit = {},
     onWidgetSizeChange: (WidgetSize) -> Unit = {},
+    onWindAlertThresholdChange: (Int) -> Unit = {},
+    onEnableWindAlertsChange: (Boolean) -> Unit = {},
+    onUvAlertThresholdChange: (Int) -> Unit = {},
+    onEnableUvAlertsChange: (Boolean) -> Unit = {},
+    onHeatAlertThresholdChange: (Int) -> Unit = {},
+    onEnableHeatAlertsChange: (Boolean) -> Unit = {},
+    onColdAlertThresholdChange: (Int) -> Unit = {},
+    onEnableColdAlertsChange: (Boolean) -> Unit = {},
     onBack: () -> Unit,
     onOpenPrivacyPolicy: (String?) -> Unit = {},
     onDeleteAllData: () -> Unit = {},
@@ -504,6 +512,181 @@ fun SettingsScreen(
                                         )
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // === SEVERE WEATHER ALERTS ===
+                SettingsGroup(title = stringResource(R.string.severe_alerts_group)) {
+                    // Wind Alerts
+                    SettingsRow(
+                        icon = Icons.Rounded.Air,
+                        title = stringResource(R.string.wind_alerts),
+                        subtitle = if (state.enableWindAlerts)
+                            stringResource(R.string.wind_threshold, state.windAlertThreshold)
+                        else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.enableWindAlerts,
+                            onCheckedChange = { onEnableWindAlertsChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                    if (state.enableWindAlerts) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            Text(
+                                text = stringResource(R.string.wind_threshold, state.windAlertThreshold),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Slider(
+                                value = state.windAlertThreshold.toFloat(),
+                                onValueChange = { onWindAlertThresholdChange(it.toInt()) },
+                                valueRange = 20f..120f,
+                                steps = 9,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = MaterialTheme.colorScheme.primary,
+                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("20", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("120", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // UV Alerts
+                    SettingsRow(
+                        icon = Icons.Rounded.WbSunny,
+                        title = stringResource(R.string.uv_alerts),
+                        subtitle = if (state.enableUvAlerts)
+                            stringResource(R.string.uv_threshold, state.uvAlertThreshold)
+                        else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.enableUvAlerts,
+                            onCheckedChange = { onEnableUvAlertsChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                    if (state.enableUvAlerts) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            Text(
+                                text = stringResource(R.string.uv_threshold, state.uvAlertThreshold),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Slider(
+                                value = state.uvAlertThreshold.toFloat(),
+                                onValueChange = { onUvAlertThresholdChange(it.toInt()) },
+                                valueRange = 3f..12f,
+                                steps = 8,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = MaterialTheme.colorScheme.primary,
+                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("3", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("12", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Heat Alerts
+                    SettingsRow(
+                        icon = Icons.Rounded.Thermostat,
+                        title = stringResource(R.string.heat_alerts),
+                        subtitle = if (state.enableHeatAlerts)
+                            stringResource(R.string.heat_threshold, state.heatAlertThreshold)
+                        else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.enableHeatAlerts,
+                            onCheckedChange = { onEnableHeatAlertsChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                    if (state.enableHeatAlerts) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            Text(
+                                text = stringResource(R.string.heat_threshold, state.heatAlertThreshold),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Slider(
+                                value = state.heatAlertThreshold.toFloat(),
+                                onValueChange = { onHeatAlertThresholdChange(it.toInt()) },
+                                valueRange = 30f..50f,
+                                steps = 19,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = MaterialTheme.colorScheme.primary,
+                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("30°C", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("50°C", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Cold Alerts
+                    SettingsRow(
+                        icon = Icons.Rounded.AcUnit,
+                        title = stringResource(R.string.cold_alerts),
+                        subtitle = if (state.enableColdAlerts)
+                            stringResource(R.string.cold_threshold, state.coldAlertThreshold)
+                        else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.enableColdAlerts,
+                            onCheckedChange = { onEnableColdAlertsChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                    if (state.enableColdAlerts) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            Text(
+                                text = stringResource(R.string.cold_threshold, state.coldAlertThreshold),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Slider(
+                                value = state.coldAlertThreshold.toFloat(),
+                                onValueChange = { onColdAlertThresholdChange(it.toInt()) },
+                                valueRange = -10f..10f,
+                                steps = 19,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = MaterialTheme.colorScheme.primary,
+                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("-10°C", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("10°C", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }

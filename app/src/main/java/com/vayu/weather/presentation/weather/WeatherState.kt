@@ -29,5 +29,13 @@ data class SettingsState(
     val rainAlertThreshold: Int = 50,
     val checkIntervalHours: Int = 3,
     val severityFilter: AlertSeverity = AlertSeverity.ALL,
-    val widgetSize: WidgetSize = WidgetSize.MEDIUM
+    val widgetSize: WidgetSize = WidgetSize.MEDIUM,
+    val windAlertThreshold: Int = 60,
+    val enableWindAlerts: Boolean = true,
+    val uvAlertThreshold: Int = 8,
+    val enableUvAlerts: Boolean = true,
+    val heatAlertThreshold: Int = 40,
+    val enableHeatAlerts: Boolean = true,
+    val coldAlertThreshold: Int = 0,
+    val enableColdAlerts: Boolean = true
 )
