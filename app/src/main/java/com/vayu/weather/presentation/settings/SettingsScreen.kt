@@ -29,6 +29,7 @@ import com.vayu.weather.BuildConfig
 import androidx.compose.ui.res.stringResource
 import com.vayu.weather.BuildConfig
 import com.vayu.weather.R
+import com.vayu.weather.presentation.weather.AlertSeverity
 import com.vayu.weather.presentation.weather.SettingsState
 import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.ThemeMode
@@ -44,6 +45,8 @@ fun SettingsScreen(
     onToggleDynamicColor: (Boolean) -> Unit,
     onToggleNotifications: (Boolean) -> Unit,
     onRainAlertThresholdChange: (Int) -> Unit,
+    onCheckIntervalChange: (Int) -> Unit = {},
+    onSeverityFilterChange: (AlertSeverity) -> Unit = {},
     onBack: () -> Unit,
     onOpenPrivacyPolicy: (String?) -> Unit = {},
     onDeleteAllData: () -> Unit = {},
@@ -93,6 +96,26 @@ fun SettingsScreen(
     val wrappedRainAlertThresholdChange: (Int) -> Unit = { value ->
         snackbarMessage = "Rain alert threshold: $value%"
         onRainAlertThresholdChange(value)
+    }
+    val wrappedCheckIntervalChange: (Int) -> Unit = { value ->
+        val label = when (value) {
+            1 -> context.getString(R.string.check_interval_1h)
+            2 -> context.getString(R.string.check_interval_2h)
+            6 -> context.getString(R.string.check_interval_6h)
+            12 -> context.getString(R.string.check_interval_12h)
+            else -> context.getString(R.string.check_interval_3h)
+        }
+        snackbarMessage = context.getString(R.string.check_interval_toast, label)
+        onCheckIntervalChange(value)
+    }
+    val wrappedSeverityFilterChange: (AlertSeverity) -> Unit = { value ->
+        val label = when (value) {
+            AlertSeverity.ALL -> context.getString(R.string.severity_all)
+            AlertSeverity.HIGH -> context.getString(R.string.severity_high_only)
+            AlertSeverity.HIGH_MEDIUM -> context.getString(R.string.severity_high_and_medium)
+        }
+        snackbarMessage = context.getString(R.string.severity_filter_toast, label)
+        onSeverityFilterChange(value)
     }
 
     Scaffold(
@@ -316,6 +339,113 @@ fun SettingsScreen(
                         ) {
                             Text("10%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("100%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
+                // Check Frequency
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                SettingsRow(
+                    icon = Icons.Rounded.Schedule,
+                    title = stringResource(R.string.check_interval),
+                    subtitle = when (state.checkIntervalHours) {
+                        1 -> stringResource(R.string.check_interval_1h)
+                        2 -> stringResource(R.string.check_interval_2h)
+                        6 -> stringResource(R.string.check_interval_6h)
+                        12 -> stringResource(R.string.check_interval_12h)
+                        else -> stringResource(R.string.check_interval_3h)
+                    }
+                ) {
+                    var expanded by remember { mutableStateOf(false) }
+                    Box {
+                        TextButton(onClick = { expanded = true }) {
+                            Text(
+                                text = when (state.checkIntervalHours) {
+                                    1 -> stringResource(R.string.check_interval_1h)
+                                    2 -> stringResource(R.string.check_interval_2h)
+                                    6 -> stringResource(R.string.check_interval_6h)
+                                    12 -> stringResource(R.string.check_interval_12h)
+                                    else -> stringResource(R.string.check_interval_3h)
+                                },
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            listOf(1, 2, 3, 6, 12).forEach { hours ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = when (hours) {
+                                                1 -> stringResource(R.string.check_interval_1h)
+                                                2 -> stringResource(R.string.check_interval_2h)
+                                                6 -> stringResource(R.string.check_interval_6h)
+                                                12 -> stringResource(R.string.check_interval_12h)
+                                                else -> stringResource(R.string.check_interval_3h)
+                                            },
+                                            fontWeight = if (hours == state.checkIntervalHours) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    onClick = {
+                                        wrappedCheckIntervalChange(hours)
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                // Severity Filter
+                SettingsRow(
+                    icon = Icons.Rounded.PriorityHigh,
+                    title = stringResource(R.string.severity_filter),
+                    subtitle = when (state.severityFilter) {
+                        AlertSeverity.ALL -> stringResource(R.string.severity_all)
+                        AlertSeverity.HIGH -> stringResource(R.string.severity_high_only)
+                        AlertSeverity.HIGH_MEDIUM -> stringResource(R.string.severity_high_and_medium)
+                    }
+                ) {
+                    var expanded by remember { mutableStateOf(false) }
+                    Box {
+                        TextButton(onClick = { expanded = true }) {
+                            Text(
+                                text = when (state.severityFilter) {
+                                    AlertSeverity.ALL -> stringResource(R.string.severity_all)
+                                    AlertSeverity.HIGH -> stringResource(R.string.severity_high_only)
+                                    AlertSeverity.HIGH_MEDIUM -> stringResource(R.string.severity_high_and_medium)
+                                },
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            AlertSeverity.entries.forEach { severity ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = when (severity) {
+                                                AlertSeverity.ALL -> stringResource(R.string.severity_all)
+                                                AlertSeverity.HIGH -> stringResource(R.string.severity_high_only)
+                                                AlertSeverity.HIGH_MEDIUM -> stringResource(R.string.severity_high_and_medium)
+                                            },
+                                            fontWeight = if (severity == state.severityFilter) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    onClick = {
+                                        wrappedSeverityFilterChange(severity)
+                                        expanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }

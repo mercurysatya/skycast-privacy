@@ -17,6 +17,7 @@ import com.vayu.weather.domain.location.LocationTracker
 import com.vayu.weather.domain.repository.WeatherAlert
 import com.vayu.weather.domain.repository.WeatherRepository
 import com.vayu.weather.domain.use_case.GetWeatherUseCase
+import com.vayu.weather.presentation.weather.AlertSeverity
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -30,6 +31,10 @@ class WeatherAlertWorker @AssistedInject constructor(
     private val weatherRepository: WeatherRepository
 ) : CoroutineWorker(context, workerParams) {
 
+    companion object {
+        const val WORK_NAME = "WeatherAlertWork"
+    }
+
     override suspend fun doWork(): Result {
         if (!settingsManager.getNotificationsEnabled()) return Result.success()
 
@@ -40,6 +45,18 @@ class WeatherAlertWorker @AssistedInject constructor(
 
         val nextRainProb = weatherInfo.daily.firstOrNull()?.precipitationProbability ?: 0
         if (nextRainProb >= settingsManager.getRainAlertThreshold()) {
+            val severity = if (nextRainProb >= 80) "high" else "medium"
+
+            // Check if this severity level passes the user's filter
+            val severityFilter = settingsManager.getSeverityFilter()
+            val passesFilter = when (severityFilter) {
+                "HIGH" -> severity == "high"
+                "HIGH_MEDIUM" -> severity == "high" || severity == "medium"
+                else -> true // ALL
+            }
+
+            if (!passesFilter) return Result.success()
+
             val title = applicationContext.getString(R.string.rain_alert_title)
             val message = applicationContext.getString(R.string.rain_alert_message, nextRainProb)
 
@@ -48,7 +65,7 @@ class WeatherAlertWorker @AssistedInject constructor(
                 WeatherAlert(
                     title = title,
                     message = message,
-                    severity = if (nextRainProb >= 80) "high" else "medium",
+                    severity = severity,
                     latitude = location.latitude,
                     longitude = location.longitude
                 )

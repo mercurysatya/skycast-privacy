@@ -150,6 +150,8 @@ fun VayuApp() {
                     onToggleDynamicColor = settingsViewModel::setUseDynamicColor,
                     onToggleNotifications = settingsViewModel::setNotificationsEnabled,
                     onRainAlertThresholdChange = settingsViewModel::setRainAlertThreshold,
+                    onCheckIntervalChange = settingsViewModel::setCheckIntervalHours,
+                    onSeverityFilterChange = settingsViewModel::setSeverityFilter,
                     onBack = { showSettings = false },
                     onOpenPrivacyPolicy = { anchor ->
                         privacyPolicyAnchor = anchor

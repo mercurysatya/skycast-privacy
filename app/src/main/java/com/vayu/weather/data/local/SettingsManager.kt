@@ -34,6 +34,8 @@ class SettingsManager @Inject constructor(
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
         val RAIN_ALERT_THRESHOLD = intPreferencesKey("rain_alert_threshold")
+        val CHECK_INTERVAL_HOURS = intPreferencesKey("check_interval_hours")
+        val SEVERITY_FILTER = stringPreferencesKey("severity_filter")
     }
 
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -114,5 +116,27 @@ class SettingsManager @Inject constructor(
 
     suspend fun setRainAlertThreshold(value: Int) {
         dataStore.edit { it[Keys.RAIN_ALERT_THRESHOLD] = value }
+    }
+
+    val checkIntervalHoursFlow: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[Keys.CHECK_INTERVAL_HOURS] ?: 3
+    }
+
+    suspend fun getCheckIntervalHours(): Int =
+        dataStore.data.first()[Keys.CHECK_INTERVAL_HOURS] ?: 3
+
+    suspend fun setCheckIntervalHours(value: Int) {
+        dataStore.edit { it[Keys.CHECK_INTERVAL_HOURS] = value }
+    }
+
+    val severityFilterFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[Keys.SEVERITY_FILTER] ?: "all"
+    }
+
+    suspend fun getSeverityFilter(): String =
+        dataStore.data.first()[Keys.SEVERITY_FILTER] ?: "all"
+
+    suspend fun setSeverityFilter(value: String) {
+        dataStore.edit { it[Keys.SEVERITY_FILTER] = value }
     }
 }

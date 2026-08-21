@@ -17,11 +17,15 @@ enum class TemperatureUnit { CELSIUS, FAHRENHEIT }
 enum class WindUnit { KPH, MPH, MS, KNOTS }
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+enum class AlertSeverity { ALL, HIGH, HIGH_MEDIUM }
+
 data class SettingsState(
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
     val windUnit: WindUnit = WindUnit.KPH,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val useDynamicColor: Boolean = true,
     val notificationsEnabled: Boolean = true,
-    val rainAlertThreshold: Int = 50
+    val rainAlertThreshold: Int = 50,
+    val checkIntervalHours: Int = 3,
+    val severityFilter: AlertSeverity = AlertSeverity.ALL
 )

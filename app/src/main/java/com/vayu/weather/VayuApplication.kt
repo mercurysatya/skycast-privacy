@@ -48,7 +48,7 @@ class VayuApplication : Application(), Configuration.Provider {
             3, TimeUnit.HOURS
         ).build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "WeatherAlertWork",
+            WeatherAlertWorker.WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             workRequest
         )
