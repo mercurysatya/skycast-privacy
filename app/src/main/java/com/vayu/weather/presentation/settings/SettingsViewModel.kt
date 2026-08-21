@@ -169,6 +169,15 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    suspend fun isOnboardingComplete(): Boolean =
+        settingsManager.isOnboardingComplete()
+
+    fun setOnboardingComplete() {
+        viewModelScope.launch {
+            settingsManager.setOnboardingComplete(true)
+        }
+    }
+
     fun deleteAllData() {
         viewModelScope.launch {
             deleteAllLocalDataUseCase()

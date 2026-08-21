@@ -45,6 +45,7 @@ class SettingsManager @Inject constructor(
         val ENABLE_UV_ALERTS = booleanPreferencesKey("enable_uv_alerts")
         val ENABLE_HEAT_ALERTS = booleanPreferencesKey("enable_heat_alerts")
         val ENABLE_COLD_ALERTS = booleanPreferencesKey("enable_cold_alerts")
+        val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
     }
 
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -218,5 +219,12 @@ class SettingsManager @Inject constructor(
 
     suspend fun setEnableColdAlerts(value: Boolean) {
         dataStore.edit { it[Keys.ENABLE_COLD_ALERTS] = value }
+    }
+
+    suspend fun isOnboardingComplete(): Boolean =
+        dataStore.data.first()[Keys.ONBOARDING_COMPLETE] ?: false
+
+    suspend fun setOnboardingComplete(value: Boolean) {
+        dataStore.edit { it[Keys.ONBOARDING_COMPLETE] = value }
     }
 }

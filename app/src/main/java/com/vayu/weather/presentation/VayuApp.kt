@@ -36,6 +36,7 @@ import com.vayu.weather.presentation.weather.ThemeMode
 import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.WeatherDashboard
 import com.vayu.weather.presentation.weather.WeatherDetailScreen
+import com.vayu.weather.presentation.onboarding.OnboardingScreen
 import com.vayu.weather.presentation.weather.WeatherShareFormatter
 import com.vayu.weather.presentation.weather.WeatherViewModel
 import com.vayu.weather.ui.theme.SkyCastTheme
@@ -67,6 +68,8 @@ fun VayuApp() {
     val activity = context as? Activity
 
     val settingsState by settingsViewModel.state.collectAsState()
+    var showOnboarding by remember { mutableStateOf(true) } // Will be set to false after check
+    var onboardingChecked by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showAlerts by remember { mutableStateOf(false) }
     var showDetail by remember { mutableStateOf(false) }
@@ -106,6 +109,9 @@ fun VayuApp() {
         Log.d("VayuApp", "LaunchedEffect: Loading weather and ad")
         weatherViewModel.loadWeatherInfo()
         AdManager.loadInterstitial(context)
+        // Check if onboarding is complete
+        onboardingChecked = true
+        showOnboarding = !settingsViewModel.isOnboardingComplete()
     }
 
     val isDarkTheme = when (settingsState.themeMode) {
@@ -118,7 +124,14 @@ fun VayuApp() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            if (showPrivacyPolicy) {
+            if (onboardingChecked && showOnboarding) {
+                OnboardingScreen(
+                    onComplete = {
+                        showOnboarding = false
+                        settingsViewModel.setOnboardingComplete()
+                    }
+                )
+            } else if (showPrivacyPolicy) {
                 PrivacyPolicyScreen(
                     anchor = privacyPolicyAnchor,
                     onBack = {

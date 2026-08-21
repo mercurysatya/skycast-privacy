@@ -308,4 +308,20 @@ Try selecting a different severity level.</string>
     <!-- Rate App -->
     <string name="rate_app">Rate App</string>
     <string name="rate_app_subtitle">Enjoying SkyCast? Leave a review!</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_welcome_title">Welcome to SkyCast</string>
+    <string name="onboarding_welcome_desc">Your personal weather companion with real-time forecasts, radar maps, and severe weather alerts.</string>
+    <string name="onboarding_features_title">Powerful Features</string>
+    <string name="onboarding_features_desc">Get hourly and 7-day forecasts, interactive weather maps with radar, air quality data, and customizable alerts for rain, wind, UV, heat, and cold.</string>
+    <string name="onboarding_location_title">Enable Location</string>
+    <string name="onboarding_location_desc">Allow location access to get weather for your current location automatically. Your location data stays on your device.</string>
+    <string name="onboarding_grant_location">Grant Location Access</string>
+    <string name="onboarding_notifications_title">Stay Informed</string>
+    <string name="onboarding_notifications_desc">Enable notifications to receive weather alerts for severe conditions like storms, high winds, extreme UV, and temperature extremes.</string>
+    <string name="onboarding_grant_notifications">Enable Notifications</string>
+    <string name="onboarding_permission_granted">Permission Granted</string>
 </resources>
