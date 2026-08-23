@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Weather App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Vayu Weather</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -16,13 +16,94 @@
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    ::-webkit-scrollbar { height: 4px; }
+    :root {
+      --glass-bg: rgba(255,255,255,0.08);
+      --glass-border: rgba(255,255,255,0.15);
+      --glass-blur: 24px;
+      --card-radius: 24px;
+    }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { height: 4px; width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
-    body { margin: 0; font-family: 'Inter', system-ui, sans-serif; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--card-radius);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  box-shadow 0.4s ease,
+                  border-color 0.4s ease;
+    }
+    .glass-card:hover {
+      transform: translateY(-2px) scale(1.003);
+      box-shadow: 0 20px 40px -12px rgba(0,0,0,0.25);
+      border-color: rgba(255,255,255,0.25);
+    }
+    .glass-card:active { transform: scale(0.985); }
+
+    .fluid-temp {
+      font-size: clamp(4.5rem, 18vw, 9rem);
+      line-height: 0.85;
+      font-weight: 200;
+      letter-spacing: -0.05em;
+    }
+    .fluid-label {
+      font-size: clamp(0.65rem, 1.8vw, 0.8rem);
+      letter-spacing: 0.12em;
+    }
+    .fluid-heading {
+      font-size: clamp(0.8rem, 2vw, 0.95rem);
+      letter-spacing: 0.08em;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.15); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    .animate-fade-in-up {
+      animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 0;
+    }
+    .animate-pulse-soft { animation: pulse-soft 2.5s ease-in-out infinite; }
+    .animate-float { animation: float 4s ease-in-out infinite; }
+    .ai-shimmer {
+      background: linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.02) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 4s linear infinite;
+    }
+
+    .temp-bar-bg { background: rgba(255,255,255,0.1); }
+    .temp-bar-fill { background: rgba(255,255,255,0.35); }
+
+    .btn-press {
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+    }
+    .btn-press:hover { transform: scale(1.05); }
+    .btn-press:active { transform: scale(0.92); }
   </style>
 </head>
-<body>
+<body class="bg-black text-white">
   <div id="root"></div>
 
   <script type="importmap">
@@ -38,7 +119,7 @@
   </script>
 
   <script type="module">
-    import React, { useState, useEffect, useMemo, useCallback } from 'react';
+    import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
     import { createRoot } from 'react-dom/client';
     import { motion, AnimatePresence } from 'framer-motion';
     import * as Icons from 'lucide-react';
@@ -48,26 +129,80 @@
     const {
       Sun, Moon, Cloud, CloudRain, CloudSnow, CloudLightning,
       Wind, Droplets, Eye, Thermometer, MapPin, Navigation, Gauge,
-      ArrowUp, ArrowDown
+      ArrowUp, ArrowDown, Sparkles, Umbrella, Snowflake, Activity,
+      RefreshCw, Settings, Search
     } = Icons;
 
-    // ─── Mock Data Generator ───────────────────────────────────────────
-
     const CONDITIONS = ['Sunny', 'Rainy', 'Snowy', 'Stormy'];
+
+    // ─── Themes ────────────────────────────────────────────────────────
+
+    const themes = {
+      Sunny: {
+        gradient: 'from-[#0c4a6e] via-[#0ea5e9] to-[#f59e0b]',
+        glassBg: 'rgba(255,255,255,0.08)',
+        glassBorder: 'rgba(255,255,255,0.18)',
+        text: '#ffffff',
+        textSecondary: 'rgba(255,255,255,0.7)',
+        accent: '#fbbf24',
+        graphStroke: 'rgba(251,191,36,0.9)',
+        graphFill: 'rgba(251,191,36,0.15)',
+        particleColor: 'rgba(251,191,36,0.4)',
+        cardShadow: 'rgba(245,158,11,0.15)',
+      },
+      Rainy: {
+        gradient: 'from-slate-900 via-slate-800 to-blue-900',
+        glassBg: 'rgba(255,255,255,0.07)',
+        glassBorder: 'rgba(255,255,255,0.12)',
+        text: '#ffffff',
+        textSecondary: 'rgba(255,255,255,0.65)',
+        accent: '#60a5fa',
+        graphStroke: 'rgba(96,165,250,0.9)',
+        graphFill: 'rgba(96,165,250,0.12)',
+        particleColor: 'rgba(148,163,184,0.35)',
+        cardShadow: 'rgba(59,130,246,0.12)',
+      },
+      Snowy: {
+        gradient: 'from-slate-400 via-blue-200 to-slate-200',
+        glassBg: 'rgba(0,0,0,0.06)',
+        glassBorder: 'rgba(0,0,0,0.08)',
+        text: '#1e293b',
+        textSecondary: 'rgba(30,41,59,0.65)',
+        accent: '#2563eb',
+        graphStroke: 'rgba(37,99,235,0.7)',
+        graphFill: 'rgba(37,99,235,0.1)',
+        particleColor: 'rgba(255,255,255,0.9)',
+        cardShadow: 'rgba(0,0,0,0.08)',
+      },
+      Stormy: {
+        gradient: 'from-slate-950 via-violet-950 to-indigo-950',
+        glassBg: 'rgba(255,255,255,0.06)',
+        glassBorder: 'rgba(255,255,255,0.1)',
+        text: '#ffffff',
+        textSecondary: 'rgba(255,255,255,0.6)',
+        accent: '#a78bfa',
+        graphStroke: 'rgba(167,139,250,0.9)',
+        graphFill: 'rgba(167,139,250,0.15)',
+        particleColor: 'rgba(167,139,250,0.3)',
+        cardShadow: 'rgba(139,92,246,0.15)',
+      }
+    };
+
+    // ─── Mock Data Generator ──────────────────────────────────────────
 
     const generateMockData = (condition) => {
       const now = new Date();
       const hr = now.getHours();
 
-      const temps = {
-        Sunny:  { current: 82, feels: 78, high: 88, low: 66, humidity: 32, wind: 8, uv: 7, vis: 10 },
-        Rainy:  { current: 58, feels: 54, high: 62, low: 50, humidity: 88, wind: 18, uv: 1, vis: 3 },
-        Snowy:  { current: 26, feels: 18, high: 30, low: 18, humidity: 72, wind: 12, uv: 1, vis: 1 },
-        Stormy: { current: 68, feels: 64, high: 72, low: 56, humidity: 92, wind: 28, uv: 0, vis: 2 },
+      const presets = {
+        Sunny:  { current: 82, feels: 78, high: 88, low: 66, humidity: 32, wind: 8, uv: 7, vis: 10, dew: 55, pressure: 1015, cloud: 10, aqi: 42 },
+        Rainy:  { current: 58, feels: 54, high: 62, low: 50, humidity: 88, wind: 18, uv: 1, vis: 3, dew: 52, pressure: 1005, cloud: 90, aqi: 65 },
+        Snowy:  { current: 26, feels: 18, high: 30, low: 18, humidity: 72, wind: 12, uv: 1, vis: 1, dew: 18, pressure: 1010, cloud: 85, aqi: 35 },
+        Stormy: { current: 68, feels: 64, high: 72, low: 56, humidity: 92, wind: 28, uv: 0, vis: 2, dew: 62, pressure: 998, cloud: 100, aqi: 78 },
       };
-      const t = temps[condition];
+      const t = presets[condition];
 
-      const hourlyIcons = {
+      const hourIcons = {
         Sunny:  ['Moon','Moon','Moon','Moon','Moon','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Sun','Moon','Moon','Moon','Moon'],
         Rainy:  ['CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain','CloudRain'],
         Snowy:  ['CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow','CloudSnow'],
@@ -77,11 +212,12 @@
       const hourly = Array.from({ length: 24 }, (_, i) => {
         const hour = (hr + i) % 24;
         const label = hour === 0 ? '12 AM' : hour < 12 ? hour + ' AM' : hour === 12 ? '12 PM' : (hour - 12) + ' PM';
-        const variation = Math.sin(i * 0.3) * 6;
+        const variation = Math.sin(i * 0.3) * 5 + (i * 0.15);
         return {
           time: label,
           temp: Math.round(t.current + variation),
-          icon: hourlyIcons[condition][i],
+          icon: hourIcons[condition][i],
+          weatherCode: condition === 'Sunny' ? 0 : condition === 'Rainy' ? 63 : condition === 'Snowy' ? 73 : 95,
         };
       });
 
@@ -94,14 +230,21 @@
         const dateLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         const dailyHigh = t.high + (i % 3 === 0 ? -4 : i % 3 === 1 ? -2 : 0);
         const dailyLow = t.low + (i % 2 === 0 ? 2 : 0);
-        const dailyIcons = [condition === 'Sunny' ? 'Sun' : condition === 'Rainy' ? 'CloudRain' : condition === 'Snowy' ? 'CloudSnow' : 'CloudLightning'];
+        const iconMap = { Sunny: 'Sun', Rainy: 'CloudRain', Snowy: 'CloudSnow', Stormy: 'CloudLightning' };
+        const precip = condition === 'Sunny' ? Math.max(0, Math.floor(Math.random() * 15)) :
+                       condition === 'Rainy' ? 65 + Math.floor(Math.random() * 30) :
+                       condition === 'Snowy' ? 40 + Math.floor(Math.random() * 40) :
+                       55 + Math.floor(Math.random() * 35);
         return {
           day: dayLabel,
           date: dateLabel,
           high: dailyHigh,
           low: dailyLow,
-          icon: dailyIcons[0],
-          precip: condition === 'Sunny' ? 0 : condition === 'Rainy' ? 65 + Math.floor(Math.random() * 30) : condition === 'Snowy' ? 40 + Math.floor(Math.random() * 40) : 55 + Math.floor(Math.random() * 35),
+          icon: iconMap[condition],
+          precip,
+          current: i === 0 ? t.current : null,
+          sunrise: i === 0 ? '06:12 AM' : null,
+          sunset: i === 0 ? '07:45 PM' : null,
         };
       });
 
@@ -111,245 +254,285 @@
         current: t,
         hourly,
         daily,
+        lastUpdated: new Date(),
       };
     };
 
-    // ─── Background Animations ──────────────────────────────────────────
+    // ─── AI Insights Generator ────────────────────────────────────────
 
-    const Raindrops = ({ count = 30 }) => {
-      const drops = useMemo(() =>
-        Array.from({ length: count }, (_, i) => ({
-          x: Math.random() * 100,
-          delay: Math.random() * 2,
-          duration: 0.6 + Math.random() * 0.4,
-          height: 20 + Math.random() * 30,
-          opacity: 0.15 + Math.random() * 0.25,
-        })), [count]);
+    const getInsights = (data) => {
+      const insights = [];
+      const { current, condition, daily } = data;
 
-      return html`<div className="absolute inset-0 overflow-hidden pointer-events-none">
-        ${drops.map((d, i) => html`
-          <${motion.div}
-            key=${'drop-' + i}
-            className="absolute top-0 w-0.5 bg-white/30 rounded-full"
-            style=${{
-              left: d.x + '%',
-              height: d.height + 'px',
-              opacity: d.opacity,
-            }}
-            animate=${{ y: ['-20vh', '110vh'] }}
-            transition=${{
-              duration: d.duration,
-              repeat: Infinity,
-              delay: d.delay,
-              ease: 'linear',
-            }}
-          />
-        `)}
-      </div>`;
+      if (condition === 'Sunny') {
+        if (current.uv >= 8) {
+          insights.push({ icon: 'Sun', text: 'High UV index expected. Apply SPF 30+ and seek shade during midday hours.', severity: 'warning' });
+        } else {
+          insights.push({ icon: 'Sun', text: 'Great day for outdoor activities! UV levels are moderate.', severity: 'positive' });
+        }
+        if (current.humidity < 30) {
+          insights.push({ icon: 'Droplets', text: 'Dry air detected. Stay hydrated and consider using moisturizer.', severity: 'neutral' });
+        }
+        if (daily[0]?.precip > 40) {
+          insights.push({ icon: 'CloudRain', text: 'Despite the sun, there\'s a chance of afternoon showers. Keep an umbrella handy.', severity: 'neutral' });
+        }
+      } else if (condition === 'Rainy') {
+        insights.push({ icon: 'Umbrella', text: 'Rain expected for the next several hours. Don\'t forget your umbrella.', severity: 'warning' });
+        if (current.wind > 20) {
+          insights.push({ icon: 'Wind', text: 'Gusty winds with rain. Secure loose outdoor items before heading out.', severity: 'warning' });
+        }
+        if (current.vis < 5) {
+          insights.push({ icon: 'Eye', text: `Reduced visibility (${current.vis} mi). Drive with caution and use headlights.`, severity: 'warning' });
+        }
+      } else if (condition === 'Snowy') {
+        insights.push({ icon: 'Snowflake', text: 'Snow accumulation possible today. Allow extra travel time and dress in warm layers.', severity: 'warning' });
+        if (current.feels < 20) {
+          insights.push({ icon: 'Thermometer', text: 'Wind chill makes it feel much colder. Bundle up with insulated layers.', severity: 'warning' });
+        }
+      } else if (condition === 'Stormy') {
+        insights.push({ icon: 'CloudLightning', text: 'Severe weather in your area. Stay indoors and away from windows.', severity: 'alert' });
+        insights.push({ icon: 'Umbrella', text: 'Heavy downpours likely. Avoid flooded roadways and low-lying areas.', severity: 'alert' });
+      }
+
+      if (current.aqi > 50 && condition !== 'Stormy') {
+        insights.push({ icon: 'Wind', text: `Air quality is moderate (AQI ${current.aqi}). Sensitive groups should limit prolonged outdoor exertion.`, severity: 'neutral' });
+      }
+
+      if (!insights.length) {
+        insights.push({ icon: 'Sparkles', text: 'Pleasant conditions ahead. Enjoy your day!', severity: 'positive' });
+      }
+
+      return insights;
     };
 
-    const Snowflakes = ({ count = 35 }) => {
-      const flakes = useMemo(() =>
-        Array.from({ length: count }, (_, i) => ({
-          x: Math.random() * 100,
-          delay: Math.random() * 5,
-          duration: 4 + Math.random() * 4,
-          size: 2 + Math.random() * 4,
-          sway: 20 + Math.random() * 40,
-          swayDuration: 2 + Math.random() * 3,
-          opacity: 0.3 + Math.random() * 0.5,
-        })), [count]);
+    // ─── Canvas Particle System ────────────────────────────────────────
 
-      return html`<div className="absolute inset-0 overflow-hidden pointer-events-none">
-        ${flakes.map((f, i) => html`
-          <${motion.div}
-            key=${'flake-' + i}
-            className="absolute top-0 rounded-full bg-white"
-            style=${{
-              left: f.x + '%',
-              width: f.size + 'px',
-              height: f.size + 'px',
-              opacity: f.opacity,
-            }}
-            animate=${{
-              y: ['-5vh', '105vh'],
-              x: [0, f.sway, -f.sway * 0.5, f.sway * 0.3, 0],
-            }}
-            transition=${{
-              duration: f.duration,
-              repeat: Infinity,
-              delay: f.delay,
-              ease: 'linear',
-              x: {
-                duration: f.swayDuration,
-                repeat: Infinity,
-                delay: f.delay,
-                ease: 'easeInOut',
-              },
-            }}
-          />
-        `)}
-      </div>`;
-    };
-
-    const ThunderstormEffects = () => {
-      const [flash, setFlash] = useState({ show: false, opacity: 0 });
+    const useParticleCanvas = (condition) => {
+      const canvasRef = useRef(null);
 
       useEffect(() => {
-        let timeout;
-        const scheduleFlash = () => {
-          const delay = 1500 + Math.random() * 4000;
-          timeout = setTimeout(() => {
-            setFlash({ show: true, opacity: 0.6 });
-            setTimeout(() => setFlash({ show: true, opacity: 0 }), 80);
-            setTimeout(() => setFlash({ show: true, opacity: 0.4 }), 150);
-            setTimeout(() => {
-              setFlash({ show: false, opacity: 0 });
-              scheduleFlash();
-            }, 220);
-          }, delay);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let raf;
+
+        const resize = () => {
+          const dpr = window.devicePixelRatio || 1;
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          canvas.width = w * dpr;
+          canvas.height = h * dpr;
+          canvas.style.width = w + 'px';
+          canvas.style.height = h + 'px';
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         };
-        scheduleFlash();
-        return () => clearTimeout(timeout);
+        resize();
+        window.addEventListener('resize', resize);
+
+        const createParticles = () => {
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          const count = condition === 'Stormy' ? 100 : condition === 'Rainy' ? 70 : condition === 'Snowy' ? 55 : 30;
+          return Array.from({ length: count }, (_, i) => ({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            vx: condition === 'Stormy' ? (Math.random() - 0.5) * 3 : condition === 'Rainy' ? (Math.random() - 0.5) * 0.5 : (Math.random() - 0.5) * 0.3,
+            vy: condition === 'Sunny' ? -(Math.random() * 0.3 + 0.1) : Math.random() * 2 + 1,
+            size: condition === 'Snowy' ? Math.random() * 3 + 1 : Math.random() * 1.5 + 0.5,
+            opacity: Math.random() * 0.5 + 0.1,
+            life: Math.random(),
+            speed: Math.random() * 0.02 + 0.005,
+          }));
+        };
+
+        let particles = createParticles();
+        let flashAlpha = 0;
+        let lastFlash = 0;
+        let time = 0;
+
+        const draw = () => {
+          ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+          time += 0.016;
+
+          if (condition === 'Stormy' && time - lastFlash > 2 + Math.random() * 3) {
+            flashAlpha = 0.5;
+            lastFlash = time;
+          }
+          if (flashAlpha > 0) {
+            ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
+            ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+            flashAlpha *= 0.85;
+            if (flashAlpha < 0.01) flashAlpha = 0;
+          }
+
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+
+          particles.forEach((p) => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life += p.speed;
+
+            if (condition === 'Sunny') {
+              if (p.y < -20) { p.y = h + 20; p.x = Math.random() * w; }
+              if (p.x < -20) p.x = w + 20;
+              if (p.x > w + 20) p.x = -20;
+            } else if (condition === 'Snowy') {
+              p.x += Math.sin(p.life * 5) * 0.3;
+              if (p.y > h + 20) { p.y = -20; p.x = Math.random() * w; }
+            } else {
+              if (p.y > h + 20) { p.y = -20; p.x = Math.random() * w; }
+              if (p.x < -20) p.x = w + 20;
+              if (p.x > w + 20) p.x = -20;
+            }
+
+            const alpha = condition === 'Sunny' ? p.opacity * (0.5 + 0.5 * Math.sin(p.life * 3))
+                         : p.opacity * Math.max(0, 1 - p.life % 1);
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = condition === 'Sunny' ? `rgba(251,191,36,${alpha * 0.5})` : `rgba(255,255,255,${alpha})`;
+            ctx.fill();
+
+            if (condition === 'Rainy' || condition === 'Stormy') {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p.x - 1, p.y + p.size * 4);
+              ctx.strokeStyle = `rgba(148,163,184,${alpha})`;
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+          });
+
+          raf = requestAnimationFrame(draw);
+        };
+
+        draw();
+
+        return () => {
+          cancelAnimationFrame(raf);
+          window.removeEventListener('resize', resize);
+        };
+      }, [condition]);
+
+      return canvasRef;
+    };
+
+    // ─── SVG Chart Helpers ────────────────────────────────────────────
+
+    const smoothPath = (points) => {
+      if (points.length < 2) return '';
+      let d = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[Math.max(0, i - 1)];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[Math.min(points.length - 1, i + 2)];
+        const tension = 0.35;
+        const cp1x = p1.x + (p2.x - p0.x) * tension;
+        const cp1y = p1.y + (p2.y - p0.y) * tension;
+        const cp2x = p2.x - (p3.x - p1.x) * tension;
+        const cp2y = p2.y - (p3.y - p1.y) * tension;
+        d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+      }
+      return d;
+    };
+
+    // ─── Components ───────────────────────────────────────────────────
+
+    const ParticleBackground = ({ condition }) => {
+      const canvasRef = useParticleCanvas(condition);
+      const theme = themes[condition] || themes.Sunny;
+      return html`<canvas ref=${canvasRef} className="fixed inset-0 pointer-events-none z-0" />`;
+    };
+
+    const LiveClock = () => {
+      const [time, setTime] = useState(new Date());
+      useEffect(() => {
+        const t = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(t);
       }, []);
+      return html`<span className="text-xs font-medium text-white/50 tabular-nums">
+        ${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </span>`;
+    };
 
+    const ConditionToggle = ({ current, onChange, theme }) => {
       return html`
-        <${Raindrops} count=${50} />
-        ${flash.show && html`
-          <${motion.div}
-            className="absolute inset-0 pointer-events-none"
-            style=${{ backgroundColor: 'white' }}
-            animate=${{ opacity: flash.opacity }}
-            transition=${{ duration: 0.05 }}
-          />
-        `}
+        <div className="flex items-center justify-center gap-2 mb-6">
+          ${CONDITIONS.map((c) => {
+            const isActive = current === c;
+            const base = 'px-4 py-2 text-xs font-semibold rounded-full border transition-all duration-300 btn-press';
+            const activeStyle = isActive
+              ? `bg-white/20 text-white border-white/30 shadow-lg backdrop-blur-md`
+              : 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white/70';
+            return html`
+              <button key=${c} onClick=${() => onChange(c)} className=${base + ' ' + activeStyle}>
+                ${c}
+              </button>
+            `;
+          })}
+        </div>
       `;
     };
 
-    const SunnyEffects = () => html`
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    const GlassCard = ({ children, className = '', style = {}, delay = 0 }) => {
+      const theme = style.theme || themes.Sunny;
+      const glassStyle = {
+        background: theme.glassBg,
+        backdropFilter: 'blur(24px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        border: `1px solid ${theme.glassBorder}`,
+        borderRadius: '24px',
+      };
+      return html`
         <${motion.div}
-          className="absolute -top-20 -right-20"
-          animate=${{ rotate: 360 }}
-          transition=${{ duration: 25, repeat: Infinity, ease: 'linear' }}
+          className=${`p-5 ${className}`}
+          style=${glassStyle}
+          initial=${{ opacity: 0, y: 20 }}
+          animate=${{ opacity: 1, y: 0 }}
+          transition=${{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
         >
-          <${Sun} size=${180} className="text-yellow-400/15" />
+          ${children}
         </${motion.div}>
-        <${motion.div}
-          className="absolute -top-16 -right-16 w-48 h-48 rounded-full"
-          style=${{ background: 'radial-gradient(circle, rgba(251,191,36,0.15) 0%, transparent 70%)' }}
-          animate=${{ scale: [1, 1.08, 1] }}
-          transition=${{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <${motion.div}
-          className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full"
-          style=${{ background: 'radial-gradient(circle, rgba(251,191,36,0.08) 0%, transparent 70%)' }}
-          animate=${{ scale: [1, 1.12, 1] }}
-          transition=${{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-        />
-      </div>
-    `;
-
-    const BackgroundLayer = ({ condition }) => {
-      const gradients = {
-        Sunny: 'from-amber-500/90 via-orange-400/80 to-sky-300/90',
-        Rainy: 'from-slate-800/95 via-blue-900/90 to-indigo-900/95',
-        Snowy: 'from-blue-200/90 via-indigo-100/85 to-white/90',
-        Stormy: 'from-violet-950/95 via-slate-900/95 to-indigo-950/95',
-      };
-
-      return html`
-        <div className="fixed inset-0 bg-gradient-to-br ${gradients[condition] || gradients.Sunny} transition-all duration-700" />
-        <div className="fixed inset-0 backdrop-blur-[2px]" />
-        <AnimatePresence mode="wait">
-          <${motion.div}
-            key=${condition}
-            initial=${{ opacity: 0 }}
-            animate=${{ opacity: 1 }}
-            exit=${{ opacity: 0 }}
-            transition=${{ duration: 0.6 }}
-            className="fixed inset-0"
-          >
-            ${condition === 'Sunny' && html`<${SunnyEffects} />`}
-            ${condition === 'Rainy' && html`<${Raindrops} count=${35} />`}
-            ${condition === 'Snowy' && html`<${Snowflakes} count=${40} />`}
-            ${condition === 'Stormy' && html`<${ThunderstormEffects} />`}
-          </${motion.div}>
-        </AnimatePresence>
       `;
     };
 
-    // ─── Icon mapping ─────────────────────────────────────────────────
-
-    const IconMap = {
-      Sun:        html`<${Sun} className="w-6 h-6" />`,
-      Moon:       html`<${Moon} className="w-6 h-6" />`,
-      Cloud:      html`<${Cloud} className="w-6 h-6" />`,
-      CloudRain:  html`<${CloudRain} className="w-6 h-6" />`,
-      CloudSnow:  html`<${CloudSnow} className="w-6 h-6" />`,
-      CloudLightning: html`<${CloudLightning} className="w-6 h-6" />`,
-    };
-
-    const getIcon = (name, size = 'w-6 h-6') => {
-      const cls = size + ' ' + (name === 'Sun' ? 'text-amber-300' : 'text-white/80');
-      const iconMap = {
-        Sun:        html`<${Sun} className=${cls} />`,
-        Moon:       html`<${Moon} className=${cls} />`,
-        Cloud:      html`<${Cloud} className=${cls} />`,
-        CloudRain:  html`<${CloudRain} className=${cls} />`,
-        CloudSnow:  html`<${CloudSnow} className=${cls} />`,
-        CloudLightning: html`<${CloudLightning} className=${cls} />`,
-      };
-      return iconMap[name] || iconMap.Sun;
-    };
-
-    // ─── Glass Card wrapper ────────────────────────────────────────────
-
-    const GlassCard = ({ children, className = '', padding = 'p-5' }) => html`
-      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl ${padding} ${className}">
-        ${children}
-      </div>
-    `;
-
-    // ─── Current Weather ────────────────────────────────────────────────
-
-    const CurrentWeather = ({ data }) => {
+    const CurrentWeather = ({ data, theme }) => {
       const iconName = data.condition === 'Sunny' ? 'Sun'
         : data.condition === 'Rainy' ? 'CloudRain'
-        : data.condition === 'Snowy' ? 'CloudSnow'
-        : 'CloudLightning';
-
-      const tempColor = data.condition === 'Sunny' ? 'text-amber-200'
-        : data.condition === 'Snowy' ? 'text-blue-200'
-        : 'text-white';
-
-      const secondaryText = data.condition === 'Snowy' ? 'text-slate-700/70' : 'text-white/70';
+        : data.condition === 'Snowy' ? 'CloudSnow' : 'CloudLightning';
 
       return html`
-        <${GlassCard} className="relative overflow-hidden" padding="p-6">
+        <${GlassCard} style=${{ theme }} className="relative overflow-hidden">
           <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <${MapPin} size=${14} className=${secondaryText} />
-                <span className="text-xs font-medium ${secondaryText} tracking-wide uppercase">${data.location}</span>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-3">
+                <${MapPin} size=${14} style=${{ color: theme.textSecondary }} />
+                <span className="text-xs font-semibold uppercase tracking-widest" style=${{ color: theme.textSecondary }}>${data.location}</span>
               </div>
-              <div className="flex items-start gap-1">
-                <span className="text-7xl sm:text-8xl font-extralight tracking-tighter ${tempColor}">
-                  ${data.current.temp}
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="fluid-temp font-extralight tracking-tighter" style=${{ color: theme.text }}>
+                  ${data.current.current}
                 </span>
-                <span className="text-2xl font-light ${secondaryText} mt-2">°F</span>
+                <span className="text-2xl font-light mb-3" style=${{ color: theme.textSecondary }}>°F</span>
               </div>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="text-sm font-medium ${secondaryText}">${data.condition}</span>
-                <span className="text-xs ${secondaryText}">•</span>
-                <span className="text-xs ${secondaryText}">Feels like ${data.current.feels}°</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium" style=${{ color: theme.textSecondary }}>${data.condition}</span>
+                <span style=${{ color: theme.textSecondary }}>•</span>
+                <span className="text-sm" style=${{ color: theme.textSecondary }}>Feels like ${data.current.feels}°</span>
               </div>
             </div>
-            <div className="text-right">
-              <div className="mb-1">${getIcon(iconName, 'w-14 h-14')}</div>
-              <div className="flex items-center justify-end gap-2 text-xs font-medium ${secondaryText}">
-                <span class="flex items-center gap-0.5"><${ArrowUp} size=${12} />${data.current.high}°</span>
-                <span class="flex items-center gap-0.5 text-white/50"><${ArrowDown} size=${12} />${data.current.low}°</span>
+            <div className="text-right flex flex-col items-end gap-2">
+              <div className="animate-float">
+                ${iconName === 'Sun' && html`<${Sun} size=${64} className="text-amber-300/80 drop-shadow-lg" />`}
+                ${iconName === 'CloudRain' && html`<${CloudRain} size=${64} className="text-blue-300/80 drop-shadow-lg" />`}
+                ${iconName === 'CloudSnow' && html`<${CloudSnow} size=${64} className="text-blue-200/80 drop-shadow-lg" />`}
+                ${iconName === 'CloudLightning' && html`<${CloudLightning} size=${64} className="text-violet-300/80 drop-shadow-lg" />`}
+              </div>
+              <div className="flex items-center justify-end gap-3 text-xs font-semibold" style=${{ color: theme.textSecondary }}>
+                <span className="flex items-center gap-0.5"><${ArrowUp} size=${12} /> ${data.current.high}°</span>
+                <span className="flex items-center gap-0.5 opacity-60"><${ArrowDown} size=${12} /> ${data.current.low}°</span>
               </div>
             </div>
           </div>
@@ -357,145 +540,319 @@
       `;
     };
 
-    // ─── Hourly Forecast ──────────────────────────────────────────────
+    const getIcon = (name, size = 'w-5 h-5') => {
+      const cls = size;
+      const iconMap = {
+        Sun: html`<${Sun} className=${cls} />`,
+        Moon: html`<${Moon} className=${cls} />`,
+        Cloud: html`<${Cloud} className=${cls} />`,
+        CloudRain: html`<${CloudRain} className=${cls} />`,
+        CloudSnow: html`<${CloudSnow} className=${cls} />`,
+        CloudLightning: html`<${CloudLightning} className=${cls} />`,
+      };
+      return iconMap[name] || iconMap.Sun;
+    };
 
-    const HourlyForecast = ({ hourly }) => html`
-      <${GlassCard} padding="p-5">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/50 mb-4">Hourly Forecast</h3>
-        <div className="flex gap-5 overflow-x-auto pb-1">
-          ${hourly.map((h, i) => html`
-            <${motion.div}
-              key=${'h-' + i}
-              className="flex flex-col items-center gap-2 min-w-[56px] flex-shrink-0"
-              initial=${{ opacity: 0, y: 10 }}
-              animate=${{ opacity: 1, y: 0 }}
-              transition=${{ duration: 0.3, delay: i * 0.02 }}
-            >
-              <span className="text-xs font-medium text-white/60">${h.time}</span>
-              ${getIcon(h.icon, 'w-5 h-5')}
-              <span className="text-sm font-semibold text-white/90">${h.temp}°</span>
-            </${motion.div}>
-          `)}
-        </div>
-      </${GlassCard}>
-    `;
+    const HourlyForecast = ({ hourly, theme }) => {
+      const chartWidth = hourly.length * 46;
+      const chartHeight = 110;
+      const pad = { top: 15, right: 15, bottom: 30, left: 15 };
+      const cw = chartWidth - pad.left - pad.right;
+      const ch = chartHeight - pad.top - pad.bottom;
 
-    // ─── 7-Day Forecast ───────────────────────────────────────────────
+      const temps = hourly.map(h => h.temp);
+      const min = Math.min(...temps);
+      const max = Math.max(...temps);
+      const range = max - min || 1;
 
-    const WeeklyForecast = ({ daily }) => html`
-      <${GlassCard} padding="p-5">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">7-Day Forecast</h3>
-        <div className="divide-y divide-white/10">
-          ${daily.map((d, i) => html`
-            <${motion.div}
-              key=${'d-' + i}
-              className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
-              initial=${{ opacity: 0, x: -10 }}
-              animate=${{ opacity: 1, x: 0 }}
-              transition=${{ duration: 0.3, delay: i * 0.05 }}
-            >
-              <span className="w-12 text-sm font-medium ${i === 0 ? 'text-white' : 'text-white/70'}">${d.day}</span>
-              <span className="w-16 text-xs text-white/40">${d.date}</span>
-              <div className="flex-1 flex justify-center">${getIcon(d.icon, 'w-5 h-5')}</div>
-              <span className="w-8 text-right text-xs text-white/40">${d.precip}%</span>
-              <div className="flex items-center gap-2 w-20 justify-end">
-                <span className="text-sm font-semibold text-white/90">${d.high}°</span>
-                <span className="text-xs text-white/40 w-1 text-center">/</span>
-                <span className="text-sm text-white/50">${d.low}°</span>
+      const points = hourly.map((h, i) => ({
+        x: pad.left + (i / (hourly.length - 1)) * cw,
+        y: pad.top + ch - ((h.temp - min) / range) * ch,
+      }));
+
+      const linePath = smoothPath(points);
+      const areaPath = linePath + ` L ${points[points.length - 1].x} ${chartHeight - pad.bottom} L ${points[0].x} ${chartHeight - pad.bottom} Z`;
+
+      return html`
+        <${GlassCard} style=${{ theme }} delay=${0.1}>
+          <h3 className="fluid-label font-semibold uppercase mb-4" style=${{ color: theme.textSecondary }}>Hourly Forecast</h3>
+          <div className="overflow-x-auto pb-2 -mx-1 px-1">
+            <div style=${{ width: chartWidth + 'px' }} className="relative">
+              <svg width=${chartWidth} height=${chartHeight} viewBox=${`0 0 ${chartWidth} ${chartHeight}`} className="block">
+                <defs>
+                  <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor=${theme.graphFill} />
+                    <stop offset="100%" stopColor="transparent" />
+                  </linearGradient>
+                </defs>
+                <path d=${areaPath} fill="url(#areaGrad)" />
+                <path d=${linePath} fill="none" stroke=${theme.graphStroke} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                ${points.map((p, i) => html`
+                  <circle key=${i} cx=${p.x} cy=${p.y} r="3.5" fill=${theme.graphStroke} stroke="white" strokeWidth="1.5" />
+                `)}
+              </svg>
+              <div className="flex" style=${{ width: chartWidth + 'px' }}>
+                ${hourly.map((h, i) => {
+                  const isCurrent = i === 0;
+                  return html`
+                    <div key=${i} className="flex flex-col items-center gap-2 pt-1" style=${{ width: '46px', flexShrink: 0 }}>
+                      <span className="text-[10px] font-medium" style=${{ color: theme.textSecondary, opacity: isCurrent ? 1 : 0.6 }}>${h.time}</span>
+                      <div className="scale-90">${getIcon(h.icon)}</div>
+                      <span className="text-sm font-semibold" style=${{ color: theme.text, opacity: isCurrent ? 1 : 0.8 }}>${h.temp}°</span>
+                    </div>
+                  `;
+                })}
               </div>
-            </${motion.div}>
-          `)}
-        </div>
-      </${GlassCard}>
-    `;
+            </div>
+          </div>
+        </${GlassCard}>
+      `;
+    };
 
-    // ─── Details Grid ─────────────────────────────────────────────────
+    const WeeklyForecast = ({ daily, theme }) => {
+      const allTemps = daily.flatMap(d => [d.high, d.low]);
+      const min = Math.min(...allTemps);
+      const max = Math.max(...allTemps);
+      const range = max - min || 1;
 
-    const DetailCard = ({ icon: Icon, label, value, unit }) => html`
-      <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-        <div className="flex items-center gap-2 mb-2">
-          <${Icon} size=${16} className="text-white/50" />
-          <span className="text-xs font-medium text-white/50 uppercase tracking-wide">${label}</span>
-        </div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-2xl font-semibold text-white/90">${value}</span>
-          ${unit && html`<span className="text-xs text-white/40">${unit}</span>`}
-        </div>
-      </div>
-    `;
+      return html`
+        <${GlassCard} style=${{ theme }} delay=${0.15}>
+          <h3 className="fluid-label font-semibold uppercase mb-4" style=${{ color: theme.textSecondary }}>7-Day Forecast</h3>
+          <div className="space-y-3">
+            ${daily.map((d, i) => {
+              const lowPct = ((d.low - min) / range) * 100;
+              const widthPct = ((d.high - d.low) / range) * 100;
+              const markerPct = d.current ? ((d.current - min) / range) * 100 : null;
+              return html`
+                <${motion.div}
+                  key=${i}
+                  className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
+                  initial=${{ opacity: 0, x: -10 }}
+                  animate=${{ opacity: 1, x: 0 }}
+                  transition=${{ duration: 0.3, delay: i * 0.04 }}
+                >
+                  <div className="w-14">
+                    <span className="text-sm font-semibold block" style=${{ color: i === 0 ? theme.text : theme.textSecondary }}>${d.day}</span>
+                    <span className="text-[10px]" style=${{ color: theme.textSecondary, opacity: 0.6 }}>${d.date}</span>
+                  </div>
+                  <div className="w-8">${getIcon(d.icon)}</div>
+                  <div className="flex-1 flex items-center">
+                    <span className="text-xs font-medium w-6 text-right" style=${{ color: theme.textSecondary }}>${d.low}°</span>
+                    <div className="flex-1 mx-3 h-2 rounded-full temp-bar-bg relative overflow-hidden">
+                      <div className="absolute h-full rounded-full temp-bar-fill" style=${{ marginLeft: lowPct + '%', width: widthPct + '%' }} />
+                      ${markerPct !== null && html`
+                        <div className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-md" style=${{ left: `calc(${markerPct}% - 3px)` }} />
+                      `}
+                    </div>
+                    <span className="text-xs font-semibold w-6" style=${{ color: theme.textSecondary }}>${d.high}°</span>
+                  </div>
+                  <div className="w-10 text-right">
+                    <span className="text-[10px] font-medium" style=${{ color: theme.textSecondary }}>
+                      ${d.precip > 20 ? d.precip + '%' : ''}
+                    </span>
+                  </div>
+                </${motion.div}>
+              `;
+            })}
+          </div>
+        </${GlassCard}>
+      `;
+    };
 
-    const DetailsGrid = ({ data }) => html`
-      <${GlassCard} padding="p-5">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">Details</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <${DetailCard} icon=${Wind} label="Wind Speed" value=${data.current.wind} unit="mph" />
-          <${DetailCard} icon=${Droplets} label="Humidity" value=${data.current.humidity} unit="%" />
-          <${DetailCard} icon=${Sun} label="UV Index" value=${data.current.uv} />
-          <${DetailCard} icon=${Eye} label="Visibility" value=${data.current.vis} unit="mi" />
-        </div>
-      </${GlassCard}>
-    `;
+    const DetailsGrid = ({ data, theme }) => {
+      const d = data.current;
+      const items = [
+        { icon: Wind, label: 'Wind', value: d.wind + ' mph' },
+        { icon: Droplets, label: 'Humidity', value: d.humidity + '%' },
+        { icon: Sun, label: 'UV Index', value: d.uv },
+        { icon: Eye, label: 'Visibility', value: d.vis + ' mi' },
+        { icon: Thermometer, label: 'Dew Point', value: d.dew + '°' },
+        { icon: Gauge, label: 'Pressure', value: d.pressure + ' hPa' },
+      ];
+      return html`
+        <${GlassCard} style=${{ theme }} delay=${0.2}>
+          <h3 className="fluid-label font-semibold uppercase mb-4" style=${{ color: theme.textSecondary }}>Details</h3>
+          <div className="grid grid-cols-3 gap-2">
+            ${items.map((item, i) => html`
+              <${motion.div}
+                key=${i}
+                className="p-3 rounded-xl"
+                style=${{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+                whileHover=${{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.08)' }}
+                transition=${{ type: 'spring', stiffness: 400, damping: 25 }}
+              >
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <${item.icon} size=${14} style=${{ color: theme.textSecondary, opacity: 0.7 }} />
+                  <span className="text-[10px] font-medium uppercase tracking-wider" style=${{ color: theme.textSecondary, opacity: 0.7 }}>${item.label}</span>
+                </div>
+                <span className="text-lg font-semibold block" style=${{ color: theme.text }}>${item.value}</span>
+              </${motion.div}>
+            `)}
+          </div>
+        </${GlassCard}>
+      `;
+    };
 
-    // ─── Condition Toggle ─────────────────────────────────────────────
+    const AIInsights = ({ data, theme }) => {
+      const insights = useMemo(() => getInsights(data), [data]);
+      return html`
+        <${GlassCard} style=${{ theme }} delay=${0.25} className="ai-shimmer">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="relative">
+              <${Sparkles} size=${16} style=${{ color: theme.accent }} />
+              <div className="absolute inset-0 animate-pulse-soft rounded-full" style=${{ background: theme.accent, opacity: 0.4, filter: 'blur(4px)' }} />
+            </div>
+            <h3 className="fluid-label font-semibold uppercase" style=${{ color: theme.textSecondary }}>AI Insights</h3>
+          </div>
+          <div className="space-y-3">
+            <${AnimatePresence}>
+              ${insights.map((insight, i) => {
+                const severityColors = {
+                  positive: 'border-emerald-400/30 bg-emerald-500/10',
+                  warning: 'border-amber-400/30 bg-amber-500/10',
+                  alert: 'border-rose-400/30 bg-rose-500/10',
+                  neutral: 'border-white/10 bg-white/5',
+                };
+                const iconColors = {
+                  positive: 'text-emerald-300',
+                  warning: 'text-amber-300',
+                  alert: 'text-rose-300',
+                  neutral: 'text-white/70',
+                };
+                return html`
+                  <${motion.div}
+                    key=${i}
+                    initial=${{ opacity: 0, x: -10 }}
+                    animate=${{ opacity: 1, x: 0 }}
+                    transition=${{ duration: 0.4, delay: 0.3 + i * 0.1 }}
+                    className="flex gap-3 p-3 rounded-xl border"
+                    style=${{ borderColor: severityColors[insight.severity]?.split(' ')[0] || 'rgba(255,255,255,0.1)', background: severityColors[insight.severity]?.split(' ')[1] || 'rgba(255,255,255,0.05)' }}
+                  >
+                    <div className="mt-0.5">
+                      ${getIcon(insight.icon, 'w-4 h-4')}
+                    </div>
+                    <p className="text-sm leading-relaxed" style=${{ color: theme.textSecondary }}>${insight.text}</p>
+                  </${motion.div}>
+                `;
+              })}
+            </${AnimatePresence}>
+          </div>
+        </${GlassCard}>
+      `;
+    };
 
-    const ConditionToggle = ({ current, onChange }) => html`
-      <div className="flex items-center justify-center gap-2 mb-6">
-        ${CONDITIONS.map((c) => {
-          const colors = {
-            Sunny: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-            Rainy: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-            Snowy: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-            Stormy: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
-          };
-          const activeColors = {
-            Sunny: 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/25',
-            Rainy: 'bg-blue-500 text-white border-blue-500 shadow-lg shadow-blue-500/25',
-            Snowy: 'bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/25',
-            Stormy: 'bg-violet-500 text-white border-violet-500 shadow-lg shadow-violet-500/25',
-          };
-          const isActive = current === c;
-          return html`
-            <button
-              key=${c}
-              onClick=${() => onChange(c)}
-              className="px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-300 ${isActive ? activeColors[c] : 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white/70'}"
-            >
-              ${c}
+    const TopBar = ({ onRefresh, theme }) => {
+      return html`
+        <${motion.div}
+          className="flex items-center justify-between mb-6"
+          initial=${{ opacity: 0, y: -10 }}
+          animate=${{ opacity: 1, y: 0 }}
+          transition=${{ duration: 0.5 }}
+        >
+          <div className="flex items-center gap-3">
+            <${Navigation} size=${20} style=${{ color: theme.textSecondary }} />
+            <span className="text-sm font-medium" style=${{ color: theme.textSecondary }}>San Francisco, CA</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <${LiveClock} />
+            <button onClick=${onRefresh} className="p-2 rounded-full btn-press" style=${{ background: theme.glassBg, border: `1px solid ${theme.glassBorder}` }}>
+              <${RefreshCw} size=${16} style=${{ color: theme.textSecondary }} />
             </button>
-          `;
-        })}
-      </div>
-    `;
+          </div>
+        </${motion.div}>
+      `;
+    };
 
-    // ─── App Shell ─────────────────────────────────────────────────────
+    const SunMoonCard = ({ daily, theme }) => {
+      const today = daily[0];
+      return html`
+        <${GlassCard} style=${{ theme }} delay=${0.3}>
+          <h3 className="fluid-label font-semibold uppercase mb-4" style=${{ color: theme.textSecondary }}>Sun & Moon</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <${Sun} size=${24} style=${{ color: theme.accent }} />
+              <div>
+                <p className="text-xs" style=${{ color: theme.textSecondary, opacity: 0.7 }}>Sunrise</p>
+                <p className="text-sm font-semibold" style=${{ color: theme.text }}>${today?.sunrise || '06:12 AM'}</p>
+              </div>
+            </div>
+            <div className="h-8 w-px" style=${{ background: theme.glassBorder }} />
+            <div className="flex items-center gap-3">
+              <${Moon} size=${24} style=${{ color: theme.accent }} />
+              <div>
+                <p className="text-xs" style=${{ color: theme.textSecondary, opacity: 0.7 }}>Sunset</p>
+                <p className="text-sm font-semibold" style=${{ color: theme.text }}>${today?.sunset || '07:45 PM'}</p>
+              </div>
+            </div>
+            <div className="h-8 w-px" style=${{ background: theme.glassBorder }} />
+            <div className="text-right">
+              <p className="text-xs" style=${{ color: theme.textSecondary, opacity: 0.7 }}>Moon</p>
+              <p className="text-sm font-semibold" style=${{ color: theme.text }}>Waxing Gibbous</p>
+            </div>
+          </div>
+        </${GlassCard}>
+      `;
+    };
+
+    // ─── Main App ──────────────────────────────────────────────────────
 
     const WeatherApp = () => {
       const [condition, setCondition] = useState('Sunny');
+      const [isRefreshing, setIsRefreshing] = useState(false);
       const data = useMemo(() => generateMockData(condition), [condition]);
+      const theme = themes[condition] || themes.Sunny;
+
+      const handleRefresh = useCallback(() => {
+        setIsRefreshing(true);
+        setTimeout(() => setIsRefreshing(false), 1200);
+      }, []);
+
+      // Update CSS custom properties for glass effects based on theme
+      useEffect(() => {
+        document.documentElement.style.setProperty('--glass-bg', theme.glassBg);
+        document.documentElement.style.setProperty('--glass-border', theme.glassBorder);
+      }, [theme]);
 
       return html`
-        <div className="min-h-screen relative">
-          <${BackgroundLayer} condition=${condition} />
+        <div className="min-h-screen relative" style=${{ background: `linear-gradient(to bottom right, ${theme.gradient})`, transition: 'background 0.7s ease' }}>
+          <${ParticleBackground} condition=${condition} />
 
-          <div className="relative z-10 max-w-md mx-auto px-4 py-8 pb-12">
-            <${ConditionToggle} current=${condition} onChange=${setCondition} />
+          <div className="relative z-10 max-w-md mx-auto px-4 pt-8 pb-12">
+            <${TopBar} onRefresh=${handleRefresh} theme=${theme} />
 
-            <${motion.div}
-              key=${condition + '-content'}
-              initial=${{ opacity: 0, y: 20 }}
-              animate=${{ opacity: 1, y: 0 }}
-              transition=${{ duration: 0.5, ease: 'easeOut' }}
-              className="space-y-4"
-            >
-              <${CurrentWeather} data=${data} />
-              <${HourlyForecast} hourly=${data.hourly} />
-              <${WeeklyForecast} daily=${data.daily} />
-              <${DetailsGrid} data=${data} />
-            </${motion.div}>
+            <${AnimatePresence} mode="wait">
+              <${motion.div}
+                key=${condition + '-content'}
+                initial=${{ opacity: 0, y: 20 }}
+                animate=${{ opacity: 1, y: 0 }}
+                exit=${{ opacity: 0, y: -10 }}
+                transition=${{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="space-y-4"
+              >
+                <${ConditionToggle} current=${condition} onChange=${setCondition} theme=${theme} />
 
-            <p className="text-center text-xs text-white/30 mt-6">
-              Toggle conditions above to test situational animations
-            </p>
+                <${CurrentWeather} data=${data} theme=${theme} />
+
+                <${HourlyForecast} hourly=${data.hourly} theme=${theme} />
+
+                <${WeeklyForecast} daily=${data.daily} theme=${theme} />
+
+                <${DetailsGrid} data=${data} theme=${theme} />
+
+                <${AIInsights} data=${data} theme=${theme} />
+
+                <${SunMoonCard} daily=${data.daily} theme=${theme} />
+
+                <div className="text-center pt-4">
+                  <p className="text-[10px] font-medium uppercase tracking-widest" style=${{ color: theme.textSecondary, opacity: 0.4 }}>
+                    Last updated ${data.lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  <p className="text-[10px] mt-1" style=${{ color: theme.textSecondary, opacity: 0.3 }}>
+                    Toggle conditions above to test situational animations
+                  </p>
+                </div>
+              </${motion.div}>
+            </${AnimatePresence}>
           </div>
         </div>
       `;

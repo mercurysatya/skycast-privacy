@@ -3,6 +3,7 @@ package com.vayu.weather.presentation.weather
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material.icons.rounded.Air
@@ -38,6 +40,8 @@ import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.WbTwilight
+import androidx.compose.material.icons.rounded.Umbrella
+import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,10 +55,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -77,6 +89,8 @@ import com.vayu.weather.presentation.components.AirQualityCard
 import com.vayu.weather.presentation.components.WeatherBackground
 import com.vayu.weather.presentation.components.WeatherTrends
 import java.time.format.DateTimeFormatter
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 private object ConversionConstants {
@@ -250,6 +264,14 @@ fun WeatherDashboard(
 
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
+                        AIInsightsCard(
+                            info = info,
+                            isCelsius = isCelsius
+                        )
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(24.dp))
                         WeatherTrends(
                             hourlyData = info.hourly,
                             isCelsius = isCelsius,
@@ -310,41 +332,46 @@ private fun TopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp).padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(0.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .shadow(8.dp, RoundedCornerShape(20.dp), clip = true)
+            .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onOpenAlerts) {
-            Icon(
-                Icons.Rounded.NotificationsActive,
-                contentDescription = stringResource(R.string.weather_alerts),
-                tint = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.size(22.dp)
-            )
-        }
-        IconButton(onClick = onOpenHistory) {
-            Icon(
-                Icons.Rounded.History,
-                contentDescription = stringResource(R.string.weather_history_title),
-                tint = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.size(22.dp)
-            )
-        }
-        IconButton(onClick = onShare) {
-            Icon(
-                Icons.Rounded.Share,
-                contentDescription = stringResource(R.string.share_weather),
-                tint = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.size(22.dp)
-            )
-        }
-        IconButton(onClick = onToggleUnit) {
-            Text(
-                text = "°",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.White.copy(alpha = 0.85f)
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onOpenAlerts) {
+                Icon(
+                    Icons.Rounded.NotificationsActive,
+                    contentDescription = stringResource(R.string.weather_alerts),
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            IconButton(onClick = onOpenHistory) {
+                Icon(
+                    Icons.Rounded.History,
+                    contentDescription = stringResource(R.string.weather_history_title),
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            IconButton(onClick = onShare) {
+                Icon(
+                    Icons.Rounded.Share,
+                    contentDescription = stringResource(R.string.share_weather),
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            IconButton(onClick = onToggleUnit) {
+                Text(
+                    text = "°",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+            }
         }
         IconButton(onClick = onOpenSettings) {
             Icon(
@@ -368,56 +395,83 @@ private fun HeroSection(
     isCelsius: Boolean,
     onClick: () -> Unit
 ) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "hero_scale"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .graphicsLayer { scaleX = scale; scaleY = scale },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = cityName ?: stringResource(R.string.default_city_name),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = 0.9f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White.copy(alpha = 0.12f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp, horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = cityName ?: stringResource(R.string.default_city_name),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-        Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-        Text(
-            text = "${convertTemp(info.current.temperature, isCelsius)}°",
-            fontSize = 96.sp,
-            fontWeight = FontWeight.Thin,
-            color = Color.White,
-            lineHeight = 96.sp
-        )
+                Text(
+                    text = "${convertTemp(info.current.temperature, isCelsius)}°",
+                    fontSize = 96.sp,
+                    fontWeight = FontWeight.Thin,
+                    color = Color.White,
+                    lineHeight = 96.sp,
+                    textAlign = TextAlign.Center
+                )
 
-        Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-        Text(
-            text = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Normal,
-            color = Color.White.copy(alpha = 0.85f)
-        )
+                Text(
+                    text = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Normal,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
 
-        info.daily.firstOrNull()?.let { today ->
-            val high = convertTemp(today.maxTemp, isCelsius)
-            val low = convertTemp(today.minTemp, isCelsius)
-            Text(
-                text = "H:${high}°  L:${low}°",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.7f)
-            )
-        }
+                info.daily.firstOrNull()?.let { today ->
+                    val high = convertTemp(today.maxTemp, isCelsius)
+                    val low = convertTemp(today.minTemp, isCelsius)
+                    Text(
+                        text = "H:${high}°  L:${low}°",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
 
-        info.current.apparentTemperature?.let { apparent ->
-            Text(
-                text = stringResource(R.string.feels_like, convertTemp(apparent, isCelsius)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.6f)
-            )
+                info.current.apparentTemperature?.let { apparent ->
+                    Text(
+                        text = stringResource(R.string.feels_like, convertTemp(apparent, isCelsius)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -437,7 +491,7 @@ private fun HourlyForecastSection(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.15f)
+            containerColor = Color.White.copy(alpha = 0.18f)
         )
     ) {
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
@@ -528,6 +582,7 @@ private fun DailyForecastSection(
     dailyData: List<DailyWeather>,
     isCelsius: Boolean
 ) {
+    if (dailyData.isEmpty()) return
     val allMin = remember(dailyData) { dailyData.minOf { it.minTemp }.roundToInt() }
     val allMax = remember(dailyData) { dailyData.maxOf { it.maxTemp }.roundToInt() }
 
@@ -537,7 +592,7 @@ private fun DailyForecastSection(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.15f)
+            containerColor = Color.White.copy(alpha = 0.18f)
         )
     ) {
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
@@ -697,7 +752,7 @@ private fun WeatherDetailsSection(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.15f)
+            containerColor = Color.White.copy(alpha = 0.18f)
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -781,7 +836,7 @@ private fun DetailCard(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.1f)
+            containerColor = Color.White.copy(alpha = 0.12f)
         )
     ) {
         Column(
@@ -815,6 +870,195 @@ private fun DetailCard(
 }
 
 // ============================================================
+// AI INSIGHTS
+// ============================================================
+
+@Composable
+private fun AIInsightsCard(
+    info: WeatherInfo,
+    isCelsius: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val insights = remember(info) { generateInsights(info, isCelsius) }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.12f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.WbSunny,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = Color(0xFFFFD54F)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.ai_insights),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+            }
+
+            insights.forEach { insight ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(
+                                color = when (insight.severity) {
+                                    InsightSeverity.WARNING -> Color(0xFFFFB74D).copy(alpha = 0.2f)
+                                    InsightSeverity.ALERT -> Color(0xFFEF5350).copy(alpha = 0.2f)
+                                    InsightSeverity.POSITIVE -> Color(0xFF66BB6A).copy(alpha = 0.2f)
+                                    else -> Color.White.copy(alpha = 0.08f)
+                                },
+                                shape = RoundedCornerShape(10.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = insight.icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = when (insight.severity) {
+                                InsightSeverity.WARNING -> Color(0xFFFFB74D)
+                                InsightSeverity.ALERT -> Color(0xFFEF5350)
+                                InsightSeverity.POSITIVE -> Color(0xFF66BB6A)
+                                else -> Color.White.copy(alpha = 0.7f)
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = insight.text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.8f),
+                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight * 1.4f,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (insight != insights.last()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider(
+                        color = Color.White.copy(alpha = 0.06f),
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+enum class InsightSeverity { POSITIVE, NEUTRAL, WARNING, ALERT }
+
+private data class Insight(
+    val icon: ImageVector,
+    val text: String,
+    val severity: InsightSeverity
+)
+
+private fun generateInsights(info: WeatherInfo, isCelsius: Boolean): List<Insight> {
+    val insights = mutableListOf<Insight>()
+    val code = info.current.weatherCode
+    val current = info.current
+    val daily = info.daily.firstOrNull()
+
+    when {
+        code == 0 && current.isDay -> {
+            insights += Insight(
+                icon = Icons.Rounded.WbSunny,
+                text = if ((daily?.uvIndex ?: 0.0) >= 7)
+                    "High UV index expected. Apply SPF 30+ and seek shade during midday hours."
+                else
+                    "Great day for outdoor activities! UV levels are moderate.",
+                severity = if ((daily?.uvIndex ?: 0.0) >= 7) InsightSeverity.WARNING else InsightSeverity.POSITIVE
+            )
+            if ((current.humidity ?: 50.0) < 30) {
+                insights += Insight(
+                    icon = Icons.Rounded.WaterDrop,
+                    text = "Dry air detected. Stay hydrated and consider using moisturizer.",
+                    severity = InsightSeverity.NEUTRAL
+                )
+            }
+        }
+        code in listOf(51, 53, 55, 61, 63, 65, 80, 81, 82) -> {
+            insights += Insight(
+                icon = Icons.Rounded.Umbrella,
+                text = "Rain expected for the next several hours. Don't forget your umbrella.",
+                severity = InsightSeverity.WARNING
+            )
+            if ((current.windSpeed ?: 0.0) > 25) {
+                insights += Insight(
+                    icon = Icons.Rounded.Air,
+                    text = "Gusty winds with rain. Secure loose outdoor items before heading out.",
+                    severity = InsightSeverity.WARNING
+                )
+            }
+            if ((current.visibility ?: 10000.0) < 5000) {
+                val visKm = (current.visibility!! / 1000.0).roundToInt()
+                insights += Insight(
+                    icon = Icons.Rounded.Visibility,
+                    text = "Reduced visibility ($visKm km). Drive with caution and use headlights.",
+                    severity = InsightSeverity.WARNING
+                )
+            }
+        }
+        code in listOf(71, 73, 75) -> {
+            insights += Insight(
+                icon = Icons.Rounded.AcUnit,
+                text = "Snow accumulation possible today. Allow extra travel time and dress in warm layers.",
+                severity = InsightSeverity.WARNING
+            )
+            if ((current.apparentTemperature ?: current.temperature) < 20) {
+                insights += Insight(
+                    icon = Icons.Rounded.Thermostat,
+                    text = "Wind chill makes it feel much colder. Bundle up with insulated layers.",
+                    severity = InsightSeverity.WARNING
+                )
+            }
+        }
+        code in listOf(95, 96, 99) -> {
+            insights += Insight(
+                icon = Icons.Rounded.Thunderstorm,
+                text = "Severe weather in your area. Stay indoors and away from windows.",
+                severity = InsightSeverity.ALERT
+            )
+            insights += Insight(
+                icon = Icons.Rounded.Umbrella,
+                text = "Heavy downpours likely. Avoid flooded roadways and low-lying areas.",
+                severity = InsightSeverity.ALERT
+            )
+        }
+    }
+
+    if (insights.isEmpty()) {
+        insights += Insight(
+            icon = Icons.Rounded.WbSunny,
+            text = "Pleasant conditions ahead. Enjoy your day!",
+            severity = InsightSeverity.POSITIVE
+        )
+    }
+
+    return insights.take(4)
+}
+
+// ============================================================
 // SUN & MOON
 // ============================================================
 
@@ -843,7 +1087,7 @@ private fun SunMoonSection(dailyData: List<DailyWeather>) {
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.15f)
+            containerColor = Color.White.copy(alpha = 0.18f)
         )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {

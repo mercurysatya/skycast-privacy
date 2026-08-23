@@ -1,6 +1,9 @@
 <resources>
     <!-- App -->
     <string name="app_name">SkyCast Weather</string>
+    <string name="search_city">Search for a city\u2026</string>
+    <string name="today">Today</string>
+    <string name="error_search">Search failed.</string>
 
     <!-- Navigation -->
     <string name="weather">Weather</string>
@@ -15,6 +18,7 @@
     <string name="now">Now</string>
     <string name="seven_day_forecast">7-Day Forecast</string>
     <string name="temperature_trends">Temperature Trends</string>
+    <string name="ai_insights">AI Insights</string>
     <string name="weather_details">Weather Details</string>
     <string name="sun_and_moon">Sun &amp; Moon</string>
     <string name="sunrise">Sunrise</string>
@@ -158,6 +162,9 @@
     <string name="powered_by_open_meteo">Powered by Open-Meteo API</string>
     <string name="privacy_policy">Privacy Policy</string>
     <string name="view_privacy_policy">View our privacy policy</string>
+    <string name="privacy_options">Privacy Options</string>
+    <string name="privacy_options_subtitle">Manage your ad privacy and consent choices</string>
+    <string name="privacy_options_updated">Your privacy choices have been updated</string>
     <string name="open">Open</string>
     <string name="delete_my_data">Delete My Data</string>
     <string name="delete_my_data_subtitle">Remove all local data from this device</string>

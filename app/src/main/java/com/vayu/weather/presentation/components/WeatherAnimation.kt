@@ -236,32 +236,32 @@ private fun NightAnimation(code: Int) {
 private fun SunnyBackground() {
     val infinite = rememberInfiniteTransition(label = "sun_bg")
     val rayAngle by infinite.animateFloat(0f, 360f,
-        infiniteRepeatable(tween(30000, easing = LinearEasing), RepeatMode.Restart),
+        infiniteRepeatable(tween(40000, easing = LinearEasing), RepeatMode.Restart),
         label = "sun_ray"
     )
     val pulse by infinite.animateFloat(0.92f, 1f,
-        infiniteRepeatable(tween(3000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        infiniteRepeatable(tween(4000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "sun_pulse"
     )
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         val cx = size.width * 0.5f
-        val cy = size.height * 0.15f
-        val r = size.width * 0.12f
+        val cy = size.height * 0.12f
+        val r = size.width * 0.1f
 
-        drawCircle(Color(0x40FFD54F), r * 4f * pulse, Offset(cx, cy))
-        drawCircle(Color(0x30FFD54F), r * 7f * pulse, Offset(cx, cy))
-        drawCircle(Color(0x20FFD54F), r * 10f * pulse, Offset(cx, cy))
+        drawCircle(Color(0x60FFD54F), r * 5f * pulse, Offset(cx, cy))
+        drawCircle(Color(0x45FFD54F), r * 8f * pulse, Offset(cx, cy))
+        drawCircle(Color(0x30FFD54F), r * 12f * pulse, Offset(cx, cy))
 
-        for (i in 0 until 12) {
-            val rad = (rayAngle + i * 30f) * (PI.toFloat() / 180f)
-            val inner = r * 1.2f
-            val outer = r * 2.5f * pulse
+        for (i in 0 until 16) {
+            val rad = (rayAngle + i * 22.5f) * (PI.toFloat() / 180f)
+            val inner = r * 1.1f
+            val outer = r * 2.8f * pulse
             drawLine(
-                Color(0x30FFD54F),
+                Color(0x35FFD54F),
                 Offset(cx + inner * cos(rad), cy + inner * sin(rad)),
                 Offset(cx + outer * cos(rad), cy + outer * sin(rad)),
-                strokeWidth = 4f
+                strokeWidth = 3f
             )
         }
     }
@@ -304,20 +304,20 @@ private fun CloudyBackground(code: Int) {
 @Composable
 private fun RainyBackground(code: Int) {
     val isHeavy = code in 65..82
-    val dropCount = if (isHeavy) 80 else 50
+    val dropCount = if (isHeavy) 120 else 70
     val drops = remember(dropCount) {
         List(dropCount) {
             DropData(
                 x = Random.nextFloat(),
-                speed = 0.3f + Random.nextFloat() * 0.7f,
-                length = 0.015f + Random.nextFloat() * 0.025f,
+                speed = 0.25f + Random.nextFloat() * 0.6f,
+                length = 0.02f + Random.nextFloat() * 0.035f,
                 phase = Random.nextFloat()
             )
         }
     }
     val infinite = rememberInfiniteTransition(label = "rain_bg")
     val progress by infinite.animateFloat(0f, 1f,
-        infiniteRepeatable(tween(1200, easing = LinearEasing), RepeatMode.Restart),
+        infiniteRepeatable(tween(1000, easing = LinearEasing), RepeatMode.Restart),
         label = "rain_fall"
     )
 
@@ -328,10 +328,10 @@ private fun RainyBackground(code: Int) {
             val screenX = d.x * size.width
             val len = d.length * size.height
             drawLine(
-                Color.White.copy(alpha = 0.12f),
+                Color.White.copy(alpha = 0.18f),
                 Offset(screenX, screenY),
                 Offset(screenX - len * 0.3f, screenY + len),
-                strokeWidth = 1.5f
+                strokeWidth = 2f
             )
         }
     }
@@ -340,19 +340,19 @@ private fun RainyBackground(code: Int) {
 @Composable
 private fun SnowBackground() {
     val flakes = remember {
-        List(50) {
+        List(80) {
             FlakeData(
                 x = Random.nextFloat(),
-                speed = 0.15f + Random.nextFloat() * 0.35f,
-                size = 1.5f + Random.nextFloat() * 3.5f,
-                sway = 8f + Random.nextFloat() * 18f,
+                speed = 0.1f + Random.nextFloat() * 0.3f,
+                size = 1.5f + Random.nextFloat() * 4.5f,
+                sway = 12f + Random.nextFloat() * 25f,
                 phase = Random.nextFloat() * 360f
             )
         }
     }
     val infinite = rememberInfiniteTransition(label = "snow_bg")
     val progress by infinite.animateFloat(0f, 1f,
-        infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Restart),
+        infiniteRepeatable(tween(5000, easing = LinearEasing), RepeatMode.Restart),
         label = "snow_fall"
     )
 
@@ -363,7 +363,7 @@ private fun SnowBackground() {
             val swayOffset = sin(rad) * f.sway
             val screenX = f.x * size.width + swayOffset
             val screenY = y * size.height
-            val alpha = (1f - y).coerceIn(0.3f, 0.9f)
+            val alpha = (1f - y).coerceIn(0.3f, 0.95f)
             drawCircle(Color.White.copy(alpha = alpha), f.size, Offset(screenX, screenY))
         }
     }
@@ -402,7 +402,7 @@ private fun FogBackground() {
 
 @Composable
 private fun ThunderstormBackground() {
-    RainyBackground(65)
+    RainyBackground(95)
 
     var flash by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -415,7 +415,7 @@ private fun ThunderstormBackground() {
 
     if (flash) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawRect(Color.White.copy(alpha = 0.6f))
+            drawRect(Color.White.copy(alpha = 0.7f))
         }
     }
 }
@@ -457,33 +457,33 @@ private fun SunnyAnimation(color: Color, modifier: Modifier) {
 @Composable
 private fun CloudyAnimation(color: Color, modifier: Modifier) {
     val clouds = remember {
-        List(5) {
+        List(12) {
             CloudData(
                 x = Random.nextFloat(),
-                y = 0.1f + Random.nextFloat() * 0.5f,
-                speed = 0.2f + Random.nextFloat() * 0.4f,
-                size = 0.12f + Random.nextFloat() * 0.15f,
-                alpha = 0.1f + Random.nextFloat() * 0.15f
+                y = 0.05f + Random.nextFloat() * 0.6f,
+                speed = 0.08f + Random.nextFloat() * 0.25f,
+                size = 0.1f + Random.nextFloat() * 0.2f,
+                alpha = 0.08f + Random.nextFloat() * 0.18f
             )
         }
     }
-    val infinite = rememberInfiniteTransition(label = "cloudy")
+    val infinite = rememberInfiniteTransition(label = "cloud_bg")
     val progress by infinite.animateFloat(0f, 1f,
-        infiniteRepeatable(tween(10000, easing = LinearEasing), RepeatMode.Restart),
-        label = "progress"
+        infiniteRepeatable(tween(20000, easing = LinearEasing), RepeatMode.Restart),
+        label = "cloud_drift"
     )
 
     Canvas(modifier = modifier.fillMaxSize()) {
         for (c in clouds) {
             val x = ((progress * c.speed + c.x) % 1.0f + 1.0f) % 1.0f
-            val screenX = x * size.width
-            val screenY = c.y * size.height
+            val cx = x * size.width
+            val cy = c.y * size.height
             val sr = c.size * size.width
             val a = c.alpha
-            drawCircle(color.copy(alpha = a), sr, Offset(screenX, screenY))
-            drawCircle(color.copy(alpha = a), sr * 0.7f, Offset(screenX + sr * 0.6f, screenY - sr * 0.15f))
-            drawCircle(color.copy(alpha = a), sr * 0.6f, Offset(screenX - sr * 0.5f, screenY + sr * 0.1f))
-            drawCircle(color.copy(alpha = a), sr * 0.5f, Offset(screenX + sr * 0.3f, screenY - sr * 0.3f))
+            drawCircle(color.copy(alpha = a), sr, Offset(cx, cy))
+            drawCircle(color.copy(alpha = a * 0.85f), sr * 0.75f, Offset(cx + sr * 0.55f, cy - sr * 0.12f))
+            drawCircle(color.copy(alpha = a * 0.75f), sr * 0.65f, Offset(cx - sr * 0.5f, cy + sr * 0.08f))
+            drawCircle(color.copy(alpha = a * 0.65f), sr * 0.55f, Offset(cx + sr * 0.3f, cy - sr * 0.28f))
         }
     }
 }
