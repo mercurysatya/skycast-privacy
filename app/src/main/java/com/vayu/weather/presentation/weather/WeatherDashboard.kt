@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,6 +38,9 @@ import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Thunderstorm
 import androidx.compose.material.icons.rounded.Umbrella
 import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.TrendingDown
+import androidx.compose.material.icons.rounded.ArrowRight
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.WbTwilight
@@ -53,6 +57,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,8 +71,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
+import android.view.HapticFeedbackConstants
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -79,6 +92,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.background
 import com.vayu.weather.R
 import com.vayu.weather.domain.model.DailyWeather
 import com.vayu.weather.domain.model.HourlyWeather
@@ -92,6 +107,7 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 private object ConversionConstants {
     const val KPH_TO_MPH = 0.621371
@@ -99,6 +115,16 @@ private object ConversionConstants {
     const val KPH_TO_KNOTS = 0.539957
     const val CELSIUS_TO_FAHRENHEIT_FACTOR = 9.0 / 5.0
     const val FAHRENHEIT_OFFSET = 32.0
+}
+
+@Composable
+private fun rememberHapticFeedback(): (Int) -> Unit {
+    val view = LocalView.current
+    return remember(view) {
+        { hapticFeedbackType: Int ->
+            view.performHapticFeedback(hapticFeedbackType)
+        }
+    }
 }
 
 private fun convertTemp(temp: Double, isCelsius: Boolean): Int {
@@ -224,7 +250,9 @@ fun WeatherDashboard(
                             onOpenSettings = onOpenSettings,
                             onOpenAlerts = onOpenAlerts,
                             onOpenHistory = onOpenHistory,
-                            onShare = onShare
+                            onShare = onShare,
+                            weatherCode = info.current.weatherCode,
+                            onHaptic = { _ -> }
                         )
                     }
 
@@ -300,6 +328,10 @@ fun WeatherDashboard(
                     }
                 }
             }
+
+            if (isIdealWeather(info)) {
+                ConfettiOverlay(modifier = Modifier.fillMaxSize())
+            }
         }
 
         if (state.isLoading) {
@@ -327,8 +359,21 @@ private fun TopBar(
     onOpenSettings: () -> Unit,
     onOpenAlerts: () -> Unit,
     onOpenHistory: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    weatherCode: Int? = null,
+    onHaptic: (Int) -> Unit = {}
 ) {
+    val haptic = rememberHapticFeedback()
+    val severityColor = when (weatherCode) {
+        0 -> Color(0xFF4CAF50)
+        1, 2, 3 -> Color(0xFF8BC34A)
+        in 45..48 -> Color(0xFF9E9E9E)
+        in 51..65, in 80..82 -> Color(0xFF4FC3F7)
+        in 71..75 -> Color(0xFFE3F2FD)
+        in 95..99 -> Color(0xFFEF5350)
+        else -> Color.White
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -340,7 +385,13 @@ private fun TopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onOpenAlerts) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(severityColor, RoundedCornerShape(4.dp))
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(onClick = { onHaptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenAlerts() }) {
                 Icon(
                     Icons.Rounded.NotificationsActive,
                     contentDescription = stringResource(R.string.weather_alerts),
@@ -348,7 +399,7 @@ private fun TopBar(
                     modifier = Modifier.size(22.dp)
                 )
             }
-            IconButton(onClick = onOpenHistory) {
+            IconButton(onClick = { onHaptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenHistory() }) {
                 Icon(
                     Icons.Rounded.History,
                     contentDescription = stringResource(R.string.weather_history_title),
@@ -356,7 +407,7 @@ private fun TopBar(
                     modifier = Modifier.size(22.dp)
                 )
             }
-            IconButton(onClick = onShare) {
+            IconButton(onClick = { onHaptic(HapticFeedbackConstants.VIRTUAL_KEY); onShare() }) {
                 Icon(
                     Icons.Rounded.Share,
                     contentDescription = stringResource(R.string.share_weather),
@@ -364,7 +415,7 @@ private fun TopBar(
                     modifier = Modifier.size(22.dp)
                 )
             }
-            IconButton(onClick = onToggleUnit) {
+            IconButton(onClick = { onHaptic(HapticFeedbackConstants.VIRTUAL_KEY); onToggleUnit() }) {
                 Text(
                     text = "°",
                     style = MaterialTheme.typography.titleLarge,
@@ -373,7 +424,7 @@ private fun TopBar(
                 )
             }
         }
-        IconButton(onClick = onOpenSettings) {
+        IconButton(onClick = { onHaptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenSettings() }) {
             Icon(
                 Icons.Rounded.Settings,
                 contentDescription = stringResource(R.string.settings),
@@ -395,6 +446,7 @@ private fun HeroSection(
     isCelsius: Boolean,
     onClick: () -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
     var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
@@ -405,7 +457,10 @@ private fun HeroSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = {
+                haptic(HapticFeedbackConstants.VIRTUAL_KEY)
+                onClick()
+            })
             .graphicsLayer { scaleX = scale; scaleY = scale },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -507,8 +562,14 @@ private fun HourlyForecastSection(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(hourlyData.sortedBy { it.time }.take(24)) { hour ->
-                    HourlyPillCard(data = hour, isCelsius = isCelsius)
+                val sorted = hourlyData.sortedBy { it.time }.take(24)
+                items(sorted.size) { index ->
+                    val prevTemp = sorted.getOrNull(index - 1)?.temperature
+                    HourlyPillCard(
+                        data = sorted[index],
+                        isCelsius = isCelsius,
+                        prevTemp = prevTemp
+                    )
                 }
             }
         }
@@ -518,7 +579,8 @@ private fun HourlyForecastSection(
 @Composable
 private fun HourlyPillCard(
     data: HourlyWeather,
-    isCelsius: Boolean
+    isCelsius: Boolean,
+    prevTemp: Double? = null
 ) {
     val currentHour = java.time.LocalDateTime.now()
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
@@ -531,6 +593,28 @@ private fun HourlyPillCard(
             java.time.LocalDateTime.parse(data.time, DateTimeFormatter.ISO_DATE_TIME)
                 .format(DateTimeFormatter.ofPattern("ha"))
         } catch (e: Exception) { data.time.takeLast(5) }
+    }
+
+    val precipProb = when (data.weatherCode) {
+        0 -> 0
+        1, 2, 3 -> 5
+        45, 48 -> 15
+        51, 53, 55 -> 40 + (data.weatherCode - 51) * 15
+        61, 63, 65 -> 50 + (data.weatherCode - 61) * 20
+        80, 81, 82 -> 60 + (data.weatherCode - 80) * 15
+        71, 73, 75 -> 70 + (data.weatherCode - 71) * 10
+        95, 96, 99 -> 85
+        else -> 0
+    }
+    val showPrecip = precipProb >= 20
+
+    val trendArrow = remember(prevTemp, data.temperature) {
+        when {
+            prevTemp == null -> null
+            data.temperature > prevTemp + 0.5 -> "up"
+            data.temperature < prevTemp - 0.5 -> "down"
+            else -> "same"
+        }
     }
 
     Column(
@@ -564,12 +648,61 @@ private fun HourlyPillCard(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "${convertTemp(data.temperature, isCelsius)}°",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "${convertTemp(data.temperature, isCelsius)}°",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White
+            )
+            if (trendArrow == "up") {
+                Icon(
+                    imageVector = Icons.Rounded.TrendingUp,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = Color(0xFF66BB6A)
+                )
+            } else if (trendArrow == "down") {
+                Icon(
+                    imageVector = Icons.Rounded.TrendingDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = Color(0xFFEF5350)
+                )
+            }
+        }
+
+        if (showPrecip) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .width(32.dp)
+                    .height(3.dp)
+                    .background(
+                        Color.White.copy(alpha = 0.15f),
+                        RoundedCornerShape(2.dp)
+                    )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(fraction = (precipProb / 100f).coerceIn(0.1f, 1f))
+                        .background(
+                            Color(0xFF4FC3F7).copy(alpha = 0.7f),
+                            RoundedCornerShape(2.dp)
+                        )
+                )
+            }
+            Text(
+                text = "$precipProb%",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(0xFF4FC3F7).copy(alpha = 0.9f),
+                fontSize = 9.sp
+            )
+        }
     }
 }
 
@@ -746,6 +879,9 @@ private fun WeatherDetailsSection(
     isCelsius: Boolean,
     windUnit: WindUnit
 ) {
+    var expandedCard by remember { mutableStateOf<String?>(null) }
+    val haptic = rememberHapticFeedback()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -768,16 +904,28 @@ private fun WeatherDetailsSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DetailCard(
+                ExpandableDetailCard(
                     icon = Icons.Rounded.WaterDrop,
                     label = stringResource(R.string.humidity),
                     value = "${info.current.humidity?.roundToInt() ?: "--"}%",
+                    extra = info.current.humidity?.let { "${(it / 100f * 0.5 + 0.5).roundToInt()}/10 Comfort" } ?: "",
+                    isExpanded = expandedCard == "humidity",
+                    onClick = {
+                        expandedCard = if (expandedCard == "humidity") null else "humidity"
+                        haptic(HapticFeedbackConstants.VIRTUAL_KEY)
+                    },
                     modifier = Modifier.weight(1f)
                 )
-                DetailCard(
+                ExpandableDetailCard(
                     icon = Icons.Rounded.Air,
                     label = stringResource(R.string.wind),
                     value = "${convertWind(info.current.windSpeed, windUnit)} ${windUnitLabel(windUnit)}",
+                    extra = info.current.windSpeed?.let { "${(it * 0.1).roundToInt()} gusts" } ?: "",
+                    isExpanded = expandedCard == "wind",
+                    onClick = {
+                        expandedCard = if (expandedCard == "wind") null else "wind"
+                        haptic(HapticFeedbackConstants.VIRTUAL_KEY)
+                    },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -788,16 +936,32 @@ private fun WeatherDetailsSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DetailCard(
+                ExpandableDetailCard(
                     icon = Icons.Rounded.Thermostat,
                     label = stringResource(R.string.pressure),
                     value = info.current.surfacePressure?.let { "${it.roundToInt()} hPa" } ?: "--",
+                    extra = if ((info.current.surfacePressure ?: 1013.0) > 1013.0) "High pressure" else "Low pressure",
+                    isExpanded = expandedCard == "pressure",
+                    onClick = {
+                        expandedCard = if (expandedCard == "pressure") null else "pressure"
+                        haptic(HapticFeedbackConstants.VIRTUAL_KEY)
+                    },
                     modifier = Modifier.weight(1f)
                 )
-                DetailCard(
+                ExpandableDetailCard(
                     icon = Icons.Rounded.Visibility,
                     label = stringResource(R.string.visibility),
                     value = info.current.visibility?.let { "${(it / 1000).roundToInt()} km" } ?: "--",
+                    extra = when {
+                        (info.current.visibility ?: 0.0) < 1000 -> "Foggy"
+                        (info.current.visibility ?: 0.0) < 5000 -> "Reduced"
+                        else -> "Clear"
+                    },
+                    isExpanded = expandedCard == "visibility",
+                    onClick = {
+                        expandedCard = if (expandedCard == "visibility") null else "visibility"
+                        haptic(HapticFeedbackConstants.VIRTUAL_KEY)
+                    },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -808,16 +972,33 @@ private fun WeatherDetailsSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DetailCard(
+                ExpandableDetailCard(
                     icon = Icons.Rounded.WbSunny,
                     label = stringResource(R.string.uv_index),
                     value = "${info.daily.firstOrNull()?.uvIndex?.roundToInt() ?: "--"}",
+                    extra = when {
+                        (info.daily.firstOrNull()?.uvIndex ?: 0.0) >= 8 -> "Very High"
+                        (info.daily.firstOrNull()?.uvIndex ?: 0.0) >= 6 -> "High"
+                        (info.daily.firstOrNull()?.uvIndex ?: 0.0) >= 3 -> "Moderate"
+                        else -> "Low"
+                    },
+                    isExpanded = expandedCard == "uv",
+                    onClick = {
+                        expandedCard = if (expandedCard == "uv") null else "uv"
+                        haptic(HapticFeedbackConstants.VIRTUAL_KEY)
+                    },
                     modifier = Modifier.weight(1f)
                 )
-                DetailCard(
+                ExpandableDetailCard(
                     icon = Icons.Rounded.AcUnit,
                     label = stringResource(R.string.dew_point),
                     value = info.current.dewPoint?.let { "${convertTemp(it, isCelsius)}°" } ?: "--",
+                    extra = if ((info.current.dewPoint ?: 0.0) > (info.current.temperature - 2)) "Humid" else "Dry",
+                    isExpanded = expandedCard == "dew",
+                    onClick = {
+                        expandedCard = if (expandedCard == "dew") null else "dew"
+                        haptic(HapticFeedbackConstants.VIRTUAL_KEY)
+                    },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -826,12 +1007,110 @@ private fun WeatherDetailsSection(
 }
 
 @Composable
-private fun DetailCard(
+private fun ExpandableDetailCard(
     icon: ImageVector,
     label: String,
     value: String,
+    extra: String = "",
+    isExpanded: Boolean = false,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val animatedHeight by animateFloatAsState(
+        targetValue = if (isExpanded && extra.isNotEmpty()) 1.3f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "card_height"
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = if (isExpanded) 0.18f else 0.12f)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isExpanded) 4.dp else 0.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = Color.White.copy(alpha = 0.7f)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.6f),
+                        maxLines = 1
+                    )
+                }
+                if (extra.isNotEmpty()) {
+                    Text(
+                        text = if (isExpanded) "▼" else "▶",
+                        fontSize = 10.sp,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = isExpanded && extra.isNotEmpty(),
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(modifier = Modifier.padding(top = 8.dp)) {
+                    HorizontalDivider(
+                        color = Color.White.copy(alpha = 0.1f),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    Text(
+                        text = extra,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UvGaugeCard(
+    uvIndex: Double?,
+    modifier: Modifier = Modifier
+) {
+    val uv = uvIndex?.roundToInt() ?: 0
+    val maxUv = 11f
+    val fraction = (uv / maxUv).coerceIn(0f, 1f)
+    val uvColor = when {
+        uv <= 2 -> Color(0xFF4CAF50)
+        uv <= 5 -> Color(0xFFFFEB3B)
+        uv <= 7 -> Color(0xFFFF9800)
+        uv <= 10 -> Color(0xFFF44336)
+        else -> Color(0xFF9C27B0)
+    }
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -842,28 +1121,55 @@ private fun DetailCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = Color.White.copy(alpha = 0.7f)
-            )
-            Spacer(modifier = Modifier.height(6.dp))
+            Box(
+                modifier = Modifier.size(64.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val sweepAngle = fraction * 270f
+                    val startAngle = 135f
+                    val strokeWidth = 6f
+                    val radius = (size.minDimension - strokeWidth) / 2f
+                    val center = Offset(size.width / 2f, size.height / 2f)
+
+                    drawArc(
+                        color = Color.White.copy(alpha = 0.15f),
+                        startAngle = startAngle,
+                        sweepAngle = 270f,
+                        useCenter = false,
+                        topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
+                        size = Size(size.width - strokeWidth, size.height - strokeWidth),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+                    )
+
+                    if (uv > 0) {
+                        drawArc(
+                            color = uvColor,
+                            startAngle = startAngle,
+                            sweepAngle = sweepAngle,
+                            useCenter = false,
+                            topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
+                            size = Size(size.width - strokeWidth, size.height - strokeWidth),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "$uv",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = label,
+                text = stringResource(R.string.uv_index),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.6f),
-                maxLines = 1
+                color = Color.White.copy(alpha = 0.6f)
             )
         }
     }
@@ -1099,6 +1405,16 @@ private fun SunMoonSection(dailyData: List<DailyWeather>) {
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
+            SunArc(
+                sunriseTime = sunriseTime,
+                sunsetTime = sunsetTime,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -1115,6 +1431,87 @@ private fun SunMoonSection(dailyData: List<DailyWeather>) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SunArc(
+    sunriseTime: String,
+    sunsetTime: String,
+    modifier: Modifier = Modifier
+) {
+    val now = java.time.LocalTime.now()
+    val currentMinutes = now.hour * 60 + now.minute
+
+    val (sunriseMinutes, sunsetMinutes) = remember(sunriseTime, sunsetTime) {
+        try {
+            val sr = java.time.LocalTime.parse(sunriseTime, DateTimeFormatter.ofPattern("HH:mm"))
+            val ss = java.time.LocalTime.parse(sunsetTime, DateTimeFormatter.ofPattern("HH:mm"))
+            sr.hour * 60 + sr.minute to ss.hour * 60 + ss.minute
+        } catch (e: Exception) { 360 to 1080 }
+    }
+
+    val dayDuration = (sunsetMinutes - sunriseMinutes).coerceAtLeast(1)
+    val dayProgress = ((currentMinutes - sunriseMinutes).toFloat() / dayDuration).coerceIn(0f, 1f)
+
+    Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height
+        val arcHeight = height * 0.7f
+        val centerY = height * 0.85f
+
+        drawArc(
+            color = Color.White.copy(alpha = 0.12f),
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = false,
+            topLeft = Offset(0f, centerY - arcHeight),
+            size = Size(width, arcHeight * 2),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f)
+        )
+
+        val sunX = when {
+            dayProgress <= 0f -> width * 0.1f
+            dayProgress >= 1f -> width * 0.9f
+            else -> {
+                val angle = Math.toRadians((180 + dayProgress * 180).toDouble())
+                width * 0.5f + Math.cos(angle) * width * 0.4f
+            }
+        }.toFloat()
+
+        val sunY = when {
+            dayProgress <= 0f || dayProgress >= 1f -> centerY - 10f
+            else -> {
+                val angle = Math.toRadians((180 + dayProgress * 180).toDouble())
+                centerY - Math.sin(angle) * arcHeight
+            }
+        }.toFloat()
+
+        drawCircle(
+            color = Color(0xFFFFD54F).copy(alpha = 0.9f),
+            radius = 12f,
+            center = Offset(sunX, sunY)
+        )
+
+        drawCircle(
+            color = Color(0xFFFFD54F).copy(alpha = 0.25f),
+            radius = 20f,
+            center = Offset(sunX, sunY)
+        )
+
+        val sunriseX = width * 0.1f
+        drawCircle(
+            color = Color(0xFFFFD54F).copy(alpha = 0.6f),
+            radius = 6f,
+            center = Offset(sunriseX, centerY)
+        )
+
+        val sunsetX = width * 0.9f
+        drawCircle(
+            color = Color(0xFFFFB74D).copy(alpha = 0.6f),
+            radius = 6f,
+            center = Offset(sunsetX, centerY)
+        )
     }
 }
 
@@ -1146,25 +1543,183 @@ private fun SunMoonItem(
     }
 }
 
+private fun isIdealWeather(info: WeatherInfo): Boolean {
+    val tempF = if (info.current.temperature < 30) {
+        info.current.temperature * 9 / 5 + 32
+    } else {
+        info.current.temperature
+    }
+    return info.current.weatherCode == 0 &&
+            info.current.isDay &&
+            tempF in 65.0..80.0 &&
+            (info.current.humidity ?: 50.0) < 50
+}
+
+@Composable
+private fun ConfettiOverlay(modifier: Modifier = Modifier) {
+    val confettiColors = listOf(
+        Color(0xFFFF6B6B),
+        Color(0xFF4ECDC4),
+        Color(0xFFFFD93D),
+        Color(0xFF6BCB77),
+        Color(0xFF4D96FF),
+        Color(0xFFFF6FB5),
+        Color(0xFFFFA07A)
+    )
+
+    val particles = remember {
+        List(50) {
+            ConfettiParticle(
+                x = Random.nextFloat(),
+                y = Random.nextFloat(),
+                speed = 0.3f + Random.nextFloat() * 0.5f,
+                size = 4f + Random.nextFloat() * 6f,
+                color = confettiColors.random(),
+                sway = 20f + Random.nextFloat() * 30f,
+                swaySpeed = 1f + Random.nextFloat() * 2f
+            )
+        }
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "confetti")
+    val progress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "confetti_progress"
+    )
+
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        particles.forEach { p ->
+            val y = ((progress * p.speed + p.y) % 1.2f - 0.1f) * h
+            val swayX = Math.sin((progress * p.swaySpeed * 2 * Math.PI)).toFloat() * p.sway
+            val x = p.x * w + swayX
+
+            drawRect(
+                color = p.color.copy(alpha = 0.8f),
+                topLeft = Offset(x - p.size / 2f, y - p.size / 2f),
+                size = Size(p.size, p.size * 0.6f)
+            )
+        }
+    }
+}
+
+private data class ConfettiParticle(
+    val x: Float,
+    val y: Float,
+    val speed: Float,
+    val size: Float,
+    val color: Color,
+    val sway: Float,
+    val swaySpeed: Float
+)
+
 // ============================================================
 // LOADING & ERROR
 // ============================================================
 
 @Composable
 private fun LoadingState() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(
-                color = Color.White.copy(alpha = 0.8f),
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.loading_weather),
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.7f)
-            )
+    val shimmerColors = listOf(
+        Color.White.copy(alpha = 0.06f),
+        Color.White.copy(alpha = 0.12f),
+        Color.White.copy(alpha = 0.06f)
+    )
+    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+    val translateX by infiniteTransition.animateFloat(
+        initialValue = -600f,
+        targetValue = 600f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_x"
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 80.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item {
+                SkeletonCard(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    shimmerColors = shimmerColors,
+                    translateX = translateX
+                )
+            }
+            item {
+                SkeletonCard(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    shimmerColors = shimmerColors,
+                    translateX = translateX,
+                    height = 160.dp
+                )
+            }
+            item {
+                SkeletonCard(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    shimmerColors = shimmerColors,
+                    translateX = translateX,
+                    height = 120.dp
+                )
+            }
+            item {
+                SkeletonCard(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    shimmerColors = shimmerColors,
+                    translateX = translateX,
+                    height = 140.dp
+                )
+            }
+            item {
+                SkeletonCard(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    shimmerColors = shimmerColors,
+                    translateX = translateX,
+                    height = 100.dp
+                )
+            }
+            item { Spacer(modifier = Modifier.height(16.dp)) }
         }
+    }
+}
+
+@Composable
+private fun SkeletonCard(
+    modifier: Modifier = Modifier,
+    shimmerColors: List<Color>,
+    translateX: Float,
+    height: Dp = 80.dp
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.08f)
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = shimmerColors,
+                        start = Offset(translateX - 300f, 0f),
+                        end = Offset(translateX + 300f, 0f)
+                    )
+                )
+        )
     }
 }
 
