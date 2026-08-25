@@ -45,6 +45,17 @@ private object Keys {
     val ENABLE_HEAT_ALERTS = booleanPreferencesKey("enable_heat_alerts")
     val ENABLE_COLD_ALERTS = booleanPreferencesKey("enable_cold_alerts")
     val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
+    // Clock format
+    val USE_24H_CLOCK = booleanPreferencesKey("use_24h_clock")
+    // Pressure unit
+    val PRESSURE_UNIT = stringPreferencesKey("pressure_unit")
+    // Precipitation unit
+    val PRECIPITATION_UNIT = stringPreferencesKey("precipitation_unit")
+    // Section visibility
+    val SHOW_HOURLY_FORECAST = booleanPreferencesKey("show_hourly_forecast")
+    val SHOW_SUN_MOON = booleanPreferencesKey("show_sun_moon")
+    val SHOW_AIR_QUALITY = booleanPreferencesKey("show_air_quality")
+    val SHOW_WEATHER_DETAILS = booleanPreferencesKey("show_weather_details")
     // Snooze settings
     val ENABLE_SNOOZING = booleanPreferencesKey("enable_snoozing")
     val SNOOZE_DURATION_MS = intPreferencesKey("snooze_duration_ms")
@@ -275,5 +286,58 @@ private object Keys {
 
     suspend fun setOnboardingComplete(value: Boolean) {
         dataStore.edit { it[Keys.ONBOARDING_COMPLETE] = value }
+    }
+
+    // === Clock Format ===
+    suspend fun getUse24hClock(): Boolean =
+        dataStore.data.first()[Keys.USE_24H_CLOCK] ?: true
+
+    suspend fun setUse24hClock(value: Boolean) {
+        dataStore.edit { it[Keys.USE_24H_CLOCK] = value }
+    }
+
+    // === Pressure Unit ===
+    suspend fun getPressureUnit(): String =
+        dataStore.data.first()[Keys.PRESSURE_UNIT] ?: "hPa"
+
+    suspend fun setPressureUnit(value: String) {
+        dataStore.edit { it[Keys.PRESSURE_UNIT] = value }
+    }
+
+    // === Precipitation Unit ===
+    suspend fun getPrecipitationUnit(): String =
+        dataStore.data.first()[Keys.PRECIPITATION_UNIT] ?: "mm"
+
+    suspend fun setPrecipitationUnit(value: String) {
+        dataStore.edit { it[Keys.PRECIPITATION_UNIT] = value }
+    }
+
+    // === Section Visibility ===
+    suspend fun getShowHourlyForecast(): Boolean =
+        dataStore.data.first()[Keys.SHOW_HOURLY_FORECAST] ?: true
+
+    suspend fun setShowHourlyForecast(value: Boolean) {
+        dataStore.edit { it[Keys.SHOW_HOURLY_FORECAST] = value }
+    }
+
+    suspend fun getShowSunMoon(): Boolean =
+        dataStore.data.first()[Keys.SHOW_SUN_MOON] ?: true
+
+    suspend fun setShowSunMoon(value: Boolean) {
+        dataStore.edit { it[Keys.SHOW_SUN_MOON] = value }
+    }
+
+    suspend fun getShowAirQuality(): Boolean =
+        dataStore.data.first()[Keys.SHOW_AIR_QUALITY] ?: true
+
+    suspend fun setShowAirQuality(value: Boolean) {
+        dataStore.edit { it[Keys.SHOW_AIR_QUALITY] = value }
+    }
+
+    suspend fun getShowWeatherDetails(): Boolean =
+        dataStore.data.first()[Keys.SHOW_WEATHER_DETAILS] ?: true
+
+    suspend fun setShowWeatherDetails(value: Boolean) {
+        dataStore.edit { it[Keys.SHOW_WEATHER_DETAILS] = value }
     }
 }

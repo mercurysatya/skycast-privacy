@@ -37,5 +37,12 @@ data class SettingsState(
     val heatAlertThreshold: Int = 40,
     val enableHeatAlerts: Boolean = true,
     val coldAlertThreshold: Int = 0,
-    val enableColdAlerts: Boolean = true
+    val enableColdAlerts: Boolean = true,
+    val use24hClock: Boolean = true,
+    val pressureUnit: String = "hPa",
+    val precipitationUnit: String = "mm",
+    val showHourlyForecast: Boolean = true,
+    val showSunMoon: Boolean = true,
+    val showAirQuality: Boolean = true,
+    val showWeatherDetails: Boolean = true
 )

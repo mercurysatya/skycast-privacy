@@ -118,6 +118,9 @@
     <!-- Favorites Screen -->
     <string name="no_favorites">No Favorites Yet</string>
     <string name="no_favorites_subtitle">Search for cities and tap the heart icon\nto add them to your favorites.</string>
+    <string name="favorites_long_press_reorder">Long press to reorder</string>
+    <string name="drag_to_reorder">Drag to reorder</string>
+    <string name="current_location">Current Location</string>
 
     <!-- Alerts Screen -->
     <string name="weather_alerts">Weather Alerts</string>
@@ -300,6 +303,26 @@ Try selecting a different severity level.</string>
     <string name="cold_alerts_subtitle">Alert when temperature drops below threshold</string>
     <string name="cold_threshold">Cold threshold: %1$d°C</string>
 
+    <!-- Additional Settings -->
+    <string name="clock_format">Clock Format</string>
+    <string name="clock_12h">12-hour (AM/PM)</string>
+    <string name="clock_24h">24-hour</string>
+    <string name="pressure_unit">Pressure Unit</string>
+    <string name="pressure_hpa">hPa</string>
+    <string name="pressure_inhg">inHg</string>
+    <string name="precipitation_unit">Precipitation Unit</string>
+    <string name="precip_mm">mm</string>
+    <string name="precip_inches">inches</string>
+    <string name="section_visibility">Section Visibility</string>
+    <string name="show_hourly_forecast">Show Hourly Forecast</string>
+    <string name="show_sun_moon">Show Sun &amp; Moon</string>
+    <string name="show_air_quality">Show Air Quality</string>
+    <string name="show_weather_details">Show Weather Details</string>
+    <string name="use_24hour_clock_toast">Clock: 24-hour</string>
+    <string name="use_12hour_clock_toast">Clock: 12-hour</string>
+    <string name="pressure_unit_toast">Pressure: %1$s</string>
+    <string name="precipitation_unit_toast">Precipitation: %1$s</string>
+
     <!-- Air Quality -->
     <string name="air_quality">Air Quality</string>
     <string name="european_aqi">European AQI: %1$s</string>
@@ -332,7 +355,7 @@ Try selecting a different severity level.</string>
     <string name="onboarding_grant_notifications">Enable Notifications</string>
     <string name="onboarding_permission_granted">Permission Granted</string>
 
-    <!-- Weather History -->
+<!-- Weather History -->
     <string name="weather_history_title">Weather History</string>
     <string name="daily_breakdown">Daily Breakdown</string>
     <string name="humidity_trends">Humidity Trends</string>
@@ -344,4 +367,6 @@ Try selecting a different severity level.</string>
     <string name="high">High</string>
     <string name="low">Low</string>
     <string name="days_tracked">Days</string>
+    <string name="alert_snooze">Snooze for 30 min</string>
+    <string name="snooze">Snooze</string>
 </resources>

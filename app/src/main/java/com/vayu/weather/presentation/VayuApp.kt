@@ -204,6 +204,10 @@ fun VayuApp() {
                     onEnableHeatAlertsChange = settingsViewModel::setEnableHeatAlerts,
                     onColdAlertThresholdChange = settingsViewModel::setColdAlertThreshold,
                     onEnableColdAlertsChange = settingsViewModel::setEnableColdAlerts,
+                    onUse24hClockChange = settingsViewModel::setUse24hClock,
+                    onPressureUnitChange = settingsViewModel::setPressureUnit,
+                    onPrecipitationUnitChange = settingsViewModel::setPrecipitationUnit,
+                    onSectionVisibilityChange = { section, visible -> settingsViewModel.setSectionVisibility(section, visible) },
                     onBack = { showSettings = false },
                     onOpenPrivacyPolicy = { anchor ->
                         privacyPolicyAnchor = anchor
@@ -363,7 +367,8 @@ fun VayuApp() {
                                                     } catch (e: Exception) { Log.e("VayuApp", "Nav err", e) }
                                                 }
                                             },
-                                            onRemoveFavorite = favoritesViewModel::removeFavorite
+                                            onRemoveFavorite = favoritesViewModel::removeFavorite,
+                                            onReorder = favoritesViewModel::reorderFavorites
                                         )
                                     }
                                     else -> {

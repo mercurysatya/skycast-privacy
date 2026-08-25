@@ -87,6 +87,10 @@ fun SettingsScreen(
     onEnableHeatAlertsChange: (Boolean) -> Unit = {},
     onColdAlertThresholdChange: (Int) -> Unit = {},
     onEnableColdAlertsChange: (Boolean) -> Unit = {},
+    onUse24hClockChange: (Boolean) -> Unit = {},
+    onPressureUnitChange: (String) -> Unit = {},
+    onPrecipitationUnitChange: (String) -> Unit = {},
+    onSectionVisibilityChange: (String, Boolean) -> Unit = { _, _ -> },
     onBack: () -> Unit,
     onOpenPrivacyPolicy: (String?) -> Unit = {},
     onDeleteAllData: () -> Unit = {},
@@ -749,6 +753,164 @@ fun SettingsScreen(
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // === ADDITIONAL UNITS ===
+                SettingsGroup(title = stringResource(R.string.units)) {
+                    // Clock Format
+                    SettingsRow(
+                        icon = Icons.Rounded.Schedule,
+                        title = stringResource(R.string.clock_format),
+                        subtitle = if (state.use24hClock)
+                            stringResource(R.string.clock_24h)
+                        else stringResource(R.string.clock_12h)
+                    ) {
+                        Switch(
+                            checked = state.use24hClock,
+                            onCheckedChange = { onUse24hClockChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Pressure Unit
+                    SettingsRow(
+                        icon = Icons.Rounded.Compress,
+                        title = stringResource(R.string.pressure_unit),
+                        subtitle = if (state.pressureUnit == "inHg") stringResource(R.string.pressure_inhg) else stringResource(R.string.pressure_hpa)
+                    ) {
+                        var expanded by remember { mutableStateOf(false) }
+                        Box {
+                            TextButton(onClick = { expanded = true }) {
+                                Text(
+                                    text = if (state.pressureUnit == "inHg") stringResource(R.string.pressure_inhg) else stringResource(R.string.pressure_hpa),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                listOf("hPa" to stringResource(R.string.pressure_hpa), "inHg" to stringResource(R.string.pressure_inhg)).forEach { (unit, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(text = label, fontWeight = if (unit == state.pressureUnit) FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            snackbarMessage = context.getString(R.string.pressure_unit_toast, label)
+                                            onPressureUnitChange(unit)
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Precipitation Unit
+                    SettingsRow(
+                        icon = Icons.Rounded.WaterDrop,
+                        title = stringResource(R.string.precipitation_unit),
+                        subtitle = if (state.precipitationUnit == "inches") stringResource(R.string.precip_inches) else stringResource(R.string.precip_mm)
+                    ) {
+                        var expanded by remember { mutableStateOf(false) }
+                        Box {
+                            TextButton(onClick = { expanded = true }) {
+                                Text(
+                                    text = if (state.precipitationUnit == "inches") stringResource(R.string.precip_inches) else stringResource(R.string.precip_mm),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                listOf("mm" to stringResource(R.string.precip_mm), "inches" to stringResource(R.string.precip_inches)).forEach { (unit, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(text = label, fontWeight = if (unit == state.precipitationUnit) FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            snackbarMessage = context.getString(R.string.precipitation_unit_toast, label)
+                                            onPrecipitationUnitChange(unit)
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // === SECTION VISIBILITY ===
+                SettingsGroup(title = stringResource(R.string.section_visibility)) {
+                    SettingsRow(
+                        icon = Icons.Rounded.WbSunny,
+                        title = stringResource(R.string.show_hourly_forecast),
+                        subtitle = if (state.showHourlyForecast) stringResource(R.string.enabled) else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.showHourlyForecast,
+                            onCheckedChange = { onSectionVisibilityChange("hourly", it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    SettingsRow(
+                        icon = Icons.Rounded.NightsStay,
+                        title = stringResource(R.string.show_sun_moon),
+                        subtitle = if (state.showSunMoon) stringResource(R.string.enabled) else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.showSunMoon,
+                            onCheckedChange = { onSectionVisibilityChange("sun_moon", it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    SettingsRow(
+                        icon = Icons.Rounded.Air,
+                        title = stringResource(R.string.show_air_quality),
+                        subtitle = if (state.showAirQuality) stringResource(R.string.enabled) else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.showAirQuality,
+                            onCheckedChange = { onSectionVisibilityChange("air_quality", it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    SettingsRow(
+                        icon = Icons.Rounded.Info,
+                        title = stringResource(R.string.show_weather_details),
+                        subtitle = if (state.showWeatherDetails) stringResource(R.string.enabled) else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.showWeatherDetails,
+                            onCheckedChange = { onSectionVisibilityChange("weather_details", it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
                         )
                     }
                 }

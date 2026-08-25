@@ -64,7 +64,14 @@ class SettingsViewModel @Inject constructor(
                 heatAlertThreshold = settingsManager.getHeatAlertThreshold(),
                 enableHeatAlerts = settingsManager.getEnableHeatAlerts(),
                 coldAlertThreshold = settingsManager.getColdAlertThreshold(),
-                enableColdAlerts = settingsManager.getEnableColdAlerts()
+                enableColdAlerts = settingsManager.getEnableColdAlerts(),
+                use24hClock = settingsManager.getUse24hClock(),
+                pressureUnit = settingsManager.getPressureUnit(),
+                precipitationUnit = settingsManager.getPrecipitationUnit(),
+                showHourlyForecast = settingsManager.getShowHourlyForecast(),
+                showSunMoon = settingsManager.getShowSunMoon(),
+                showAirQuality = settingsManager.getShowAirQuality(),
+                showWeatherDetails = settingsManager.getShowWeatherDetails()
             )
         }
     }
@@ -238,6 +245,38 @@ class SettingsViewModel @Inject constructor(
     fun clearWeatherCache() {
         viewModelScope.launch {
             clearWeatherCacheUseCase()
+        }
+    }
+
+    fun setUse24hClock(value: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setUse24hClock(value)
+            _state.update { it.copy(use24hClock = value) }
+        }
+    }
+
+    fun setPressureUnit(unit: String) {
+        viewModelScope.launch {
+            settingsManager.setPressureUnit(unit)
+            _state.update { it.copy(pressureUnit = unit) }
+        }
+    }
+
+    fun setPrecipitationUnit(unit: String) {
+        viewModelScope.launch {
+            settingsManager.setPrecipitationUnit(unit)
+            _state.update { it.copy(precipitationUnit = unit) }
+        }
+    }
+
+    fun setSectionVisibility(section: String, visible: Boolean) {
+        viewModelScope.launch {
+            when (section) {
+                "hourly" -> { settingsManager.setShowHourlyForecast(visible); _state.update { it.copy(showHourlyForecast = visible) } }
+                "sun_moon" -> { settingsManager.setShowSunMoon(visible); _state.update { it.copy(showSunMoon = visible) } }
+                "air_quality" -> { settingsManager.setShowAirQuality(visible); _state.update { it.copy(showAirQuality = visible) } }
+                "weather_details" -> { settingsManager.setShowWeatherDetails(visible); _state.update { it.copy(showWeatherDetails = visible) } }
+            }
         }
     }
 }

@@ -43,4 +43,13 @@ class FavoritesViewModel @Inject constructor(
             toggleFavoriteUseCase(city)
         }
     }
+
+    fun reorderFavorites(fromIndex: Int, toIndex: Int) {
+        val current = state.favorites.toMutableList()
+        if (fromIndex !in current.indices || toIndex !in current.indices) return
+        val item = current.removeAt(fromIndex)
+        current.add(toIndex, item)
+        state = state.copy(favorites = current)
+        // TODO: persist new order to database if order matters
+    }
 }

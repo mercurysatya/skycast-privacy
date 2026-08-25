@@ -43,6 +43,7 @@ import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.WbTwilight
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -82,6 +83,8 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -96,6 +99,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import kotlinx.coroutines.delay
 import com.vayu.weather.R
 import com.vayu.weather.domain.model.DailyWeather
@@ -106,6 +110,11 @@ import com.vayu.weather.presentation.ads.AdBanner
 import com.vayu.weather.presentation.components.AirQualityCard
 import com.vayu.weather.presentation.components.WeatherBackground
 import com.vayu.weather.presentation.components.WeatherTrends
+import com.vayu.weather.presentation.components.UvIndexCard
+import com.vayu.weather.presentation.components.WindCard
+import com.vayu.weather.presentation.components.PressureCard
+import com.vayu.weather.presentation.components.MoonPhaseCard
+import com.vayu.weather.presentation.components.PrecipitationTimelineCard
 import java.time.format.DateTimeFormatter
 import kotlin.math.max
 import kotlin.math.min
@@ -258,6 +267,7 @@ fun WeatherDashboard(
                             onShare = onShare,
                             weatherCode = info.current.weatherCode,
                             isCelsius = isCelsius,
+                            cityName = cityName,
                             onHaptic = { _ -> }
                         )
                     }
@@ -305,6 +315,62 @@ fun WeatherDashboard(
                     item {
                         Spacer(modifier = Modifier.height(20.dp))
                         StaggeredEntry(index = 4) {
+                            // Premium UV, Wind, Pressure cards in a row
+                            Row(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                UvIndexCard(
+                                    uvIndex = info.daily.firstOrNull()?.uvIndex,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                WindCard(
+                                    speed = info.current.windSpeed,
+                                    direction = info.current.windDirection,
+                                    gusts = info.current.windGusts,
+                                    unitLabel = when (settings.windUnit) {
+                                        WindUnit.KPH -> "km/h"
+                                        WindUnit.MPH -> "mph"
+                                        WindUnit.MS -> "m/s"
+                                        WindUnit.KNOTS -> "kn"
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        StaggeredEntry(index = 4) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                PressureCard(
+                                    pressure = info.current.surfacePressure,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                MoonPhaseCard(
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        StaggeredEntry(index = 5) {
+                            PrecipitationTimelineCard(
+                                hourlyData = info.hourly,
+                                modifier = Modifier.padding(horizontal = 20.dp)
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        StaggeredEntry(index = 6) {
                         AIInsightsCard(
                             info = info,
                             isCelsius = isCelsius
@@ -374,10 +440,8 @@ fun WeatherDashboard(
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
-}
-
-// ============================================================
-// TOP BAR — minimal, clean
+}// ============================================================
+// TOP BAR — premium header
 // ============================================================
 
 @Composable
@@ -389,6 +453,7 @@ private fun TopBar(
     onShare: () -> Unit,
     weatherCode: Int? = null,
     isCelsius: Boolean = true,
+    cityName: String? = null,
     onHaptic: (Int) -> Unit = {}
 ) {
     val haptic = rememberHapticFeedback()
@@ -401,6 +466,29 @@ private fun TopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Left: Location icon + city name
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.LocationOn,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = Color.White.copy(alpha = 0.7f)
+            )
+            Text(
+                text = cityName ?: stringResource(R.string.default_city_name),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.9f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 180.dp)
+            )
+        }
+
+        // Right: Action buttons
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -420,28 +508,22 @@ private fun TopBar(
                 contentDescription = stringResource(R.string.share_weather),
                 onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onShare() }
             )
-        }
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {                    // Unit toggle pill
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(Color.White.copy(alpha = 0.15f))
-                            .clickable { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onToggleUnit() }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (isCelsius) "°C" else "°F",
+            // Unit toggle pill
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha = 0.15f))
+                    .clickable { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onToggleUnit() }
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (isCelsius) "°C" else "°F",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White.copy(alpha = 0.9f)
                 )
             }
-
             SmallIconButton(
                 icon = Icons.Rounded.Settings,
                 contentDescription = stringResource(R.string.settings),
@@ -493,10 +575,16 @@ private fun HeroSection(
         label = "hero_scale"
     )
 
+    val weatherDesc = localizedWeatherDescription(info.current.weatherCode, info.current.isDay)
+    val heroTemp = convertTemp(info.current.temperature, isCelsius)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = "${cityName ?: ""}, $weatherDesc, $heroTemp degrees"
+            }
             .clickable(onClick = {
                 haptic(HapticFeedbackConstants.VIRTUAL_KEY)
                 onClick()
@@ -519,7 +607,7 @@ private fun HeroSection(
         // Weather icon
         Icon(
             imageVector = getWeatherIcon(info.current.weatherCode, info.current.isDay),
-            contentDescription = null,
+            contentDescription = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
             modifier = Modifier.size(56.dp),
             tint = Color.White.copy(alpha = 0.9f)
         )
@@ -1603,22 +1691,53 @@ private fun LoadingState() {
         ),
         label = "shimmer_x"
     )
+    val color = MaterialTheme.colorScheme.onBackground
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().semantics(mergeDescendants = true) {
+        contentDescription = "Loading weather data"
+    }) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+            // Top bar skeleton
             item {
-                SkeletonCard(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    shimmerColors = shimmerColors,
-                    translateX = translateX,
-                    height = 200.dp
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    SkeletonPill(width = 120.dp, height = 16.dp, shimmerColors, translateX)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SkeletonCircle(36.dp, shimmerColors, translateX)
+                        SkeletonCircle(36.dp, shimmerColors, translateX)
+                        SkeletonCircle(36.dp, shimmerColors, translateX)
+                    }
+                }
             }
+            // Hero skeleton — city + temp + desc
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    SkeletonPill(width = 140.dp, height = 14.dp, shimmerColors, translateX)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    SkeletonCircle(56.dp, shimmerColors, translateX)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SkeletonPill(width = 160.dp, height = 48.dp, shimmerColors, translateX)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SkeletonPill(width = 120.dp, height = 16.dp, shimmerColors, translateX)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    SkeletonPill(width = 180.dp, height = 14.dp, shimmerColors, translateX)
+                }
+            }
+            // Hourly forecast skeleton
             item {
                 SkeletonCard(
                     modifier = Modifier.padding(horizontal = 20.dp),
@@ -1627,28 +1746,41 @@ private fun LoadingState() {
                     height = 140.dp
                 )
             }
+            // Daily forecast skeleton
+            item {
+                SkeletonCard(
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    shimmerColors = shimmerColors,
+                    translateX = translateX,
+                    height = 220.dp
+                )
+            }
+            // Weather metrics skeleton
+            item {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    SkeletonCard(
+                        shimmerColors = shimmerColors,
+                        translateX = translateX,
+                        height = 140.dp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SkeletonCard(
+                        shimmerColors = shimmerColors,
+                        translateX = translateX,
+                        height = 140.dp,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
             item {
                 SkeletonCard(
                     modifier = Modifier.padding(horizontal = 20.dp),
                     shimmerColors = shimmerColors,
                     translateX = translateX,
                     height = 100.dp
-                )
-            }
-            item {
-                SkeletonCard(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    shimmerColors = shimmerColors,
-                    translateX = translateX,
-                    height = 160.dp
-                )
-            }
-            item {
-                SkeletonCard(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    shimmerColors = shimmerColors,
-                    translateX = translateX,
-                    height = 120.dp
                 )
             }
             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -1684,6 +1816,50 @@ private fun SkeletonCard(
                 )
         )
     }
+}
+
+@Composable
+private fun SkeletonPill(
+    width: Dp,
+    height: Dp,
+    shimmerColors: List<Color>,
+    translateX: Float,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .width(width)
+            .height(height)
+            .clip(RoundedCornerShape(height / 2))
+            .background(
+                brush = Brush.linearGradient(
+                    colors = shimmerColors,
+                    start = Offset(translateX - 300f, 0f),
+                    end = Offset(translateX + 300f, 0f)
+                )
+            )
+    )
+}
+
+@Composable
+private fun SkeletonCircle(
+    size: Dp,
+    shimmerColors: List<Color>,
+    translateX: Float,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(size / 2))
+            .background(
+                brush = Brush.linearGradient(
+                    colors = shimmerColors,
+                    start = Offset(translateX - 300f, 0f),
+                    end = Offset(translateX + 300f, 0f)
+                )
+            )
+    )
 }
 
 // ============================================================
@@ -1797,38 +1973,62 @@ private fun PressableCard(
 @Composable
 private fun ErrorState(message: String, onRetry: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "Error: $message"
+                },
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White.copy(alpha = 0.1f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Icon(
-                Icons.Rounded.CloudOff,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = Color.White.copy(alpha = 0.4f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.75f),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color.White.copy(alpha = 0.12f))
-                    .clickable(onClick = onRetry),
-                contentAlignment = Alignment.Center
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(32.dp)
             ) {
                 Icon(
-                    Icons.Rounded.Refresh,
-                    contentDescription = stringResource(R.string.retry_loading),
-                    tint = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(22.dp)
+                    Icons.Rounded.CloudOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = Color.White.copy(alpha = 0.4f)
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = 0.75f),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.White.copy(alpha = 0.12f))
+                        .clickable(onClick = onRetry)
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Refresh,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.retry_loading),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+                }
             }
         }
     }
