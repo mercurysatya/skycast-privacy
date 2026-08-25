@@ -252,18 +252,41 @@ fun WeatherMapScreen(
             onMapLoadFailed = { Log.w(TAG, "Map load failed: $it") },
             options = mapOptions
         ) {
-            // Cloud overlay
-            if (cloudTileUrl != null && (radarState.overlayType == OverlayType.CLOUDS)) {
-                key(cloudTileUrl) {
-                    val src = rememberRasterSource(tiles = listOf(cloudTileUrl), options = TileSetOptions(minZoom = 0, maxZoom = 7), tileSize = 256)
-                    RasterLayer(id = "clouds", source = src, visible = true, minZoom = 0f, maxZoom = 7f, opacity = const(cloudState.opacity))
-                }
-            }
-            // Radar overlay
+            // Radar overlay — key on URL forces source update during autoplay
+            // maxZoom bumped to 10 so radar tiles render at typical user zoom (10-14)
             if (radarTileUrl != null && radarState.overlayType == OverlayType.RADAR) {
                 key(radarTileUrl) {
-                    val src = rememberRasterSource(tiles = listOf(radarTileUrl), options = TileSetOptions(minZoom = 0, maxZoom = 7), tileSize = 256)
-                    RasterLayer(id = "radar", source = src, visible = true, minZoom = 0f, maxZoom = 7f, opacity = const(radarState.opacity))
+                    val src = rememberRasterSource(
+                        tiles = listOf(radarTileUrl),
+                        options = TileSetOptions(minZoom = 0, maxZoom = 10),
+                        tileSize = 256
+                    )
+                    RasterLayer(
+                        id = "radar",
+                        source = src,
+                        visible = true,
+                        minZoom = 0f,
+                        maxZoom = 10f,
+                        opacity = const(radarState.opacity)
+                    )
+                }
+            }
+            // Cloud overlay
+            if (cloudTileUrl != null && radarState.overlayType == OverlayType.CLOUDS) {
+                key(cloudTileUrl) {
+                    val src = rememberRasterSource(
+                        tiles = listOf(cloudTileUrl),
+                        options = TileSetOptions(minZoom = 0, maxZoom = 10),
+                        tileSize = 256
+                    )
+                    RasterLayer(
+                        id = "clouds",
+                        source = src,
+                        visible = true,
+                        minZoom = 0f,
+                        maxZoom = 10f,
+                        opacity = const(cloudState.opacity)
+                    )
                 }
             }
         }
