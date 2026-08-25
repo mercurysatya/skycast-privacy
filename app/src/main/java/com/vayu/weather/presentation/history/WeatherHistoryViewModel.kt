@@ -53,6 +53,8 @@ class WeatherHistoryViewModel @Inject constructor(
     private val _state = MutableStateFlow(WeatherHistoryState())
     val state: StateFlow<WeatherHistoryState> = _state.asStateFlow()
 
+    private var historyJob: kotlinx.coroutines.Job? = null
+
     init {
         loadHistory()
     }
@@ -68,28 +70,37 @@ class WeatherHistoryViewModel @Inject constructor(
     }
 
     private fun loadHistory() {
-        viewModelScope.launch {
+        // Cancel the previous collector so range/city switches don't accumulate live collectors
+        historyJob?.cancel()
+        historyJob = viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
 
             val range = _state.value.selectedRange
             val since = System.currentTimeMillis() - (range.days.toLong() * 24 * 60 * 60 * 1000)
 
-            repository.getWeatherHistorySince(since).collect { snapshots ->
-                val filtered = if (_state.value.selectedCity != null) {
-                    snapshots.filter { it.cityName == _state.value.selectedCity }
-                } else {
-                    snapshots
+            try {
+                repository.getWeatherHistorySince(since).collect { snapshots ->
+                    val filtered = if (_state.value.selectedCity != null) {
+                        snapshots.filter { it.cityName == _state.value.selectedCity }
+                    } else {
+                        snapshots
+                    }
+
+                    val dailyData = aggregateByDay(filtered)
+                    val stats = computeStats(filtered, dailyData)
+
+                    _state.value = _state.value.copy(
+                        snapshots = filtered,
+                        dailyData = dailyData,
+                        isLoading = false,
+                        stats = stats
+                    )
                 }
-
-                val dailyData = aggregateByDay(filtered)
-                val stats = computeStats(filtered, dailyData)
-
-                _state.value = _state.value.copy(
-                    snapshots = filtered,
-                    dailyData = dailyData,
-                    isLoading = false,
-                    stats = stats
-                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("WeatherHistoryViewModel", "Failed to load history", e)
+                _state.value = _state.value.copy(isLoading = false)
             }
         }
     }

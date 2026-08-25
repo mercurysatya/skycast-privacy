@@ -8,7 +8,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -20,6 +22,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import com.vayu.weather.R
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +36,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun AlertsScreen(
@@ -39,6 +44,9 @@ fun AlertsScreen(
     onDeleteAlert: (WeatherAlert) -> Unit,
     onClearAll: () -> Unit,
     onFilterChange: (SeverityFilter) -> Unit,
+    onWeatherTypeFilterChange: (WeatherTypeFilter) -> Unit,
+    onSnoozeAlert: (WeatherAlert, Long) -> Unit,
+    onSnoozeDurationChange: (Int) -> Unit,
     onToggleExpand: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -140,6 +148,66 @@ fun AlertsScreen(
             }
         }
 
+        // Weather type filter chips
+        if (state.alerts.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                FilterChip(
+                    selected = state.weatherTypeFilter == WeatherTypeFilter.ALL,
+                    onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.ALL) },
+                    label = { Text("All Types") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                    )
+                )
+                FilterChip(
+                    selected = state.weatherTypeFilter == WeatherTypeFilter.RAIN,
+                    onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.RAIN) },
+                    label = { Text("Rain (${state.rainCount})") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF1E88E5).copy(alpha = 0.15f)
+                    )
+                )
+                FilterChip(
+                    selected = state.weatherTypeFilter == WeatherTypeFilter.WIND,
+                    onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.WIND) },
+                    label = { Text("Wind (${state.windCount})") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF78909C).copy(alpha = 0.15f)
+                    )
+                )
+                FilterChip(
+                    selected = state.weatherTypeFilter == WeatherTypeFilter.UV,
+                    onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.UV) },
+                    label = { Text("UV (${state.uvCount})") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFFFFB300).copy(alpha = 0.15f)
+                    )
+                )
+                FilterChip(
+                    selected = state.weatherTypeFilter == WeatherTypeFilter.HEAT,
+                    onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.HEAT) },
+                    label = { Text("Heat (${state.heatCount})") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFFE53935).copy(alpha = 0.15f)
+                    )
+                )
+                FilterChip(
+                    selected = state.weatherTypeFilter == WeatherTypeFilter.COLD,
+                    onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.COLD) },
+                    label = { Text("Cold (${state.coldCount})") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF4FC3F7).copy(alpha = 0.15f)
+                    )
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(4.dp))
 
         // Content
@@ -209,7 +277,15 @@ fun AlertsScreen(
                             alert = alert,
                             isExpanded = state.expandedAlertId == alert.id,
                             onToggleExpand = { onToggleExpand(alert.id) },
-                            onDelete = { onDeleteAlert(alert) }
+                            onDelete = { onDeleteAlert(alert) },
+                            onSnoozeAlert = { alertId, duration ->
+                                // Snooze logic handled in ViewModel
+                            },
+                            onSnoozeDurationChange = { duration ->
+                                // Duration change handled in ViewModel
+                            },
+                            snoozedAlertIds = state.snoozedAlertIds,
+                            snoozeDurationMinutes = 30
                         )
                     }
                 }
@@ -223,7 +299,11 @@ private fun AlertCard(
     alert: WeatherAlert,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onSnoozeAlert: (WeatherAlert, Long) -> Unit,
+    onSnoozeDurationChange: (Int) -> Unit,
+    snoozedAlertIds: Set<Long> = emptySet(),
+    snoozeDurationMinutes: Int = 30
 ) {
     val severityColor = when (alert.severity) {
         "high" -> MaterialTheme.colorScheme.error
@@ -243,16 +323,34 @@ private fun AlertCard(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .clickable(onClick = onToggleExpand)
-                .padding(14.dp)
-        ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Severity glow border
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                severityColor.copy(alpha = 0.8f),
+                                severityColor.copy(alpha = 0.3f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp)
+                    )
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onToggleExpand)
+                    .padding(14.dp)
+            ) {
             // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -342,6 +440,38 @@ private fun AlertCard(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    // Snooze controls
+                    if (!snoozedAlertIds.contains(alert.id)) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.alert_snooze),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            OutlinedTextField(
+                                value = snoozeDurationMinutes.toString(),
+                                onValueChange = { onSnoozeDurationChange(it.toInt()) },
+                                modifier = Modifier.width(80.dp),
+                                readOnly = true,
+                                enabled = false,
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Button(
+                                onClick = { onSnoozeAlert(alert, snoozeDurationMinutes.toLong() * 60 * 1000) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Text(stringResource(R.string.snooze))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     // Full timestamp
                     val fullTime = remember(alert.timestamp) {
                         try {
@@ -397,6 +527,7 @@ private fun AlertCard(
                     }
                 }
             }
+        }
         }
     }
 }

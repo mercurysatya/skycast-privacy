@@ -1,75 +1,101 @@
-# Kotlin
--keepclassmembers class kotlin.Metadata { *; }
--keep class kotlin.** { *; }
--keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature, Exceptions
--dontwarn kotlin.**
+# ProGuard rules for Vayu Weather application
 
-# Kotlin Serialization
--keepclassmembers class kotlinx.serialization.** { *; }
--keep,includedescriptorclasses class com.vayu.weather.**$$serializer { *; }
--keepclassmembers class com.vayu.weather.domain.model.** { *; }
--keepclassmembers class com.vayu.weather.data.remote.dto.** { *; }
--keepclassmembers class com.vayu.weather.data.local.** { *; }
+# Keep Hilt related classes
+-keep class com.vayu.weather.** { *; }
+-keep class * { @dagger.hilt.android.Hilt *; }
+-keep class * { @Inject *; }
+-keep class * { implements android.os.Parcelable; }
 
-# Moshi
+# Keep Moshi serialization
 -keep class com.squareup.moshi.** { *; }
+-keepclassmembers class * { @com.squareup.moshi.Json *; }
+
+# Keep Kotlinx Serialization
+-keep class org.jetbrains.kotlinx.serialization.** { *; }
+
+# Keep WorkManager workers
+-keep class com.vayu.weather.data.worker.** { *; }
+-keep class androidx.work.Worker { *; }
+
+# Keep Retrofit interfaces
 -keepclassmembers class * {
-    @com.squareup.moshi.FromJson <methods>;
-    @com.squareup.moshi.ToJson <methods>;
+    @retrofit2.http.* *;
 }
--keepclassmembers class com.vayu.weather.data.remote.dto.** { *; }
--keepclassmembers class com.vayu.weather.domain.model.** { *; }
 
-# Retrofit
--keep class retrofit2.** { *; }
--keepclasseswithmembers class * {
-    @retrofit2.http.* <methods>;
-}
--keepclassmembers class com.vayu.weather.data.remote.** { *; }
+# Keep OkHttp interceptors
+-keepclassmembers class com.squareup.okhttp3.** { *; }
 
-# OkHttp / Logging
--dontwarn okhttp3.**
--dontwarn okio.**
--keep class okhttp3.** { *; }
+# Keep Room entities and DAOs
+-keep abstract class * extends androidx.room.RoomDatabase { *; }
+-keep class * { implements android.database.CursorWrapper; }
+-keep class * { @androidx.room.Entity *; }
+-keep class * { @androidx.room.DatabaseIndex *; }
 
-# Room
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Entity class *
--keepclassmembers @androidx.room.Entity class * { *; }
--dontwarn androidx.room.paging.**
+# Keep Apache common logging
+-keep class org.apache.commons.** { *; }
 
-# Hilt / Dagger
--keep class dagger.hilt.** { *; }
--keep class javax.inject.** { *; }
--keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
-
-# MPAndroidChart
--keep class com.github.mikephil.charting.** { *; }
--dontwarn com.github.mikephil.charting.**
-
-# MapLibre
--keep class org.maplibre.** { *; }
--dontwarn org.maplibre.**
-
-# Google Play Services (Ads, Location)
--keep class com.google.android.gms.** { *; }
--dontwarn com.google.android.gms.**
-
-# Glance (App Widget)
+# Keep Glance widgets
 -keep class androidx.glance.** { *; }
--keep class * extends androidx.glance.appwidget.GlanceAppWidget { *; }
--keep class * extends androidx.glance.appwidget.GlanceAppWidgetReceiver { *; }
 
-# Compose
--dontwarn androidx.compose.**
+# Keep AdMob classes
+-keep class com.google.android.gms.ads.** { *; }
+-keep class * { @com.google.android.gms.ads.* *; }
 
-# Coroutines
--keep class kotlinx.coroutines.** { *; }
+# Keep Firebase classes
+-keep class com.google.firebase.** { *; }
+-keepattributes *Annotation*
 
-# Strip Log calls in release
--assumenosideeffects class android.util.Log {
-    public static boolean isLoggable(java.lang.String, int);
-    public static int v(...);
-    public static int d(...);
-    public static int i(...);
+# Keep permission and permissions related classes
+-keep class android.Manifest { *; }
+
+# Keep location related classes
+-keepclassmembers class com.google.android.gms.location.** { *; }
+
+# Keep WeatherCondition enum
+-keepclassmembers enum WeatherCondition {
+    *;
+    public *;
 }
+
+# Suppress R8 warning about Play Services Location companion object
+-dontwarn com.google.android.gms.internal.location.zze
+-dontwarn com.google.android.gms.internal.location.**
+
+# Suppress Compose Glance widget stack trace mapping warning
+-keep class com.vayu.weather.presentation.widget.WeatherWidget { *; }
+-keep class com.vayu.weather.presentation.widget.WeatherWidgetReceiver { *; }
+
+# Keep Glance classes
+-keep class androidx.glance.** { *; }
+-keep class androidx.glance.appwidget.** { *; }
+
+# Keep Weather models
+-keep class com.vayu.weather.domain.model.WeatherInfo { *; }
+-keep class com.vayu.weather.domain.model.WeatherCondition { *; }
+-keep class com.vayu.weather.domain.model.AirQuality { *; }
+-keep class com.vayu.weather.domain.model.WeatherAlert { *; }
+-keep class com.vayu.weather.domain.model.WeatherHistorySnapshot { *; }
+-keep class com.vayu.weather.domain.model.WeatherHistoryDay { *; }
+-keep class com.vayu.weather.domain.model.City { *; }
+
+# Keep DataStore preferences
+-keep class com.vayu.weather.data.local.SettingsManager { *; }
+-keep class * { @org.jetbrains.annotations.NonNull *; }
+-keep class * { @org.jetbrains.annotations.NotNull *; }
+
+# Keep ViewModels
+-keep class com.vayu.weather.presentation.** { *; }
+
+# Keep navigation graph
+-keep class androidx.navigation.** { *; }
+
+
+
+# Keep serialization of domain models
+-keep @com.fasterxml.jackson.annotation.JsonPropertyOrder class *
+-keepclassmembers class * implements java.io.Serializable {
+    static final long serialVersionUID;
+}
+
+# Keep custom application class
+-keep class com.vayu.weather.VayuApplication { *; }

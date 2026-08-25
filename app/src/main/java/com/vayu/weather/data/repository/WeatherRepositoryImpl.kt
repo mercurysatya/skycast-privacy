@@ -3,6 +3,7 @@ package com.vayu.weather.data.repository
 import android.app.Application
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import androidx.room.withTransaction
 import com.vayu.weather.data.local.FavoriteCityEntity
 import com.vayu.weather.data.local.RecentSearchEntity
 import com.vayu.weather.data.local.WeatherAlertEntity
@@ -22,7 +23,6 @@ import com.vayu.weather.domain.repository.WeatherAlert
 import com.vayu.weather.domain.repository.WeatherRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -33,6 +33,7 @@ class WeatherRepositoryImpl @Inject constructor(
     private val airQualityApi: OpenMeteoAirQualityApi,
     private val geocodingApi: GeocodingApi,
     private val dao: WeatherDao,
+    private val db: com.vayu.weather.data.local.VayuDatabase,
     private val application: Application
 ) : WeatherRepository {
 
@@ -56,11 +57,13 @@ class WeatherRepositoryImpl @Inject constructor(
         val cached = dao.getWeatherCache(locationId)
         val cacheAge = System.currentTimeMillis() - (cached?.lastUpdated ?: 0)
         if (cached != null && cacheAge < CACHE_TTL_MS) {
-            return try {
-                Result.success(json.decodeFromString<WeatherInfo>(cached.weatherDataJson))
+            try {
+                val decoded = json.decodeFromString<WeatherInfo>(cached.weatherDataJson)
+                return Result.success(decoded)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                Result.failure(e)
+                // Corrupt or schema-stale cache row: drop it and fall through to network refresh
+                dao.deleteWeatherCacheById(locationId)
             }
         }
 
@@ -174,7 +177,7 @@ class WeatherRepositoryImpl @Inject constructor(
     }
 
     override suspend fun isFavoriteCity(cityId: Long): Boolean {
-        return dao.getFavoriteCities().map { list -> list.any { it.id == cityId } }.first()
+        return dao.isCityFavorite(cityId)
     }
 
     override fun getRecentSearches(limit: Int): Flow<List<City>> {
@@ -194,6 +197,10 @@ class WeatherRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addRecentSearch(city: City) {
+        // Dedup: re-searching the same place moves it to the top instead of piling up rows
+        dao.findRecentSearch(city.name, city.latitude, city.longitude)?.let { existing ->
+            dao.deleteRecentSearch(existing.id)
+        }
         dao.insertRecentSearch(
             RecentSearchEntity(
                 id = 0,
@@ -205,6 +212,8 @@ class WeatherRepositoryImpl @Inject constructor(
                 countryCode = city.countryCode
             )
         )
+        // Keep only the 10 most recent searches so the table cannot grow unbounded
+        dao.trimRecentSearches()
     }
 
     override suspend fun deleteRecentSearch(id: Long) {
@@ -246,11 +255,7 @@ class WeatherRepositoryImpl @Inject constructor(
             )
         )
         // Keep only the most recent 100 alerts
-        val count = dao.getWeatherAlerts(999).first().size
-        if (count > 100) {
-            val oldest = dao.getWeatherAlerts(999).first().takeLast(count - 100)
-            oldest.forEach { dao.deleteWeatherAlert(it.id) }
-        }
+        dao.trimWeatherAlerts()
     }
 
     override suspend fun deleteWeatherAlert(id: Long) {
@@ -271,11 +276,14 @@ class WeatherRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteAllLocalData() {
-        dao.clearWeatherCache()
-        dao.clearRecentSearches()
-        dao.clearWeatherAlerts()
-        dao.clearWeatherHistory()
-        dao.getFavoriteCities().first().forEach { dao.deleteFavoriteCity(it) }
+        // Atomic so process death cannot leave a half-wiped database
+        db.withTransaction {
+            dao.clearWeatherCache()
+            dao.clearRecentSearches()
+            dao.clearWeatherAlerts()
+            dao.clearWeatherHistory()
+            dao.deleteAllFavoriteCities()
+        }
     }
 
     // ---- Weather History ----

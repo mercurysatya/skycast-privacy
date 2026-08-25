@@ -194,29 +194,28 @@ fun SettingsScreen(
                 .padding(padding)
         ) {
             // Top bar
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .clickable(onClick = onBack)
+                    .heightIn(min = 56.dp)
                     .padding(horizontal = 4.dp),
-                contentAlignment = Alignment.CenterStart
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back",
-                        modifier = Modifier.size(48.dp).padding(12.dp),
+                        contentDescription = stringResource(R.string.back),
+                        modifier = Modifier.size(24.dp),
                         tint = MaterialTheme.colorScheme.onBackground
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(R.string.settings),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
                 }
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = stringResource(R.string.settings),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             }
 
             // Scrollable content
@@ -780,12 +779,15 @@ fun SettingsScreen(
                         subtitle = stringResource(R.string.rate_app_subtitle)
                     ) {
                         TextButton(onClick = {
+                            val playStoreUrl = "https://play.google.com/store/apps/details?id=${context.packageName}"
                             try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
-                                context.startActivity(intent)
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}")))
                             } catch (e: Exception) {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}"))
-                                context.startActivity(intent)
+                                try {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(playStoreUrl)))
+                                } catch (e2: Exception) {
+                                    // No browser available - nothing else we can do
+                                }
                             }
                         }) {
                             Text(stringResource(R.string.open), color = MaterialTheme.colorScheme.primary)
@@ -801,6 +803,30 @@ fun SettingsScreen(
                     ) {
                         TextButton(onClick = { onOpenPrivacyPolicy(null) }) {
                             Text(stringResource(R.string.open), color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+
+                    // GDPR/UMP privacy options entry point - required for EEA/UK users
+                    val showPrivacyOptions = remember {
+                        com.vayu.weather.presentation.ConsentManager.isPrivacyOptionsRequired(context)
+                    }
+                    if (showPrivacyOptions) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                        SettingsRow(
+                            icon = Icons.Rounded.ManageAccounts,
+                            title = stringResource(R.string.privacy_options),
+                            subtitle = stringResource(R.string.privacy_options_subtitle)
+                        ) {
+                            TextButton(onClick = {
+                                (context as? android.app.Activity)?.let { activity ->
+                                    com.vayu.weather.presentation.ConsentManager.showPrivacyOptionsForm(activity) {
+                                        snackbarMessage = context.getString(R.string.privacy_options_updated)
+                                    }
+                                }
+                            }) {
+                                Text(stringResource(R.string.open), color = MaterialTheme.colorScheme.primary)
+                            }
                         }
                     }
 
@@ -901,19 +927,20 @@ private fun SettingsGroup(
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
+        modifier = Modifier.padding(bottom = 10.dp, start = 4.dp)
     )
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-        )
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.padding(vertical = 4.dp),
             content = content
         )
     }
@@ -929,27 +956,27 @@ private fun SettingsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-            modifier = Modifier.size(24.dp)
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            modifier = Modifier.size(22.dp)
         )
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
             )
         }
         if (trailing != null) {

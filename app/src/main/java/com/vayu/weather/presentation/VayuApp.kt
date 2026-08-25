@@ -44,7 +44,12 @@ import com.vayu.weather.presentation.weather.WeatherShareFormatter
 import com.vayu.weather.presentation.weather.WeatherViewModel
 import com.vayu.weather.ui.theme.SkyCastTheme
 import android.util.Log
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -84,7 +89,6 @@ fun VayuApp() {
     val navigator = rememberListDetailPaneScaffoldNavigator()
     val scope = rememberCoroutineScope()
     var currentRoute by remember { mutableStateOf("Weather") }
-    var mapNavCount by remember { mutableStateOf(0) }
 
     BackHandler(enabled = showPrivacyPolicy) {
         showPrivacyPolicy = false
@@ -117,7 +121,16 @@ fun VayuApp() {
     LaunchedEffect(Unit) {
         Log.d("VayuApp", "LaunchedEffect: Loading weather and ad")
         weatherViewModel.loadWeatherInfo()
-        AdManager.loadInterstitial(context)
+        // Gather UMP consent first; initialize/load ads only when allowed
+        val act = activity
+        if (act != null) {
+            ConsentManager.gatherConsent(act) {
+                if (ConsentManager.canRequestAds(act)) {
+                    AdManager.initializeMobileAds(act)
+                    AdManager.loadInterstitial(act)
+                }
+            }
+        }
         // Check if onboarding is complete
         onboardingChecked = true
         showOnboarding = !settingsViewModel.isOnboardingComplete()
@@ -166,7 +179,10 @@ fun VayuApp() {
                     onDeleteAlert = alertsViewModel::deleteAlert,
                     onClearAll = alertsViewModel::clearAllAlerts,
                     onFilterChange = alertsViewModel::setSeverityFilter,
-                    onToggleExpand = alertsViewModel::toggleExpandAlert
+                    onWeatherTypeFilterChange = alertsViewModel::setWeatherTypeFilter,
+                    onToggleExpand = alertsViewModel::toggleExpandAlert,
+                    onSnoozeAlert = { alert, duration -> alertsViewModel.snoozeAlert(alert, duration) },
+                    onSnoozeDurationChange = alertsViewModel::updateSnoozeDuration
                 )
             } else if (showSettings) {
                 SettingsScreen(
@@ -212,7 +228,21 @@ fun VayuApp() {
                                             currentRoute = "Weather"
                                             scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Weather") }
                                         },
-                                        icon = { Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp)) },
+                                        icon = {
+                                            if (alertsViewModel.state.alerts.isNotEmpty()) {
+                                                BadgedBox(
+                                                    badge = {
+                                                        Badge {
+                                                            Text(alertsViewModel.state.alerts.size.toString())
+                                                        }
+                                                    }
+                                                ) {
+                                                    Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
+                                                }
+                                            } else {
+                                                Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
+                                            }
+                                        },
                                         label = { Text("Weather") },
                                         colors = navColors
                                     )
@@ -240,19 +270,11 @@ fun VayuApp() {
                                         selected = currentRoute == "Map",
                                         onClick = {
                                             currentRoute = "Map"
-                                            mapNavCount++
                                             scope.launch {
                                                 try {
-                                                    if (activity != null && mapNavCount % 3 == 0) {
-                                                        AdManager.showInterstitial(activity) {
-                                                            scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Map") }
-                                                        }
-                                                    } else {
-                                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Map")
-                                                    }
+                                                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Map")
                                                 } catch (e: Exception) {
                                                     Log.e("VayuApp", "Nav err", e)
-                                                    scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Map") }
                                                 }
                                             }
                                         },
@@ -305,18 +327,11 @@ fun VayuApp() {
                                     selected = currentRoute == "Map",
                                     onClick = {
                                         currentRoute = "Map"
-                                        mapNavCount++
                                         scope.launch {
                                             try {
-                                                if (activity != null && mapNavCount % 3 == 0) {
-                                                    AdManager.showInterstitial(activity) {
-                                                        scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Map") }
-                                                    }
-                                                } else {
-                                                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Map")
-                                                }
+                                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Map")
                                             } catch (e: Exception) {
-                                                scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Map") }
+                                                Log.e("VayuApp", "Nav err", e)
                                             }
                                         }
                                     },
@@ -407,38 +422,53 @@ fun VayuApp() {
                                                         weatherInfo = weatherInfo,
                                                         isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS
                                                     )
-                                                    try {
-                                                        val bitmap = WeatherCardRenderer.generateWeatherCardBitmap(
-                                                            context = context,
-                                                            cityName = weatherViewModel.currentCityName ?: context.getString(R.string.default_city_name),
-                                                            weatherInfo = weatherInfo,
-                                                            isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS
-                                                        )
-                                                        val file = java.io.File(context.cacheDir, "weather_share.png")
-                                                        java.io.FileOutputStream(file).use { out ->
-                                                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                                                    scope.launch {
+                                                        // Heavy bitmap render + file I/O must not run on the main thread
+                                                        val imageUri: android.net.Uri? = withContext(Dispatchers.IO) {
+                                                            try {
+                                                                val bitmap = WeatherCardRenderer.generateWeatherCardBitmap(
+                                                                    context = context,
+                                                                    cityName = weatherViewModel.currentCityName ?: context.getString(R.string.default_city_name),
+                                                                    weatherInfo = weatherInfo,
+                                                                    isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS
+                                                                )
+                                                                val file = java.io.File(context.cacheDir, "weather_share.png")
+                                                                java.io.FileOutputStream(file).use { out ->
+                                                                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                                                                }
+                                                                bitmap.recycle()
+                                                                androidx.core.content.FileProvider.getUriForFile(
+                                                                    context,
+                                                                    "${context.packageName}.fileprovider",
+                                                                    file
+                                                                )
+                                                            } catch (e: Exception) {
+                                                                Log.e("VayuApp", "Share card generation failed", e)
+                                                                null
+                                                            }
                                                         }
-                                                        val uri = androidx.core.content.FileProvider.getUriForFile(
-                                                            context,
-                                                            "${context.packageName}.fileprovider",
-                                                            file
-                                                        )
-                                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                            type = "image/png"
-                                                            putExtra(Intent.EXTRA_STREAM, uri)
-                                                            putExtra(Intent.EXTRA_TEXT, shareText)
-                                                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
-                                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                        try {
+                                                            if (imageUri != null) {
+                                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                                    type = "image/png"
+                                                                    putExtra(Intent.EXTRA_STREAM, imageUri)
+                                                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                                                    putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                                }
+                                                                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
+                                                            } else {
+                                                                throw IllegalStateException("No share image")
+                                                            }
+                                                        } catch (e: Exception) {
+                                                            // Fallback to text-only share
+                                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                                type = "text/plain"
+                                                                putExtra(Intent.EXTRA_TEXT, shareText)
+                                                                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                                                            }
+                                                            context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
                                                         }
-                                                        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
-                                                    } catch (e: Exception) {
-                                                        // Fallback to text-only share
-                                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                            type = "text/plain"
-                                                            putExtra(Intent.EXTRA_TEXT, shareText)
-                                                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
-                                                        }
-                                                        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
                                                     }
                                                 }
                                             },

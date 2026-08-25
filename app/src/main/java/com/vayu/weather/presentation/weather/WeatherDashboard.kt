@@ -38,19 +38,21 @@ import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Thunderstorm
 import androidx.compose.material.icons.rounded.Umbrella
 import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.TrendingUp
-import androidx.compose.material.icons.rounded.TrendingDown
-import androidx.compose.material.icons.rounded.ArrowRight
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.WbTwilight
-import androidx.compose.material.icons.rounded.Umbrella
-import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -93,7 +95,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.statusBarsPadding
+import kotlinx.coroutines.delay
 import com.vayu.weather.R
 import com.vayu.weather.domain.model.DailyWeather
 import com.vayu.weather.domain.model.HourlyWeather
@@ -220,6 +223,7 @@ fun WeatherDashboard(
 ) {
     val isCelsius = settings.temperatureUnit == TemperatureUnit.CELSIUS
     val snackbarHostState = remember { SnackbarHostState() }
+    val listState = rememberLazyListState()
 
     LaunchedEffect(state.refreshError) {
         state.refreshError?.let {
@@ -241,8 +245,9 @@ fun WeatherDashboard(
                 modifier = Modifier.fillMaxSize()
             ) {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    contentPadding = PaddingValues(bottom = 100.dp)
                 ) {
                     item {
                         TopBar(
@@ -252,6 +257,7 @@ fun WeatherDashboard(
                             onOpenHistory = onOpenHistory,
                             onShare = onShare,
                             weatherCode = info.current.weatherCode,
+                            isCelsius = isCelsius,
                             onHaptic = { _ -> }
                         )
                     }
@@ -266,58 +272,79 @@ fun WeatherDashboard(
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(28.dp))
+                        StaggeredEntry(index = 1) {
                         HourlyForecastSection(
                             hourlyData = info.hourly,
                             isCelsius = isCelsius
                         )
+                        }
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
+                        StaggeredEntry(index = 2) {
                         DailyForecastSection(
                             dailyData = info.daily,
                             isCelsius = isCelsius
                         )
+                        }
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
+                        StaggeredEntry(index = 3) {
                         WeatherDetailsSection(
                             info = info,
                             isCelsius = isCelsius,
                             windUnit = settings.windUnit
                         )
+                        }
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
+                        StaggeredEntry(index = 4) {
                         AIInsightsCard(
                             info = info,
                             isCelsius = isCelsius
                         )
+                        }
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
                         WeatherTrends(
                             hourlyData = info.hourly,
                             isCelsius = isCelsius,
-                            modifier = Modifier.padding(horizontal = 16.dp)
+                            modifier = Modifier.padding(horizontal = 20.dp)
                         )
                     }
 
+                    if (state.lastUpdatedTime != null) {
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = state.lastUpdatedTime!!,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.4f),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
                     item {
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
                         SunMoonSection(dailyData = info.daily)
                     }
 
                     if (state.airQuality != null) {
                         item {
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(20.dp))
                             AirQualityCard(
                                 airQuality = state.airQuality,
-                                modifier = Modifier.padding(horizontal = 16.dp)
+                                modifier = Modifier.padding(horizontal = 20.dp)
                             )
                         }
                     }
@@ -350,7 +377,7 @@ fun WeatherDashboard(
 }
 
 // ============================================================
-// TOP BAR
+// TOP BAR — minimal, clean
 // ============================================================
 
 @Composable
@@ -361,82 +388,94 @@ private fun TopBar(
     onOpenHistory: () -> Unit,
     onShare: () -> Unit,
     weatherCode: Int? = null,
+    isCelsius: Boolean = true,
     onHaptic: (Int) -> Unit = {}
 ) {
     val haptic = rememberHapticFeedback()
-    val severityColor = when (weatherCode) {
-        0 -> Color(0xFF4CAF50)
-        1, 2, 3 -> Color(0xFF8BC34A)
-        in 45..48 -> Color(0xFF9E9E9E)
-        in 51..65, in 80..82 -> Color(0xFF4FC3F7)
-        in 71..75 -> Color(0xFFE3F2FD)
-        in 95..99 -> Color(0xFFEF5350)
-        else -> Color.White
-    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp)
-            .shadow(8.dp, RoundedCornerShape(20.dp), clip = true)
-            .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(severityColor, RoundedCornerShape(4.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SmallIconButton(
+                icon = Icons.Rounded.NotificationsActive,
+                contentDescription = stringResource(R.string.weather_alerts),
+                onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenAlerts() }
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(onClick = { onHaptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenAlerts() }) {
-                Icon(
-                    Icons.Rounded.NotificationsActive,
-                    contentDescription = stringResource(R.string.weather_alerts),
-                    tint = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            IconButton(onClick = { onHaptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenHistory() }) {
-                Icon(
-                    Icons.Rounded.History,
-                    contentDescription = stringResource(R.string.weather_history_title),
-                    tint = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            IconButton(onClick = { onHaptic(HapticFeedbackConstants.VIRTUAL_KEY); onShare() }) {
-                Icon(
-                    Icons.Rounded.Share,
-                    contentDescription = stringResource(R.string.share_weather),
-                    tint = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            IconButton(onClick = { onHaptic(HapticFeedbackConstants.VIRTUAL_KEY); onToggleUnit() }) {
-                Text(
-                    text = "°",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = 0.85f)
-                )
-            }
+            SmallIconButton(
+                icon = Icons.Rounded.History,
+                contentDescription = stringResource(R.string.weather_history_title),
+                onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenHistory() }
+            )
+            SmallIconButton(
+                icon = Icons.Rounded.Share,
+                contentDescription = stringResource(R.string.share_weather),
+                onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onShare() }
+            )
         }
-        IconButton(onClick = { onHaptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenSettings() }) {
-            Icon(
-                Icons.Rounded.Settings,
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {                    // Unit toggle pill
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color.White.copy(alpha = 0.15f))
+                            .clickable { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onToggleUnit() }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isCelsius) "°C" else "°F",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+            }
+
+            SmallIconButton(
+                icon = Icons.Rounded.Settings,
                 contentDescription = stringResource(R.string.settings),
-                tint = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.size(22.dp)
+                onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenSettings() }
             )
         }
     }
 }
 
+@Composable
+private fun SmallIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.1f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = Color.White.copy(alpha = 0.85f),
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
 // ============================================================
-// HERO SECTION
+// HERO SECTION — clean, spacious
 // ============================================================
 
 @Composable
@@ -457,6 +496,7 @@ private fun HeroSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 20.dp)
             .clickable(onClick = {
                 haptic(HapticFeedbackConstants.VIRTUAL_KEY)
                 onClick()
@@ -464,75 +504,75 @@ private fun HeroSection(
             .graphicsLayer { scaleX = scale; scaleY = scale },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White.copy(alpha = 0.12f)
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        // City name
+        Text(
+            text = cityName ?: stringResource(R.string.default_city_name),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = Color.White.copy(alpha = 0.75f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Weather icon
+        Icon(
+            imageVector = getWeatherIcon(info.current.weatherCode, info.current.isDay),
+            contentDescription = null,
+            modifier = Modifier.size(56.dp),
+            tint = Color.White.copy(alpha = 0.9f)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Large temperature — animated
+        AnimatedTemperatureText(
+            temperature = info.current.temperature,
+            isCelsius = isCelsius
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Weather description
+        Text(
+            text = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Normal,
+            color = Color.White.copy(alpha = 0.8f)
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // High/Low + Feels like row
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 32.dp, horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            info.daily.firstOrNull()?.let { today ->
+                val high = convertTemp(today.maxTemp, isCelsius)
+                val low = convertTemp(today.minTemp, isCelsius)
                 Text(
-                    text = cityName ?: stringResource(R.string.default_city_name),
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "H:${high}°  L:${low}°",
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White.copy(alpha = 0.85f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text(
-                    text = "${convertTemp(info.current.temperature, isCelsius)}°",
-                    fontSize = 96.sp,
-                    fontWeight = FontWeight.Thin,
-                    color = Color.White,
-                    lineHeight = 96.sp,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Normal,
                     color = Color.White.copy(alpha = 0.85f)
                 )
+            }
 
-                info.daily.firstOrNull()?.let { today ->
-                    val high = convertTemp(today.maxTemp, isCelsius)
-                    val low = convertTemp(today.minTemp, isCelsius)
-                    Text(
-                        text = "H:${high}°  L:${low}°",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-
-                info.current.apparentTemperature?.let { apparent ->
-                    Text(
-                        text = stringResource(R.string.feels_like, convertTemp(apparent, isCelsius)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
+            info.current.apparentTemperature?.let { apparent ->
+                Text(
+                    text = stringResource(R.string.feels_like, convertTemp(apparent, isCelsius)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.6f)
+                )
             }
         }
     }
 }
 
 // ============================================================
-// HOURLY FORECAST
+// HOURLY FORECAST — modern horizontal scroller
 // ============================================================
 
 @Composable
@@ -543,10 +583,10 @@ private fun HourlyForecastSection(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
+            .padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.18f)
+            containerColor = Color.White.copy(alpha = 0.1f)
         )
     ) {
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
@@ -554,13 +594,13 @@ private fun HourlyForecastSection(
                 text = stringResource(R.string.hourly_forecast),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.9f),
+                color = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp)
             )
 
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 val sorted = hourlyData.sortedBy { it.time }.take(24)
                 items(sorted.size) { index ->
@@ -619,21 +659,21 @@ private fun HourlyPillCard(
 
     Column(
         modifier = Modifier
-            .width(64.dp)
+            .width(60.dp)
             .then(
-                if (isNow) Modifier.background(
-                    Color.White.copy(alpha = 0.2f),
-                    RoundedCornerShape(20.dp)
-                ) else Modifier
+                if (isNow) Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White.copy(alpha = 0.12f))
+                else Modifier
             )
-            .padding(vertical = 12.dp),
+            .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = timeLabel,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (isNow) FontWeight.Bold else FontWeight.Normal,
-            color = Color.White.copy(alpha = if (isNow) 1f else 0.7f),
+            color = Color.White.copy(alpha = if (isNow) 1f else 0.6f),
             fontSize = 11.sp
         )
 
@@ -642,8 +682,8 @@ private fun HourlyPillCard(
         Icon(
             imageVector = getWeatherIcon(data.weatherCode, true),
             contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = Color.White.copy(alpha = 0.9f)
+            modifier = Modifier.size(22.dp),
+            tint = Color.White.copy(alpha = 0.85f)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -660,17 +700,17 @@ private fun HourlyPillCard(
             )
             if (trendArrow == "up") {
                 Icon(
-                    imageVector = Icons.Rounded.TrendingUp,
+                    imageVector = Icons.AutoMirrored.Rounded.TrendingUp,
                     contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = Color(0xFF66BB6A)
+                    modifier = Modifier.size(10.dp),
+                    tint = Color(0xFF4ADE80)
                 )
             } else if (trendArrow == "down") {
                 Icon(
-                    imageVector = Icons.Rounded.TrendingDown,
+                    imageVector = Icons.AutoMirrored.Rounded.TrendingDown,
                     contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = Color(0xFFEF5350)
+                    modifier = Modifier.size(10.dp),
+                    tint = Color(0xFFF87171)
                 )
             }
         }
@@ -679,19 +719,17 @@ private fun HourlyPillCard(
             Spacer(modifier = Modifier.height(4.dp))
             Box(
                 modifier = Modifier
-                    .width(32.dp)
+                    .width(28.dp)
                     .height(3.dp)
-                    .background(
-                        Color.White.copy(alpha = 0.15f),
-                        RoundedCornerShape(2.dp)
-                    )
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Color.White.copy(alpha = 0.12f))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(fraction = (precipProb / 100f).coerceIn(0.1f, 1f))
                         .background(
-                            Color(0xFF4FC3F7).copy(alpha = 0.7f),
+                            Color(0xFF38BDF8).copy(alpha = 0.7f),
                             RoundedCornerShape(2.dp)
                         )
                 )
@@ -699,7 +737,7 @@ private fun HourlyPillCard(
             Text(
                 text = "$precipProb%",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF4FC3F7).copy(alpha = 0.9f),
+                color = Color(0xFF38BDF8).copy(alpha = 0.85f),
                 fontSize = 9.sp
             )
         }
@@ -707,7 +745,7 @@ private fun HourlyPillCard(
 }
 
 // ============================================================
-// DAILY FORECAST
+// DAILY FORECAST — clean rows with temp bar
 // ============================================================
 
 @Composable
@@ -722,10 +760,10 @@ private fun DailyForecastSection(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
+            .padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.18f)
+            containerColor = Color.White.copy(alpha = 0.1f)
         )
     ) {
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
@@ -733,16 +771,17 @@ private fun DailyForecastSection(
                 text = stringResource(R.string.seven_day_forecast),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.9f),
+                color = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)
             )
 
-            dailyData.forEach { day ->
+            dailyData.forEachIndexed { index, day ->
                 DailyRow(
                     data = day,
                     isCelsius = isCelsius,
                     globalMin = allMin,
-                    globalMax = allMax
+                    globalMax = allMax,
+                    isLast = index == dailyData.lastIndex
                 )
             }
         }
@@ -754,7 +793,8 @@ private fun DailyRow(
     data: DailyWeather,
     isCelsius: Boolean,
     globalMin: Int,
-    globalMax: Int
+    globalMax: Int,
+    isLast: Boolean = false
 ) {
     val nowLabel = stringResource(R.string.now)
     val today = java.time.LocalDate.now()
@@ -772,70 +812,79 @@ private fun DailyRow(
     val maxTemp = convertTemp(data.maxTemp, isCelsius)
     val precipText = data.precipitationProbability?.let { if (it > 0) "$it%" else "" } ?: ""
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = dateLabel,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = Color.White,
-            modifier = Modifier.width(72.dp),
-            maxLines = 1
-        )
-
-        Icon(
-            imageVector = getWeatherIcon(data.weatherCode, true),
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = Color.White.copy(alpha = 0.8f)
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Text(
-            text = precipText,
-            style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFF4FC3F7),
-            modifier = Modifier.width(36.dp),
-            textAlign = TextAlign.End
-        )
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        Text(
-            text = "${minTemp}°",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.6f),
-            modifier = Modifier.width(32.dp),
-            textAlign = TextAlign.End
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        TempRangeBar(
-            globalMin = globalMin,
-            globalMax = globalMax,
-            dayMin = minTemp.coerceAtMost(maxTemp),
-            dayMax = maxTemp.coerceAtLeast(minTemp),
+    Column {
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .height(4.dp)
-        )
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = dateLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (dateLabel == nowLabel) FontWeight.Bold else FontWeight.Medium,
+                color = Color.White.copy(alpha = if (dateLabel == nowLabel) 1f else 0.8f),
+                modifier = Modifier.width(64.dp),
+                maxLines = 1
+            )
 
-        Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = getWeatherIcon(data.weatherCode, true),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = Color.White.copy(alpha = 0.75f)
+            )
 
-        Text(
-            text = "${maxTemp}°",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-            modifier = Modifier.width(32.dp),
-            textAlign = TextAlign.End
-        )
+            Spacer(modifier = Modifier.width(6.dp))
+
+            Text(
+                text = precipText,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(0xFF38BDF8),
+                modifier = Modifier.width(32.dp),
+                textAlign = TextAlign.End
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = "${minTemp}°",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.width(28.dp),
+                textAlign = TextAlign.End
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            TempRangeBar(
+                globalMin = globalMin,
+                globalMax = globalMax,
+                dayMin = minTemp.coerceAtMost(maxTemp),
+                dayMax = maxTemp.coerceAtLeast(minTemp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(4.dp)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = "${maxTemp}°",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                modifier = Modifier.width(28.dp),
+                textAlign = TextAlign.End
+            )
+        }
+
+        if (!isLast) {
+            HorizontalDivider(
+                color = Color.White.copy(alpha = 0.06f),
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+        }
     }
 }
 
@@ -852,9 +901,9 @@ fun TempRangeBar(
     val widthFraction = if (range == 0f) 1f else ((dayMax - dayMin) / range).coerceIn(0.05f, 1f)
 
     Canvas(modifier = modifier) {
-        val trackColor = Color.White.copy(alpha = 0.15f)
-        val warmColor = Color(0xFFFFB74D)
-        val coolColor = Color(0xFF4FC3F7)
+        val trackColor = Color.White.copy(alpha = 0.1f)
+        val warmColor = Color(0xFFF97316)
+        val coolColor = Color(0xFF38BDF8)
         drawRoundRect(color = trackColor, cornerRadius = CornerRadius(4f))
         drawRoundRect(
             brush = Brush.horizontalGradient(
@@ -870,7 +919,7 @@ fun TempRangeBar(
 }
 
 // ============================================================
-// WEATHER DETAILS
+// WEATHER DETAILS — clean grid
 // ============================================================
 
 @Composable
@@ -885,10 +934,10 @@ private fun WeatherDetailsSection(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
+            .padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.18f)
+            containerColor = Color.White.copy(alpha = 0.1f)
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -896,13 +945,13 @@ private fun WeatherDetailsSection(
                 text = stringResource(R.string.weather_details),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.9f),
+                color = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier.padding(horizontal = 4.dp).padding(bottom = 12.dp)
             )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ExpandableDetailCard(
                     icon = Icons.Rounded.WaterDrop,
@@ -930,11 +979,11 @@ private fun WeatherDetailsSection(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ExpandableDetailCard(
                     icon = Icons.Rounded.Thermostat,
@@ -966,11 +1015,11 @@ private fun WeatherDetailsSection(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ExpandableDetailCard(
                     icon = Icons.Rounded.WbSunny,
@@ -1016,23 +1065,15 @@ private fun ExpandableDetailCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val animatedHeight by animateFloatAsState(
-        targetValue = if (isExpanded && extra.isNotEmpty()) 1.3f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "card_height"
-    )
-
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = if (isExpanded) 0.18f else 0.12f)
+            containerColor = Color.White.copy(alpha = if (isExpanded) 0.12f else 0.07f)
         ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isExpanded) 4.dp else 0.dp
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -1046,8 +1087,8 @@ private fun ExpandableDetailCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = Color.White.copy(alpha = 0.7f)
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.White.copy(alpha = 0.6f)
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -1061,15 +1102,16 @@ private fun ExpandableDetailCard(
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = Color.White.copy(alpha = 0.5f),
                         maxLines = 1
                     )
                 }
                 if (extra.isNotEmpty()) {
                     Text(
-                        text = if (isExpanded) "▼" else "▶",
-                        fontSize = 10.sp,
-                        color = Color.White.copy(alpha = 0.5f)
+                        text = if (isExpanded) "−" else "+",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Light,
+                        color = Color.White.copy(alpha = 0.4f)
                     )
                 }
             }
@@ -1081,96 +1123,16 @@ private fun ExpandableDetailCard(
             ) {
                 Column(modifier = Modifier.padding(top = 8.dp)) {
                     HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.1f),
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        color = Color.White.copy(alpha = 0.08f),
+                        modifier = Modifier.padding(vertical = 6.dp)
                     )
                     Text(
                         text = extra,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.7f)
+                        color = Color.White.copy(alpha = 0.6f)
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun UvGaugeCard(
-    uvIndex: Double?,
-    modifier: Modifier = Modifier
-) {
-    val uv = uvIndex?.roundToInt() ?: 0
-    val maxUv = 11f
-    val fraction = (uv / maxUv).coerceIn(0f, 1f)
-    val uvColor = when {
-        uv <= 2 -> Color(0xFF4CAF50)
-        uv <= 5 -> Color(0xFFFFEB3B)
-        uv <= 7 -> Color(0xFFFF9800)
-        uv <= 10 -> Color(0xFFF44336)
-        else -> Color(0xFF9C27B0)
-    }
-
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.12f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier.size(64.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val sweepAngle = fraction * 270f
-                    val startAngle = 135f
-                    val strokeWidth = 6f
-                    val radius = (size.minDimension - strokeWidth) / 2f
-                    val center = Offset(size.width / 2f, size.height / 2f)
-
-                    drawArc(
-                        color = Color.White.copy(alpha = 0.15f),
-                        startAngle = startAngle,
-                        sweepAngle = 270f,
-                        useCenter = false,
-                        topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
-                        size = Size(size.width - strokeWidth, size.height - strokeWidth),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
-                    )
-
-                    if (uv > 0) {
-                        drawArc(
-                            color = uvColor,
-                            startAngle = startAngle,
-                            sweepAngle = sweepAngle,
-                            useCenter = false,
-                            topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
-                            size = Size(size.width - strokeWidth, size.height - strokeWidth),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
-                        )
-                    }
-                }
-
-                Text(
-                    text = "$uv",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.uv_index),
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.6f)
-            )
         }
     }
 }
@@ -1190,10 +1152,10 @@ private fun AIInsightsCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
+            .padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.12f)
+            containerColor = Color.White.copy(alpha = 0.1f)
         )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -1204,15 +1166,15 @@ private fun AIInsightsCard(
                 Icon(
                     imageVector = Icons.Rounded.WbSunny,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = Color(0xFFFFD54F)
+                    modifier = Modifier.size(18.dp),
+                    tint = Color(0xFFFBBF24)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = stringResource(R.string.ai_insights),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = Color.White.copy(alpha = 0.8f)
                 )
             }
 
@@ -1220,51 +1182,51 @@ private fun AIInsightsCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = 5.dp),
                     verticalAlignment = Alignment.Top
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(8.dp))
                             .background(
                                 color = when (insight.severity) {
-                                    InsightSeverity.WARNING -> Color(0xFFFFB74D).copy(alpha = 0.2f)
-                                    InsightSeverity.ALERT -> Color(0xFFEF5350).copy(alpha = 0.2f)
-                                    InsightSeverity.POSITIVE -> Color(0xFF66BB6A).copy(alpha = 0.2f)
-                                    else -> Color.White.copy(alpha = 0.08f)
-                                },
-                                shape = RoundedCornerShape(10.dp)
+                                    InsightSeverity.WARNING -> Color(0xFFFBBF24).copy(alpha = 0.15f)
+                                    InsightSeverity.ALERT -> Color(0xFFEF4444).copy(alpha = 0.15f)
+                                    InsightSeverity.POSITIVE -> Color(0xFF22C55E).copy(alpha = 0.15f)
+                                    else -> Color.White.copy(alpha = 0.06f)
+                                }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = insight.icon,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(14.dp),
                             tint = when (insight.severity) {
-                                InsightSeverity.WARNING -> Color(0xFFFFB74D)
-                                InsightSeverity.ALERT -> Color(0xFFEF5350)
-                                InsightSeverity.POSITIVE -> Color(0xFF66BB6A)
-                                else -> Color.White.copy(alpha = 0.7f)
+                                InsightSeverity.WARNING -> Color(0xFFFBBF24)
+                                InsightSeverity.ALERT -> Color(0xFFEF4444)
+                                InsightSeverity.POSITIVE -> Color(0xFF22C55E)
+                                else -> Color.White.copy(alpha = 0.6f)
                             }
                         )
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = insight.text,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = Color.White.copy(alpha = 0.75f),
                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight * 1.4f,
                         modifier = Modifier.weight(1f)
                     )
                 }
                 if (insight != insights.last()) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.06f),
+                        color = Color.White.copy(alpha = 0.05f),
                         modifier = Modifier.padding(horizontal = 4.dp)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
             }
         }
@@ -1390,10 +1352,10 @@ private fun SunMoonSection(dailyData: List<DailyWeather>) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
+            .padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.18f)
+            containerColor = Color.White.copy(alpha = 0.1f)
         )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -1401,7 +1363,7 @@ private fun SunMoonSection(dailyData: List<DailyWeather>) {
                 text = stringResource(R.string.sun_and_moon),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.9f),
+                color = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
@@ -1410,10 +1372,10 @@ private fun SunMoonSection(dailyData: List<DailyWeather>) {
                 sunsetTime = sunsetTime,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
+                    .height(100.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1461,13 +1423,13 @@ private fun SunArc(
         val centerY = height * 0.85f
 
         drawArc(
-            color = Color.White.copy(alpha = 0.12f),
+            color = Color.White.copy(alpha = 0.1f),
             startAngle = 180f,
             sweepAngle = 180f,
             useCenter = false,
             topLeft = Offset(0f, centerY - arcHeight),
             size = Size(width, arcHeight * 2),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f)
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
         )
 
         val sunX = when {
@@ -1488,28 +1450,28 @@ private fun SunArc(
         }.toFloat()
 
         drawCircle(
-            color = Color(0xFFFFD54F).copy(alpha = 0.9f),
-            radius = 12f,
+            color = Color(0xFFFBBF24).copy(alpha = 0.85f),
+            radius = 10f,
             center = Offset(sunX, sunY)
         )
 
         drawCircle(
-            color = Color(0xFFFFD54F).copy(alpha = 0.25f),
-            radius = 20f,
+            color = Color(0xFFFBBF24).copy(alpha = 0.2f),
+            radius = 16f,
             center = Offset(sunX, sunY)
         )
 
         val sunriseX = width * 0.1f
         drawCircle(
-            color = Color(0xFFFFD54F).copy(alpha = 0.6f),
-            radius = 6f,
+            color = Color(0xFFFBBF24).copy(alpha = 0.5f),
+            radius = 5f,
             center = Offset(sunriseX, centerY)
         )
 
         val sunsetX = width * 0.9f
         drawCircle(
-            color = Color(0xFFFFB74D).copy(alpha = 0.6f),
-            radius = 6f,
+            color = Color(0xFFF97316).copy(alpha = 0.5f),
+            radius = 5f,
             center = Offset(sunsetX, centerY)
         )
     }
@@ -1525,8 +1487,8 @@ private fun SunMoonItem(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color(0xFFFFD54F),
-            modifier = Modifier.size(24.dp)
+            tint = Color(0xFFFBBF24),
+            modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -1538,7 +1500,7 @@ private fun SunMoonItem(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.6f)
+            color = Color.White.copy(alpha = 0.5f)
         )
     }
 }
@@ -1621,15 +1583,15 @@ private data class ConfettiParticle(
 )
 
 // ============================================================
-// LOADING & ERROR
+// LOADING & ERROR — polished
 // ============================================================
 
 @Composable
 private fun LoadingState() {
     val shimmerColors = listOf(
-        Color.White.copy(alpha = 0.06f),
-        Color.White.copy(alpha = 0.12f),
-        Color.White.copy(alpha = 0.06f)
+        Color.White.copy(alpha = 0.04f),
+        Color.White.copy(alpha = 0.1f),
+        Color.White.copy(alpha = 0.04f)
     )
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
     val translateX by infiniteTransition.animateFloat(
@@ -1646,35 +1608,20 @@ private fun LoadingState() {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
                 SkeletonCard(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    shimmerColors = shimmerColors,
-                    translateX = translateX
-                )
-            }
-            item {
-                SkeletonCard(
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = 20.dp),
                     shimmerColors = shimmerColors,
                     translateX = translateX,
-                    height = 160.dp
+                    height = 200.dp
                 )
             }
             item {
                 SkeletonCard(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    shimmerColors = shimmerColors,
-                    translateX = translateX,
-                    height = 120.dp
-                )
-            }
-            item {
-                SkeletonCard(
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = 20.dp),
                     shimmerColors = shimmerColors,
                     translateX = translateX,
                     height = 140.dp
@@ -1682,10 +1629,26 @@ private fun LoadingState() {
             }
             item {
                 SkeletonCard(
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = 20.dp),
                     shimmerColors = shimmerColors,
                     translateX = translateX,
                     height = 100.dp
+                )
+            }
+            item {
+                SkeletonCard(
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    shimmerColors = shimmerColors,
+                    translateX = translateX,
+                    height = 160.dp
+                )
+            }
+            item {
+                SkeletonCard(
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    shimmerColors = shimmerColors,
+                    translateX = translateX,
+                    height = 120.dp
                 )
             }
             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -1704,9 +1667,9 @@ private fun SkeletonCard(
         modifier = modifier
             .fillMaxWidth()
             .height(height),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.08f)
+            containerColor = Color.White.copy(alpha = 0.06f)
         )
     ) {
         Box(
@@ -1723,6 +1686,114 @@ private fun SkeletonCard(
     }
 }
 
+// ============================================================
+// ANIMATED TEMPERATURE (item 2)
+// ============================================================
+
+@Composable
+private fun AnimatedTemperatureText(
+    temperature: Double,
+    isCelsius: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val targetTemp = convertTemp(temperature, isCelsius)
+    val animatedTemp by animateIntAsState(
+        targetValue = targetTemp,
+        animationSpec = tween(durationMillis = 600),
+        label = "temp_anim"
+    )
+    Text(
+        text = "${animatedTemp}°",
+        modifier = modifier,
+        fontSize = 96.sp,
+        fontWeight = FontWeight.Thin,
+        color = Color.White,
+        lineHeight = 96.sp,
+        textAlign = TextAlign.Center
+    )
+}
+
+// ============================================================
+// STAGGERED ENTRY WRAPPER (item 8)
+// ============================================================
+
+@Composable
+private fun StaggeredEntry(
+    index: Int,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    var visible by remember { mutableStateOf(false)
+    }
+    LaunchedEffect(Unit) {
+        delay(index * 80L)
+        visible = true
+    }
+    val alpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(300),
+        label = "entry_alpha"
+    )
+    val offsetY by animateFloatAsState(
+        targetValue = if (visible) 0f else 30f,
+        animationSpec = tween(400),
+        label = "entry_offset"
+    )
+    Box(
+        modifier = modifier.graphicsLayer {
+            this.alpha = alpha
+            translationY = offsetY
+        }
+    ) {
+        content()
+    }
+}
+
+// ============================================================
+// ENHANCED CARD PRESS STATE (item 7)
+// ============================================================
+
+@Composable
+private fun PressableCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "press_scale"
+    )
+    val elevation by animateFloatAsState(
+        targetValue = if (isPressed) 0f else 2f,
+        animationSpec = tween(150),
+        label = "press_elevation"
+    )
+
+    Card(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                shadowElevation = elevation
+            }
+            .clickable(
+                onClick = {
+                    isPressed = true
+                    onClick()
+                }
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.1f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        content()
+    }
+}
+
 @Composable
 private fun ErrorState(message: String, onRetry: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1733,22 +1804,30 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
             Icon(
                 Icons.Rounded.CloudOff,
                 contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = Color.White.copy(alpha = 0.5f)
+                modifier = Modifier.size(56.dp),
+                tint = Color.White.copy(alpha = 0.4f)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.8f),
+                color = Color.White.copy(alpha = 0.75f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(16.dp))
-            IconButton(onClick = onRetry, modifier = Modifier.size(48.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.White.copy(alpha = 0.12f))
+                    .clickable(onClick = onRetry),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     Icons.Rounded.Refresh,
                     contentDescription = stringResource(R.string.retry_loading),
-                    tint = Color.White.copy(alpha = 0.8f)
+                    tint = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }

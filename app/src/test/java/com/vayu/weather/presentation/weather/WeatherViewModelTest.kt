@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import com.vayu.weather.data.local.SettingsManager
 import com.vayu.weather.domain.location.LocationTracker
 import com.vayu.weather.domain.model.WeatherInfo
+import com.vayu.weather.domain.repository.WeatherRepository
 import com.vayu.weather.domain.use_case.GetAirQualityUseCase
 import com.vayu.weather.domain.use_case.GetWeatherUseCase
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +33,7 @@ class WeatherViewModelTest {
     private lateinit var getAirQualityUseCase: GetAirQualityUseCase
     private lateinit var locationTracker: LocationTracker
     private lateinit var settingsManager: SettingsManager
+    private lateinit var repository: WeatherRepository
     private lateinit var viewModel: WeatherViewModel
 
     @Before
@@ -41,9 +43,11 @@ class WeatherViewModelTest {
         getAirQualityUseCase = mock()
         locationTracker = mock()
         settingsManager = mock()
+        repository = mock()
         viewModel = WeatherViewModel(
             getWeatherUseCase = getWeatherUseCase,
             getAirQualityUseCase = getAirQualityUseCase,
+            repository = repository,
             locationTracker = locationTracker,
             settingsManager = settingsManager
         )
@@ -70,8 +74,8 @@ class WeatherViewModelTest {
     @Test
     fun `loadWeatherForCity sets coordinates`() {
         viewModel.loadWeatherForCity(51.5, -0.1, "London")
-        assertEquals(51.5, viewModel.currentLat!!)
-        assertEquals(-0.1, viewModel.currentLon!!)
+        assertEquals(51.5, viewModel.currentLat!!, 0.001)
+        assertEquals(-0.1, viewModel.currentLon!!, 0.001)
     }
 
     @Test

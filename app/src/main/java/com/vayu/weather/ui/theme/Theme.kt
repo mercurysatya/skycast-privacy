@@ -11,68 +11,67 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val SkyCastLight = lightColorScheme(
+private val VayuLight = lightColorScheme(
     primary = DeepBlue,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFBBDEFB),
+    primaryContainer = Color(0xFFDBEAFE),
     onPrimaryContainer = DeepBlue,
     secondary = SkyBlue,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFB3E5FC),
-    onSecondaryContainer = Color(0xFF01579B),
+    secondaryContainer = Color(0xFFE0F2FE),
+    onSecondaryContainer = Color(0xFF0C4A6E),
     tertiary = WarmOrange,
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFE0B2),
-    onTertiaryContainer = Color(0xFFE65100),
+    tertiaryContainer = Color(0xFFFFF7ED),
+    onTertiaryContainer = Color(0xFF9A3412),
     error = SunsetRed,
     onError = Color.White,
-    errorContainer = Color(0xFFFFCDD2),
-    onErrorContainer = Color(0xFFB71C1C),
-    background = Color(0xFFF5F7FA),
-    onBackground = Color(0xFF1C1B1F),
-    surface = Color(0xFFF5F7FA),
-    onSurface = Color(0xFF1C1B1F),
-    surfaceVariant = Color(0xFFE8EAF6),
-    onSurfaceVariant = Color(0xFF49454F),
-    outline = Color(0xFF79747E),
-    outlineVariant = Color(0xFFCAC4D0),
-    inverseSurface = Color(0xFF313033),
-    inverseOnSurface = Color(0xFFF4EFF4),
+    errorContainer = Color(0xFFFEF2F2),
+    onErrorContainer = Color(0xFF991B1B),
+    background = Color(0xFFF8FAFC),
+    onBackground = Color(0xFF0F172A),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF0F172A),
+    surfaceVariant = Color(0xFFF1F5F9),
+    onSurfaceVariant = Color(0xFF475569),
+    outline = Color(0xFF94A3B8),
+    outlineVariant = Color(0xFFE2E8F0),
+    inverseSurface = Color(0xFF1E293B),
+    inverseOnSurface = Color(0xFFF1F5F9),
     inversePrimary = SkyBlue,
     surfaceTint = DeepBlue
 )
 
-private val SkyCastDark = darkColorScheme(
+private val VayuDark = darkColorScheme(
     primary = SkyBlue,
-    onPrimary = Color(0xFF003258),
-    primaryContainer = Color(0xFF00497D),
-    onPrimaryContainer = Color(0xFFBBDEFB),
-    secondary = Color(0xFF81D4FA),
-    onSecondary = Color(0xFF003549),
-    secondaryContainer = Color(0xFF004D6B),
-    onSecondaryContainer = Color(0xFFB3E5FC),
+    onPrimary = Color(0xFF0C4A6E),
+    primaryContainer = Color(0xFF0C4A6E),
+    onPrimaryContainer = Color(0xFFBAE6FD),
+    secondary = Color(0xFF7DD3FC),
+    onSecondary = Color(0xFF083344),
+    secondaryContainer = Color(0xFF0C4A6E),
+    onSecondaryContainer = Color(0xFFBAE6FD),
     tertiary = AmberGlow,
-    onTertiary = Color(0xFF462A00),
-    tertiaryContainer = Color(0xFF633E00),
-    onTertiaryContainer = Color(0xFFFFE0B2),
-    error = Color(0xFFFFB4AB),
-    onError = Color(0xFF690005),
-    errorContainer = Color(0xFF93000A),
-    onErrorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFF0F1118),
-    onBackground = Color(0xFFE6E1E5),
-    surface = Color(0xFF1C1B1F),
-    onSurface = Color(0xFFE6E1E5),
-    surfaceVariant = Color(0xFF2E2E3E),
-    onSurfaceVariant = Color(0xFFCAC4D0),
-    outline = Color(0xFF938F99),
-    outlineVariant = Color(0xFF49454F),
-    inverseSurface = Color(0xFFE6E1E5),
-    inverseOnSurface = Color(0xFF313033),
+    onTertiary = Color(0xFF451A03),
+    tertiaryContainer = Color(0xFF78350F),
+    onTertiaryContainer = Color(0xFFFDE68A),
+    error = Color(0xFFFCA5A5),
+    onError = Color(0xFF7F1D1D),
+    errorContainer = Color(0xFF991B1B),
+    onErrorContainer = Color(0xFFFEE2E2),
+    background = Color(0xFF0F172A),
+    onBackground = Color(0xFFF1F5F9),
+    surface = Color(0xFF1E293B),
+    onSurface = Color(0xFFF1F5F9),
+    surfaceVariant = Color(0xFF1E293B),
+    onSurfaceVariant = Color(0xFFCBD5E1),
+    outline = Color(0xFF64748B),
+    outlineVariant = Color(0xFF334155),
+    inverseSurface = Color(0xFFF1F5F9),
+    inverseOnSurface = Color(0xFF1E293B),
     inversePrimary = DeepBlue,
     surfaceTint = SkyBlue
 )
@@ -85,11 +84,11 @@ fun SkyCastTheme(
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val isDark = darkTheme
-            if (isDark) dynamicDarkColorScheme(LocalView.current.context) else dynamicLightColorScheme(LocalView.current.context)
+            if (darkTheme) dynamicDarkColorScheme(LocalView.current.context)
+            else dynamicLightColorScheme(LocalView.current.context)
         }
-        darkTheme -> SkyCastDark
-        else -> SkyCastLight
+        darkTheme -> VayuDark
+        else -> VayuLight
     }
 
     val view = LocalView.current

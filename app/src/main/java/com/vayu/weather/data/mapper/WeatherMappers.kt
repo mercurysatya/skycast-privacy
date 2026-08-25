@@ -36,6 +36,7 @@ fun WeatherDto.toWeatherInfo(): WeatherInfo {
 
 fun HourlyWeatherDto.toHourlyWeather(): List<HourlyWeather> {
     return time.mapIndexedNotNull { index, timeStr ->
+        if (timeStr == null) return@mapIndexedNotNull null
         try {
             HourlyWeather(
                 time = timeStr,
@@ -55,6 +56,7 @@ fun HourlyWeatherDto.toHourlyWeather(): List<HourlyWeather> {
 
 fun DailyWeatherDto.toDailyWeather(): List<DailyWeather> {
     return time.mapIndexedNotNull { index, dateStr ->
+        if (dateStr == null) return@mapIndexedNotNull null
         try {
             DailyWeather(
                 date = dateStr,

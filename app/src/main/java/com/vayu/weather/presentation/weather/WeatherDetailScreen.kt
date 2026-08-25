@@ -1,9 +1,19 @@
 package com.vayu.weather.presentation.weather
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,9 +24,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,6 +46,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,7 +64,12 @@ fun WeatherDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(cityName ?: stringResource(R.string.default_city_name)) },
+                title = { 
+                    Text(
+                        cityName ?: stringResource(R.string.default_city_name),
+                        style = MaterialTheme.typography.titleLarge
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -128,144 +149,170 @@ private fun CurrentConditionsExpanded(
     isCelsius: Boolean,
     settings: SettingsState
 ) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        visible = true
+    }
+
+    var pulse by remember { mutableFloatStateOf(0.8f) }
+    LaunchedEffect(visible) {
+        while (visible) {
+            delay(2000)
+            pulse = 1.0f
+            delay(2000)
+            pulse = 0.8f
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Icon(
-            imageVector = getWeatherIcon(info.current.weatherCode, info.current.isDay),
-            contentDescription = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
-            modifier = Modifier.size(80.dp),
-            tint = Color.White
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "${convertTemp(info.current.temperature, isCelsius)}°",
-            style = MaterialTheme.typography.displayLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Text(
-            text = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        info.current.apparentTemperature?.let {
-            Text(
-                text = stringResource(R.string.feels_like, convertTemp(it, isCelsius)),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Expanded info grid
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-            ),
-            shape = RoundedCornerShape(20.dp)
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Icon(
+                imageVector = getWeatherIcon(info.current.weatherCode, info.current.isDay),
+                contentDescription = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
+                modifier = Modifier
+                    .size(80.dp)
+                    .scale(pulse)
+                    .background(
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                        CircleShape
+                    ),
+                tint = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "${convertTemp(info.current.temperature, isCelsius)}°",
+                style = MaterialTheme.typography.displayLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Text(
+                text = localizedWeatherDescription(info.current.weatherCode, info.current.isDay),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            info.current.apparentTemperature?.let {
+                Text(
+                    text = stringResource(R.string.feels_like, convertTemp(it, isCelsius)),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                ),
+                shape = RoundedCornerShape(20.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    DetailInfoItem(
-                        icon = Icons.Rounded.WaterDrop,
-                        label = stringResource(R.string.humidity),
-                        value = "${info.current.humidity?.roundToInt() ?: "--"}%"
-                    )
-                    DetailInfoItem(
-                        icon = Icons.Rounded.Air,
-                        label = stringResource(R.string.wind),
-                        value = "${convertWindRaw(info.current.windSpeed, settings.windUnit)} ${windUnitLabel(settings.windUnit)}"
-                    )
-                    DetailInfoItem(
-                        icon = Icons.Rounded.Thermostat,
-                        label = stringResource(R.string.pressure),
-                        value = info.current.surfacePressure?.let { "${it.roundToInt()} hPa" } ?: "--"
-                    )
-                }
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    DetailInfoItem(
-                        icon = Icons.Rounded.Visibility,
-                        label = stringResource(R.string.visibility),
-                        value = info.current.visibility?.let { "${(it / 1000).roundToInt()} km" } ?: "--"
-                    )
-                    DetailInfoItem(
-                        icon = Icons.Rounded.WbSunny,
-                        label = stringResource(R.string.uv_index),
-                        value = "${info.daily.firstOrNull()?.uvIndex?.roundToInt() ?: "--"}"
-                    )
-                    DetailInfoItem(
-                        icon = Icons.Rounded.AcUnit,
-                        label = stringResource(R.string.dew_point),
-                        value = info.current.dewPoint?.let { "${convertTemp(it, isCelsius)}°" } ?: "--"
-                    )
-                }
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    DetailInfoItem(
-                        icon = Icons.Rounded.Air,
-                        label = stringResource(R.string.wind_gust),
-                        value = info.current.windGusts?.let { "${convertWindRaw(it, settings.windUnit)} ${windUnitLabel(settings.windUnit)}" } ?: "--"
-                    )
-                    DetailInfoItem(
-                        icon = Icons.Rounded.Explore,
-                        label = stringResource(R.string.wind_direction),
-                        value = info.current.windDirection?.let { formatWindDirection(it) } ?: "--"
-                    )
-                    DetailInfoItem(
-                        icon = Icons.Rounded.WbTwilight,
-                        label = stringResource(R.string.sunrise),
-                        value = info.daily.firstOrNull()?.sunrise?.let { formatTimeFromISO(it) } ?: "--"
-                    )
-                }
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    DetailInfoItem(
-                        icon = Icons.Rounded.NightsStay,
-                        label = stringResource(R.string.sunset),
-                        value = info.daily.firstOrNull()?.sunset?.let { formatTimeFromISO(it) } ?: "--"
-                    )
-                    DetailInfoItem(
-                        icon = Icons.Rounded.WbSunny,
-                        label = stringResource(R.string.day_length),
-                        value = calculateDayLength(
-                            info.daily.firstOrNull()?.sunrise,
-                            info.daily.firstOrNull()?.sunset
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        DetailInfoItem(
+                            icon = Icons.Rounded.WaterDrop,
+                            label = stringResource(R.string.humidity),
+                            value = "${info.current.humidity?.roundToInt() ?: "--"}%"
                         )
-                    )
-                    DetailInfoItem(
-                        icon = Icons.Rounded.Umbrella,
-                        label = stringResource(R.string.precipitation),
-                        value = info.daily.firstOrNull()?.precipitationProbability?.let { "$it%" } ?: "--"
-                    )
+                        DetailInfoItem(
+                            icon = Icons.Rounded.Air,
+                            label = stringResource(R.string.wind),
+                            value = "${convertWindRaw(info.current.windSpeed, settings.windUnit)} ${windUnitLabel(settings.windUnit)}"
+                        )
+                        DetailInfoItem(
+                            icon = Icons.Rounded.Thermostat,
+                            label = stringResource(R.string.pressure),
+                            value = info.current.surfacePressure?.let { "${it.roundToInt()} hPa" } ?: "--"
+                        )
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        DetailInfoItem(
+                            icon = Icons.Rounded.Visibility,
+                            label = stringResource(R.string.visibility),
+                            value = info.current.visibility?.let { "${(it / 1000).roundToInt()} km" } ?: "--"
+                        )
+                        DetailInfoItem(
+                            icon = Icons.Rounded.WbSunny,
+                            label = stringResource(R.string.uv_index),
+                            value = "${info.daily.firstOrNull()?.uvIndex?.roundToInt() ?: "--"}"
+                        )
+                        DetailInfoItem(
+                            icon = Icons.Rounded.AcUnit,
+                            label = stringResource(R.string.dew_point),
+                            value = info.current.dewPoint?.let { "${convertTemp(it, isCelsius)}°" } ?: "--"
+                        )
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        DetailInfoItem(
+                            icon = Icons.Rounded.Air,
+                            label = stringResource(R.string.wind_gust),
+                            value = info.current.windGusts?.let { "${convertWindRaw(it, settings.windUnit)} ${windUnitLabel(settings.windUnit)}" } ?: "--"
+                        )
+                        DetailInfoItem(
+                            icon = Icons.Rounded.Explore,
+                            label = stringResource(R.string.wind_direction),
+                            value = info.current.windDirection?.let { formatWindDirection(it) } ?: "--"
+                        )
+                        DetailInfoItem(
+                            icon = Icons.Rounded.WbTwilight,
+                            label = stringResource(R.string.sunrise),
+                            value = info.daily.firstOrNull()?.sunrise?.let { formatTimeFromISO(it) } ?: "--"
+                        )
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        DetailInfoItem(
+                            icon = Icons.Rounded.NightsStay,
+                            label = stringResource(R.string.sunset),
+                            value = info.daily.firstOrNull()?.sunset?.let { formatTimeFromISO(it) } ?: "--"
+                        )
+                        DetailInfoItem(
+                            icon = Icons.Rounded.WbSunny,
+                            label = stringResource(R.string.day_length),
+                            value = calculateDayLength(
+                                info.daily.firstOrNull()?.sunrise,
+                                info.daily.firstOrNull()?.sunset
+                            )
+                        )
+                        DetailInfoItem(
+                            icon = Icons.Rounded.Umbrella,
+                            label = stringResource(R.string.precipitation),
+                            value = info.daily.firstOrNull()?.precipitationProbability?.let { "$it%" } ?: "--"
+                        )
+                    }
                 }
             }
         }
@@ -276,16 +323,36 @@ private fun CurrentConditionsExpanded(
 private fun DetailInfoItem(
     icon: ImageVector,
     label: String,
-    value: String
+    value: String,
+    onClick: (() -> Unit)? = null
 ) {
+    val scope = rememberCoroutineScope()
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "detail_info_scale"
+    )
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(90.dp)
+        modifier = Modifier
+            .width(90.dp)
+            .graphicsLayer(scaleX = scale, scaleY = scale)
+            .clickable(onClick = {
+                isPressed = true
+                scope.launch {
+                    delay(80)
+                    isPressed = false
+                    onClick?.invoke()
+                }
+            })
+            .semantics { }
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = if (isPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -293,7 +360,7 @@ private fun DetailInfoItem(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (onClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -303,6 +370,15 @@ private fun DetailInfoItem(
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             maxLines = 1
         )
+        if (onClick != null) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Icon(
+                imageVector = Icons.Rounded.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                modifier = Modifier.size(12.dp)
+            )
+        }
     }
 }
 
@@ -675,8 +751,11 @@ private fun formatTimeFromISO(isoString: String): String {
 
 private fun formatWindDirection(degrees: Double): String {
     val directions = arrayOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
-    val index = ((degrees + 22.5) / 45).toInt() % 8
-    return directions[index]
+    if (degrees.isNaN()) return "--"
+    // Normalize to [0, 360) to guard against negative or out-of-range API values
+    val normalized = ((degrees % 360) + 360) % 360
+    val index = ((normalized + 22.5) / 45).toInt() % 8
+    return directions[index.coerceIn(0, directions.lastIndex)]
 }
 
 private fun calculateDayLength(sunrise: String?, sunset: String?): String {

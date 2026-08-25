@@ -23,8 +23,8 @@ fun TemperatureChart(
     )
 
     if (hourlyData.size > 1) {
-        val minTemp = hourlyData.map { it.temperature }.min() ?: 0.0
-        val maxTemp = hourlyData.map { it.temperature }.max() ?: 10.0
+        val minTemp = hourlyData.minOf { it.temperature }
+        val maxTemp = hourlyData.maxOf { it.temperature }
         Text(
             text = "Range: ${minTemp.toInt()}° - ${maxTemp.toInt()}°",
             modifier = Modifier.padding(8.dp),

@@ -47,7 +47,6 @@ fun PrivacyPolicyScreen(
             factory = { context ->
                 WebView(context).apply {
                     settings.javaScriptEnabled = false
-                    settings.allowFileAccess = true
                     settings.loadWithOverviewMode = true
                     settings.useWideViewPort = true
 
@@ -58,6 +57,10 @@ fun PrivacyPolicyScreen(
                     }
                     loadUrl(url)
                 }
+            },
+            onRelease = { webView ->
+                webView.stopLoading()
+                webView.destroy()
             }
         )
     }

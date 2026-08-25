@@ -29,9 +29,9 @@ fun FavoritesScreen(
         modifier = modifier
             .fillMaxSize()
             .systemBarsPadding()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 20.dp)
     ) {
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = stringResource(R.string.favorites),
@@ -51,8 +51,8 @@ fun FavoritesScreen(
                     Icon(
                         imageVector = Icons.Rounded.FavoriteBorder,
                         contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        modifier = Modifier.size(72.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
@@ -66,13 +66,14 @@ fun FavoritesScreen(
                         text = stringResource(R.string.no_favorites_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.45f),
+                        modifier = Modifier.padding(horizontal = 32.dp)
                     )
                 }
             }
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(state.favorites) { city ->
                     FavoriteCityCard(
@@ -95,10 +96,11 @@ private fun FavoriteCityCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -110,9 +112,9 @@ private fun FavoriteCityCard(
                 imageVector = Icons.Rounded.LocationOn,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(24.dp)
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f).widthIn(min = 1.dp)) {
                 Text(
                     text = city.name,
@@ -131,7 +133,7 @@ private fun FavoriteCityCard(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -142,14 +144,14 @@ private fun FavoriteCityCard(
                 onClick = onRemove,
                 shape = RoundedCornerShape(12.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.08f)
                 )
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
                     contentDescription = "Remove ${city.name} from favorites",
                     tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }

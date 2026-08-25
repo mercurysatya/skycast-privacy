@@ -21,7 +21,7 @@ class AddRecentSearchUseCaseTest {
 
     @Test
     fun `invoke adds city to recent searches`() = runTest {
-        val city = City(id = 1, name = "London", latitude = 51.5, longitude = -0.1, country = "UK")
+        val city = City(id = 1, name = "London", latitude = 51.5, longitude = -0.1, country = "UK", admin1 = null, countryCode = "GB")
 
         useCase(city)
 

@@ -27,18 +27,19 @@ fun AirQualityCard(
     ) {
         Text(
             text = stringResource(R.string.air_quality),
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 12.dp)
+            modifier = Modifier.padding(bottom = 10.dp)
         )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
             ),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -52,7 +53,7 @@ fun AirQualityCard(
                         imageVector = Icons.Rounded.Air,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
@@ -65,13 +66,13 @@ fun AirQualityCard(
                         Text(
                             text = stringResource(R.string.european_aqi, airQuality.europeanAqi?.toString() ?: "--"),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
@@ -112,18 +113,18 @@ private fun PollutantItem(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
         )
     }
 }
 
 @Composable
 private fun aqiColor(index: Int): Color = when (index) {
-    1 -> Color(0xFF4CAF50)
-    2 -> Color(0xFF8BC34A)
-    3 -> Color(0xFFFFEB3B)
-    4 -> Color(0xFFFF9800)
-    5 -> Color(0xFFF44336)
-    6 -> Color(0xFF880E4F)
+    1 -> Color(0xFF22C55E)
+    2 -> Color(0xFF84CC16)
+    3 -> Color(0xFFFBBF24)
+    4 -> Color(0xFFF97316)
+    5 -> Color(0xFFEF4444)
+    6 -> Color(0xFFBE185D)
     else -> MaterialTheme.colorScheme.onSurface
 }

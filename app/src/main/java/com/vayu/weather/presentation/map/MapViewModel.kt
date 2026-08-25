@@ -75,6 +75,9 @@ class MapViewModel @Inject constructor(
     private val _isRadarVisible = MutableStateFlow(true)
     val isRadarVisible: StateFlow<Boolean> = _isRadarVisible.asStateFlow()
 
+    private val _isAutoPlaying = MutableStateFlow(false)
+    val isAutoPlaying: StateFlow<Boolean> = _isAutoPlaying.asStateFlow()
+
     private var autoPlayJob: kotlinx.coroutines.Job? = null
 
     init {
@@ -161,22 +164,28 @@ class MapViewModel @Inject constructor(
         if (autoPlayJob?.isActive == true) {
             autoPlayJob?.cancel()
             autoPlayJob = null
+            _isAutoPlaying.value = false
         } else {
             autoPlayJob = viewModelScope.launch {
-                while (true) {
-                    delay(800)
-                    val state = _radarState.value
-                    if (state.selectedFrameIndex < state.frames.size - 1) {
-                        selectNextFrame()
-                    } else {
-                        selectFrame(0)
+                try {
+                    while (true) {
+                        delay(800)
+                        val state = _radarState.value
+                        if (state.selectedFrameIndex < state.frames.size - 1) {
+                            selectNextFrame()
+                        } else {
+                            selectFrame(0)
+                        }
                     }
+                } finally {
+                    _isAutoPlaying.value = false
                 }
             }
+            _isAutoPlaying.value = true
         }
     }
 
-    fun isAutoPlaying(): Boolean = autoPlayJob?.isActive == true
+    fun isAutoPlaying(): Boolean = _isAutoPlaying.value
 
     fun selectBaseMapStyle(style: BaseMapStyle) {
         _selectedBaseMap.value = style

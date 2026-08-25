@@ -15,7 +15,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,26 +26,32 @@ class SettingsManager @Inject constructor(
 ) {
     private val dataStore = context.dataStore
 
-    private object Keys {
-        val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
-        val IS_FAHRENHEIT = booleanPreferencesKey("is_fahrenheit")
-        val WIND_UNIT = stringPreferencesKey("wind_unit")
-        val THEME_MODE = stringPreferencesKey("theme_mode")
-        val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
-        val RAIN_ALERT_THRESHOLD = intPreferencesKey("rain_alert_threshold")
-        val CHECK_INTERVAL_HOURS = intPreferencesKey("check_interval_hours")
-        val SEVERITY_FILTER = stringPreferencesKey("severity_filter")
-        val WIDGET_SIZE = stringPreferencesKey("widget_size")
-        val WIND_ALERT_THRESHOLD = intPreferencesKey("wind_alert_threshold")
-        val UV_ALERT_THRESHOLD = intPreferencesKey("uv_alert_threshold")
-        val HEAT_ALERT_THRESHOLD = intPreferencesKey("heat_alert_threshold")
-        val COLD_ALERT_THRESHOLD = intPreferencesKey("cold_alert_threshold")
-        val ENABLE_WIND_ALERTS = booleanPreferencesKey("enable_wind_alerts")
-        val ENABLE_UV_ALERTS = booleanPreferencesKey("enable_uv_alerts")
-        val ENABLE_HEAT_ALERTS = booleanPreferencesKey("enable_heat_alerts")
-        val ENABLE_COLD_ALERTS = booleanPreferencesKey("enable_cold_alerts")
-        val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
-    }
+private object Keys {
+    val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+    val IS_FAHRENHEIT = booleanPreferencesKey("is_fahrenheit")
+    val WIND_UNIT = stringPreferencesKey("wind_unit")
+    val THEME_MODE = stringPreferencesKey("theme_mode")
+    val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
+    val RAIN_ALERT_THRESHOLD = intPreferencesKey("rain_alert_threshold")
+    val CHECK_INTERVAL_HOURS = intPreferencesKey("check_interval_hours")
+    val SEVERITY_FILTER = stringPreferencesKey("severity_filter")
+    val WIDGET_SIZE = stringPreferencesKey("widget_size")
+    val WIND_ALERT_THRESHOLD = intPreferencesKey("wind_alert_threshold")
+    val UV_ALERT_THRESHOLD = intPreferencesKey("uv_alert_threshold")
+    val HEAT_ALERT_THRESHOLD = intPreferencesKey("heat_alert_threshold")
+    val COLD_ALERT_THRESHOLD = intPreferencesKey("cold_alert_threshold")
+    val ENABLE_WIND_ALERTS = booleanPreferencesKey("enable_wind_alerts")
+    val ENABLE_UV_ALERTS = booleanPreferencesKey("enable_uv_alerts")
+    val ENABLE_HEAT_ALERTS = booleanPreferencesKey("enable_heat_alerts")
+    val ENABLE_COLD_ALERTS = booleanPreferencesKey("enable_cold_alerts")
+    val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
+    // Snooze settings
+    val ENABLE_SNOOZING = booleanPreferencesKey("enable_snoozing")
+    val SNOOZE_DURATION_MS = intPreferencesKey("snooze_duration_ms")
+    // Push notification settings
+    val ENABLE_PUSH_ALERTS = booleanPreferencesKey("enable_push_alerts")
+    val PUSH_ALERT_FREQUENCY_HOURS = intPreferencesKey("push_alert_frequency_hours")
+}
 
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[Keys.NOTIFICATIONS_ENABLED] ?: true
@@ -148,6 +153,50 @@ class SettingsManager @Inject constructor(
 
     suspend fun setSeverityFilter(value: String) {
         dataStore.edit { it[Keys.SEVERITY_FILTER] = value }
+    }
+
+    val enableSnoozingFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[Keys.ENABLE_SNOOZING] ?: false
+    }
+
+    suspend fun getEnableSnoozing(): Boolean =
+        dataStore.data.first()[Keys.ENABLE_SNOOZING] ?: false
+
+    suspend fun setEnableSnoozing(value: Boolean) {
+        dataStore.edit { it[Keys.ENABLE_SNOOZING] = value }
+    }
+
+    val snoozeDurationMsFlow: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[Keys.SNOOZE_DURATION_MS] ?: 3600000
+    }
+
+    suspend fun getSnoozeDurationMs(): Int =
+        dataStore.data.first()[Keys.SNOOZE_DURATION_MS] ?: 3600000
+
+    suspend fun setSnoozeDurationMs(value: Int) {
+        dataStore.edit { it[Keys.SNOOZE_DURATION_MS] = value }
+    }
+
+    val enablePushAlertsFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[Keys.ENABLE_PUSH_ALERTS] ?: true
+    }
+
+    suspend fun getEnablePushAlerts(): Boolean =
+        dataStore.data.first()[Keys.ENABLE_PUSH_ALERTS] ?: true
+
+    suspend fun setEnablePushAlerts(value: Boolean) {
+        dataStore.edit { it[Keys.ENABLE_PUSH_ALERTS] = value }
+    }
+
+    val pushAlertFrequencyHoursFlow: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[Keys.PUSH_ALERT_FREQUENCY_HOURS] ?: 24
+    }
+
+    suspend fun getPushAlertFrequencyHours(): Int =
+        dataStore.data.first()[Keys.PUSH_ALERT_FREQUENCY_HOURS] ?: 24
+
+    suspend fun setPushAlertFrequencyHours(value: Int) {
+        dataStore.edit { it[Keys.PUSH_ALERT_FREQUENCY_HOURS] = value }
     }
 
     val widgetSizeFlow: Flow<String> = dataStore.data.map { prefs ->

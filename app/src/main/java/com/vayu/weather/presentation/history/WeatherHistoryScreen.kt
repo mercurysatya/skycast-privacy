@@ -71,13 +71,13 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 // ---- Color palette ----
-private val CardBg = Color.White.copy(alpha = 0.12f)
+private val CardBg = Color.White.copy(alpha = 0.1f)
 private val AccentBlue = Color(0xFF38BDF8)
-private val WarmOrange = Color(0xFFFFB74D)
-private val CoolBlue = Color(0xFF4FC3F7)
-private val ChartRed = Color(0xFFEF5350)
-private val ChartBlue = Color(0xFF42A5F5)
-private val Green = Color(0xFF66BB6A)
+private val WarmOrange = Color(0xFFF97316)
+private val CoolBlue = Color(0xFF38BDF8)
+private val ChartRed = Color(0xFFEF4444)
+private val ChartBlue = Color(0xFF38BDF8)
+private val Green = Color(0xFF22C55E)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -242,8 +242,7 @@ private fun StatsRow(stats: HistoryStats) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        StatCard(
+    ) {        StatCard(
             label = stringResource(R.string.avg_temp),
             value = "${stats.avgTemp.roundToInt()}°",
             color = AccentBlue,
@@ -279,8 +278,9 @@ private fun StatCard(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -298,7 +298,7 @@ private fun StatCard(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.6f)
+                color = Color.White.copy(alpha = 0.55f)
             )
         }
     }
@@ -312,15 +312,16 @@ private fun StatCard(
 private fun TemperatureChart(dailyData: List<WeatherHistoryDay>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = stringResource(R.string.temperature_trends),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.9f),
+                color = Color.White.copy(alpha = 0.85f),
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
@@ -482,15 +483,16 @@ private fun HumidityChart(dailyData: List<WeatherHistoryDay>) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = stringResource(R.string.humidity_trends),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.9f),
+                color = Color.White.copy(alpha = 0.85f),
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 

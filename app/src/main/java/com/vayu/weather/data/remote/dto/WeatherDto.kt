@@ -48,37 +48,37 @@ data class CurrentWeatherDto(
 @JsonClass(generateAdapter = true)
 data class HourlyWeatherDto(
     @Json(name = "time")
-    val time: List<String>,
+    val time: List<String?>,
     @Json(name = "temperature_2m")
-    val temperatures: List<Double>,
+    val temperatures: List<Double?>,
     @Json(name = "weather_code")
-    val weatherCodes: List<Int>,
+    val weatherCodes: List<Int?>,
     @Json(name = "relative_humidity_2m")
-    val humidities: List<Double>? = null,
+    val humidities: List<Double?>? = null,
     @Json(name = "pressure_msl")
-    val pressures: List<Double>? = null,
+    val pressures: List<Double?>? = null,
     @Json(name = "wind_speed_10m")
-    val windSpeeds: List<Double>? = null,
+    val windSpeeds: List<Double?>? = null,
     @Json(name = "visibility")
-    val visibility: List<Double>? = null
+    val visibility: List<Double?>? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class DailyWeatherDto(
     @Json(name = "time")
-    val time: List<String>,
+    val time: List<String?>,
     @Json(name = "weather_code")
-    val weatherCodes: List<Int>,
+    val weatherCodes: List<Int?>,
     @Json(name = "temperature_2m_max")
-    val maxTemperatures: List<Double>,
+    val maxTemperatures: List<Double?>,
     @Json(name = "temperature_2m_min")
-    val minTemperatures: List<Double>,
+    val minTemperatures: List<Double?>,
     @Json(name = "uv_index_max")
-    val uvIndices: List<Double>? = null,
+    val uvIndices: List<Double?>? = null,
     @Json(name = "precipitation_probability_max")
-    val precipitationProbabilities: List<Int>? = null,
+    val precipitationProbabilities: List<Int?>? = null,
     @Json(name = "sunrise")
-    val sunrise: List<String>? = null,
+    val sunrise: List<String?>? = null,
     @Json(name = "sunset")
-    val sunset: List<String>? = null
+    val sunset: List<String?>? = null
 )

@@ -88,7 +88,6 @@ fun OnboardingScreen(
         notificationPermissionGranted = granted
     }
 
-    // Check current permission status
     LaunchedEffect(Unit) {
         locationPermissionGranted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
@@ -106,19 +105,19 @@ fun OnboardingScreen(
             icon = Icons.Rounded.WbSunny,
             title = stringResource(R.string.onboarding_welcome_title),
             description = stringResource(R.string.onboarding_welcome_desc),
-            iconTint = Color(0xFFFFD54F)
+            iconTint = Color(0xFFFBBF24)
         ),
         OnboardingPage(
             icon = Icons.Rounded.Cloud,
             title = stringResource(R.string.onboarding_features_title),
             description = stringResource(R.string.onboarding_features_desc),
-            iconTint = Color(0xFF4FC3F7)
+            iconTint = Color(0xFF38BDF8)
         ),
         OnboardingPage(
             icon = Icons.Rounded.LocationOn,
             title = stringResource(R.string.onboarding_location_title),
             description = stringResource(R.string.onboarding_location_desc),
-            iconTint = Color(0xFF66BB6A),
+            iconTint = Color(0xFF22C55E),
             actionLabel = if (locationPermissionGranted) stringResource(R.string.onboarding_permission_granted) else stringResource(R.string.onboarding_grant_location),
             onAction = {
                 if (!locationPermissionGranted) {
@@ -136,7 +135,7 @@ fun OnboardingScreen(
             icon = Icons.Rounded.Notifications,
             title = stringResource(R.string.onboarding_notifications_title),
             description = stringResource(R.string.onboarding_notifications_desc),
-            iconTint = Color(0xFFFF7043),
+            iconTint = Color(0xFFF97316),
             actionLabel = if (notificationPermissionGranted) stringResource(R.string.onboarding_permission_granted) else stringResource(R.string.onboarding_grant_notifications),
             onAction = {
                 if (!notificationPermissionGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -155,9 +154,9 @@ fun OnboardingScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF0D1B3E),
-                        Color(0xFF1A2850),
-                        Color(0xFF122650)
+                        Color(0xFF0F172A),
+                        Color(0xFF1E293B),
+                        Color(0xFF0F172A)
                     )
                 )
             )
@@ -181,7 +180,7 @@ fun OnboardingScreen(
                             }
                         },
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color.White.copy(alpha = 0.7f)
+                            contentColor = Color.White.copy(alpha = 0.6f)
                         )
                     ) {
                         Text(stringResource(R.string.onboarding_skip))
@@ -212,9 +211,9 @@ fun OnboardingScreen(
                             .clip(CircleShape)
                             .background(
                                 if (index == pagerState.currentPage)
-                                    Color(0xFF4FC3F7)
+                                    Color(0xFF38BDF8)
                                 else
-                                    Color.White.copy(alpha = 0.3f)
+                                    Color.White.copy(alpha = 0.25f)
                             )
                     )
                 }
@@ -236,15 +235,15 @@ fun OnboardingScreen(
                     .padding(horizontal = 32.dp)
                     .padding(bottom = 48.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4FC3F7)
+                    containerColor = Color(0xFF38BDF8)
                 ),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(14.dp)
             ) {
                 Text(
                     text = if (isLastPage) stringResource(R.string.onboarding_get_started) else stringResource(R.string.onboarding_next),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF0D1B3E),
+                    color = Color(0xFF0F172A),
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
@@ -263,10 +262,10 @@ private fun OnboardingPageContent(page: OnboardingPage) {
     ) {
         // Icon
         Card(
-            modifier = Modifier.size(120.dp),
-            shape = RoundedCornerShape(32.dp),
+            modifier = Modifier.size(100.dp),
+            shape = RoundedCornerShape(28.dp),
             colors = CardDefaults.cardColors(
-                containerColor = page.iconTint.copy(alpha = 0.15f)
+                containerColor = page.iconTint.copy(alpha = 0.12f)
             )
         ) {
             Box(
@@ -276,13 +275,13 @@ private fun OnboardingPageContent(page: OnboardingPage) {
                 Icon(
                     imageVector = page.icon,
                     contentDescription = null,
-                    modifier = Modifier.size(56.dp),
+                    modifier = Modifier.size(48.dp),
                     tint = page.iconTint
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(36.dp))
 
         // Title
         Text(
@@ -293,26 +292,26 @@ private fun OnboardingPageContent(page: OnboardingPage) {
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Description
         Text(
             text = page.description,
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.White.copy(alpha = 0.7f),
+            color = Color.White.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
             lineHeight = 24.sp
         )
 
         // Action button (for permission pages)
         if (page.actionLabel != null && page.onAction != null) {
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             if (page.actionEnabled) {
                 FilledTonalButton(
                     onClick = page.onAction,
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = page.iconTint.copy(alpha = 0.2f),
+                        containerColor = page.iconTint.copy(alpha = 0.15f),
                         contentColor = page.iconTint
                     ),
                     shape = RoundedCornerShape(12.dp)
@@ -320,7 +319,7 @@ private fun OnboardingPageContent(page: OnboardingPage) {
                     Icon(
                         imageVector = page.icon,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -337,14 +336,14 @@ private fun OnboardingPageContent(page: OnboardingPage) {
                     Icon(
                         Icons.Rounded.CheckCircle,
                         contentDescription = null,
-                        tint = Color(0xFF66BB6A),
-                        modifier = Modifier.size(24.dp)
+                        tint = Color(0xFF22C55E),
+                        modifier = Modifier.size(22.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = page.actionLabel,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF66BB6A),
+                        color = Color(0xFF22C55E),
                         fontWeight = FontWeight.Medium
                     )
                 }

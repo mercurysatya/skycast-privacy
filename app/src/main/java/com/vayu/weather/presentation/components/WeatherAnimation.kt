@@ -4,6 +4,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -11,8 +12,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,7 +72,7 @@ fun WeatherAnimation(
     weatherCode: Int,
     modifier: Modifier = Modifier
 ) {
-    val color = MaterialTheme.colorScheme.onPrimaryContainer
+    val color = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer
     when (weatherCode) {
         0 -> SunnyAnimation(color, modifier)
         1, 2, 3 -> CloudyAnimation(color, modifier)
@@ -84,24 +83,30 @@ fun WeatherAnimation(
     }
 }
 
+/**
+ * Dynamic weather-aware gradient colors.
+ * Sunny → warm golden-blue, Rainy → cool dark slate, etc.
+ */
 fun computeSkyGradient(code: Int, isDay: Boolean): List<Color> {
     if (!isDay) return when (code) {
-        0 -> listOf(Color(0xFF0A1628), Color(0xFF0D1B3E), Color(0xFF122650))
-        1, 2, 3 -> listOf(Color(0xFF0E1A30), Color(0xFF132040), Color(0xFF1A2850))
-        51, 53, 55, 61, 63, 65, 80, 81, 82 -> listOf(Color(0xFF0E1520), Color(0xFF121C30), Color(0xFF162240))
-        95, 96, 99 -> listOf(Color(0xFF0A0E18), Color(0xFF0E1220), Color(0xFF121628))
-        else -> listOf(Color(0xFF0A1628), Color(0xFF0D1B3E), Color(0xFF122650))
+        0 -> listOf(Color(0xFF070D1F), Color(0xFF0D1B3E), Color(0xFF132650))
+        1, 2, 3 -> listOf(Color(0xFF0A1228), Color(0xFF111E3A), Color(0xFF1A2D52))
+        in 51..55, in 61..65, in 80..82 -> listOf(Color(0xFF080E1A), Color(0xFF0E1628), Color(0xFF14203A))
+        in 95..99 -> listOf(Color(0xFF06090F), Color(0xFF0A0F1A), Color(0xFF0E1424))
+        else -> listOf(Color(0xFF070D1F), Color(0xFF0D1B3E), Color(0xFF132650))
     }
 
     return when (code) {
-        0 -> listOf(Color(0xFF4AA3DF), Color(0xFF5BB5EC), Color(0xFF7EC8F0))
-        1 -> listOf(Color(0xFF6AAFDB), Color(0xFF7BBDE8), Color(0xFF8EC9EF))
-        2, 3 -> listOf(Color(0xFF7DA0BE), Color(0xFF8AAFC8), Color(0xFF97BED1))
-        45, 48 -> listOf(Color(0xFF9BADB8), Color(0xFFA8BAC3), Color(0xFFB5C7CE))
-        51, 53, 55, 61, 63, 65, 80, 81, 82 -> listOf(Color(0xFF5A7A8C), Color(0xFF6B8B9C), Color(0xFF7C9CAC))
-        71, 73, 75 -> listOf(Color(0xFFB8D4E8), Color(0xFFC8DEF0), Color(0xFFD8E8F5))
-        95, 96, 99 -> listOf(Color(0xFF2C3E50), Color(0xFF34495E), Color(0xFF3D566E))
-        else -> listOf(Color(0xFF6AAFDB), Color(0xFF7BBDE8), Color(0xFF8EC9EF))
+        0 -> listOf(Color(0xFF2196F3), Color(0xFF42A5F5), Color(0xFF64B5F6)) // bright sunny blue
+        1 -> listOf(Color(0xFF42A5F5), Color(0xFF5C9CE6), Color(0xFF7EC8F0)) // slightly muted
+        2, 3 -> listOf(Color(0xFF546E7A), Color(0xFF607D8B), Color(0xFF78909C)) // slate grey
+        45, 48 -> listOf(Color(0xFF78909C), Color(0xFF90A4AE), Color(0xFFB0BEC5)) // fog grey
+        in 51..55 -> listOf(Color(0xFF37474F), Color(0xFF455A64), Color(0xFF546E7A)) // light rain
+        in 61..65 -> listOf(Color(0xFF263238), Color(0xFF37474F), Color(0xFF455A64)) // moderate rain
+        in 80..82 -> listOf(Color(0xFF1B2838), Color(0xFF2C3E50), Color(0xFF34495E)) // heavy rain
+        in 71..75 -> listOf(Color(0xFF90CAF9), Color(0xFFBBDEFB), Color(0xFFE3F2FD)) // snow
+        in 95..99 -> listOf(Color(0xFF1A1A2E), Color(0xFF16213E), Color(0xFF0F3460)) // thunderstorm
+        else -> listOf(Color(0xFF42A5F5), Color(0xFF5C9CE6), Color(0xFF7EC8F0))
     }
 }
 
@@ -168,18 +173,14 @@ private fun NightSkyOverlay(code: Int) {
             )
         }
 
+        // Moon
         val moonX = size.width * 0.85f
         val moonY = size.height * 0.08f
         val moonR = minOf(size.width, size.height) * 0.03f
         drawCircle(Color(0xFFF5F5DC).copy(alpha = 0.85f), moonR, Offset(moonX, moonY))
         drawCircle(Color(0xFFF5F5DC).copy(alpha = 0.12f), moonR * 1.5f, Offset(moonX, moonY))
         drawCircle(Color(0xFFF5F5DC).copy(alpha = 0.06f), moonR * 2.0f, Offset(moonX, moonY))
-
-        drawCircle(
-            Color(0xFF0A0E27),
-            moonR * 0.8f,
-            Offset(moonX + moonR * 0.25f, moonY - moonR * 0.15f)
-        )
+        drawCircle(Color(0xFF0A0E27), moonR * 0.8f, Offset(moonX + moonR * 0.25f, moonY - moonR * 0.15f))
 
         if (activeShootingStar >= 0 && shootingProgress >= 0f) {
             val s = shootingStars[activeShootingStar]
@@ -191,21 +192,75 @@ private fun NightSkyOverlay(code: Int) {
             val endY = startY + sin(rad) * len
             drawLine(
                 Color.White.copy(alpha = (1f - shootingProgress) * 0.8f),
-                Offset(startX, startY),
-                Offset(endX, endY),
-                strokeWidth = 2f
+                Offset(startX, startY), Offset(endX, endY), strokeWidth = 2f
             )
             drawCircle(
                 Color.White.copy(alpha = (1f - shootingProgress) * 0.6f),
-                3f,
-                Offset(startX, startY)
+                3f, Offset(startX, startY)
             )
+        }
+    }
+}
+
+// ============================================================
+// NIGHT AURORA EFFECT (new!)
+// ============================================================
+
+@Composable
+private fun NightAuroraOverlay() {
+    val infinite = rememberInfiniteTransition(label = "aurora")
+    val drift by infinite.animateFloat(
+        0f, 1f,
+        infiniteRepeatable(tween(8000, easing = LinearEasing), RepeatMode.Restart),
+        label = "aurora_drift"
+    )
+    val shimmer by infinite.animateFloat(
+        0.3f, 0.7f,
+        infiniteRepeatable(tween(4000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "aurora_shimmer"
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val w = size.width
+        val h = size.height
+
+        // Aurora bands — subtle green/blue waves
+        val auroraColors = listOf(
+            Color(0xFF00E5FF).copy(alpha = 0.03f * shimmer),
+            Color(0xFF69F0AE).copy(alpha = 0.04f * shimmer),
+            Color(0xFF40C4FF).copy(alpha = 0.02f * shimmer)
+        )
+
+        for (i in 0..2) {
+            val yOffset = h * 0.15f + i * h * 0.08f
+            val waveAmplitude = 40f + i * 20f
+            val phase = drift * 2 * PI + i * 1.2
+
+            for (x in 0..w.toInt() step 8) {
+                val xF = x.toFloat()
+                val normalizedX = xF / w
+                val waveY = yOffset + (sin(normalizedX * 4 * PI.toFloat() + phase.toFloat()) * waveAmplitude)
+                val alpha = auroraColors[i].alpha * (1f - (normalizedX - 0.3f).coerceIn(0f, 0.7f) / 0.7f)
+
+                if (alpha > 0.005f) {
+                    drawCircle(
+                        color = auroraColors[i].copy(alpha = alpha),
+                        radius = 30f + i * 10f,
+                        center = Offset(xF, waveY)
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun NightAnimation(code: Int) {
+    // Show aurora on clear nights
+    if (code == 0 || code in 1..3) {
+        NightAuroraOverlay()
+    }
+
     val isStorm = code in 95..99
     val isRain = code in 51..55 || code in 61..65 || code in 80..82
 
@@ -419,6 +474,10 @@ private fun ThunderstormBackground() {
         }
     }
 }
+
+// ============================================================
+// ICON-LEVEL ANIMATIONS (for detail screens)
+// ============================================================
 
 @Composable
 private fun SunnyAnimation(color: Color, modifier: Modifier) {

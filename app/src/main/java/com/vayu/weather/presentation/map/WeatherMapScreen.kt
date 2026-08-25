@@ -104,6 +104,7 @@ fun WeatherMapScreen(
     val radarState by mapViewModel.radarState.collectAsState()
     val selectedBaseMap by mapViewModel.selectedBaseMap.collectAsState()
     val isRadarVisible by mapViewModel.isRadarVisible.collectAsState()
+    val isAutoPlaying by mapViewModel.isAutoPlaying.collectAsState()
 
     LaunchedEffect(Unit) {
         userLocation = locationTracker.getCurrentLocation()
@@ -258,7 +259,7 @@ fun WeatherMapScreen(
                 onPreviousFrame = { mapViewModel.selectPreviousFrame() },
                 onNextFrame = { mapViewModel.selectNextFrame() },
                 onToggleAutoPlay = { mapViewModel.toggleAutoPlay() },
-                isAutoPlaying = mapViewModel.isAutoPlaying(),
+                isAutoPlaying = isAutoPlaying,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 16.dp)

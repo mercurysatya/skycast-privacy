@@ -4,51 +4,57 @@ plugins {
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.jetbrains.kotlin.plugin.serialization)
     alias(libs.plugins.hilt)
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
+
+// AdMob IDs come from gradle.properties so release builds can use real production IDs.
+val admobAppId = (project.findProperty("ADMOB_APP_ID") as? String)
+    ?: "ca-app-pub-3940256099942544~3347511713"
+val admobBannerId = (project.findProperty("ADMOB_BANNER_ID") as? String)
+    ?: "ca-app-pub-3940256099942544/6300978111"
+val admobInterstitialId = (project.findProperty("ADMOB_INTERSTITIAL_ID") as? String)
+    ?: "ca-app-pub-3940256099942544/1033173712"
 
 android {
     namespace = "com.vayu.weather"
     compileSdk = 37
-
+    
+    buildFeatures {
+        buildConfig = true
+    }
+    
     defaultConfig {
         applicationId = "com.vayu.weather"
-        minSdk = 26
-        targetSdk = 37
-        versionCode = 4
-        versionName = "1.4"
-
+        minSdk = 24
+        targetSdk = 36
+        versionCode = 5
+        versionName = "1.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // TODO: Replace with your real AdMob IDs before production release
-        // These are Google's official test IDs for development
-        buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-3940256099942544~3347511713\"")
-        buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-3940256099942544/6300978111\"")
-        buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-3940256099942544/1033173712\"")
-
-        // Manifest placeholder for AdMob APPLICATION_ID
-        manifestPlaceholders["ADMOB_APP_ID"] = "ca-app-pub-3940256099942544~3347511713"
+        manifestPlaceholders["ADMOB_APP_ID"] = admobAppId
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
-    signingConfigs {
-        val storePasswordEnv = System.getenv("VAYU_STORE_PASSWORD")
-        val keyAliasEnv = System.getenv("VAYU_KEY_ALIAS")
-        val keyPasswordEnv = System.getenv("VAYU_KEY_PASSWORD")
-        if (!storePasswordEnv.isNullOrEmpty() && !keyAliasEnv.isNullOrEmpty() && !keyPasswordEnv.isNullOrEmpty()) {
-            create("release") {
-                storeFile = file("vayu-release-key.jks")
-                storePassword = storePasswordEnv
-                this.keyAlias = keyAliasEnv
-                this.keyPassword = keyPasswordEnv
-            }
+    kotlin {
+        jvmToolchain(17)
+        compilerOptions {
+            freeCompilerArgs.add("-Xannotation-default-target=param-property")
         }
     }
 
     buildTypes {
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
+            buildConfigField("Boolean", "DEBUG", "true")
+            buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-3940256099942544/6300978111\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-3940256099942544/1033173712\"")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -56,17 +62,20 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.findByName("debug")
+            buildConfigField("Boolean", "DEBUG", "false")
+            buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-3940256099942544/6300978111\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-3940256099942544/1033173712\"")
         }
     }
-    buildFeatures {
-        compose = true
-        buildConfig = true
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
+    implementation(platform(libs.androidx.firebase.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.adaptive)
     implementation(libs.androidx.compose.adaptive.layout)
@@ -80,19 +89,29 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.hilt.navigation.compose)
-    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
+    implementation(libs.play.services.location)
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.work.runtime.ktx)
 
     implementation(libs.mpAndroidChart)
     implementation(libs.mapLibreCompose)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
     implementation(libs.play.services.ads)
-    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
+    implementation("com.google.firebase:firebase-config")
+    implementation("com.google.firebase:firebase-appcheck")
+
+    implementation("com.google.android.gms:play-services-ads:25.4.0")
+
+    implementation("com.google.android.ump:user-messaging-platform:2.2.0")
+
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.navigation3.runtime)
@@ -106,29 +125,27 @@ dependencies {
     implementation(libs.logging.interceptor)
     implementation(libs.material)
     implementation(libs.moshi.kotlin)
-    implementation(libs.okhttp)
     implementation(libs.converter.moshi)
-    implementation(libs.play.services.location)
+    implementation(libs.okhttp)
     implementation(libs.retrofit)
-    testImplementation(libs.androidx.core)
+
+    testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.androidx.junit)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation("org.junit.vintage:junit-vintage-engine:5.10.2")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
     testImplementation("org.mockito:mockito-core:5.8.0")
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(platform(libs.androidx.core))
     androidTestImplementation(libs.androidx.runner)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
     ksp(libs.androidx.room.compiler)
     ksp(libs.moshi.kotlin.codegen)
-}
-
-// All annotation processing is done via KSP. Clear the javac annotation processor
-// path to prevent Moshi's deprecated Kapt processor from being auto-discovered.
-tasks.withType<JavaCompile>().configureEach {
-    options.annotationProcessorPath = files()
 }
