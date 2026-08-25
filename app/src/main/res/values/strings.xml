@@ -322,6 +322,7 @@ Try selecting a different severity level.</string>
     <string name="use_12hour_clock_toast">Clock: 12-hour</string>
     <string name="pressure_unit_toast">Pressure: %1$s</string>
     <string name="precipitation_unit_toast">Precipitation: %1$s</string>
+    <string name="offline_indicator">Showing cached data — pull to refresh</string>
 
     <!-- Air Quality -->
     <string name="air_quality">Air Quality</string>

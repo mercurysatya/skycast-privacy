@@ -282,6 +282,13 @@ fun WeatherDashboard(
                     }
 
                     item {
+                        WeatherSummary(
+                            info = info,
+                            isCelsius = isCelsius
+                        )
+                    }
+
+                    item {
                         Spacer(modifier = Modifier.height(28.dp))
                         StaggeredEntry(index = 1) {
                         HourlyForecastSection(
@@ -433,6 +440,37 @@ fun WeatherDashboard(
 
         state.error?.let {
             ErrorState(message = it, onRetry = onRetry)
+        }
+
+        // Offline indicator — shows when data is stale or refresh failed
+        if (state.refreshError != null && state.weatherInfo != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 56.dp, start = 16.dp, end = 16.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF59E0B).copy(alpha = 0.15f))
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.CloudOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = Color(0xFFFBBF24)
+                    )
+                    Text(
+                        text = stringResource(R.string.offline_indicator),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFFFBBF24)
+                    )
+                }
+            }
         }
 
         SnackbarHost(
@@ -660,6 +698,110 @@ private fun HeroSection(
 }
 
 // ============================================================
+// WEATHER SUMMARY — contextual sentence below hero
+// ============================================================
+
+@Composable
+private fun WeatherSummary(
+    info: WeatherInfo,
+    isCelsius: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val summary = remember(info) { generateWeatherSummary(info, isCelsius) }
+    if (summary.isNotEmpty()) {
+        Text(
+            text = summary,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.65f),
+            textAlign = TextAlign.Center,
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 8.dp)
+        )
+    }
+}
+
+private fun plainWeatherDescription(code: Int, isDay: Boolean): String = when (code) {
+    0 -> if (isDay) "clear sky" else "clear night"
+    1 -> "mainly clear"
+    2 -> "partly cloudy"
+    3 -> "overcast"
+    45, 48 -> "fog"
+    51 -> "light drizzle"
+    53 -> "moderate drizzle"
+    55 -> "dense drizzle"
+    61 -> "slight rain"
+    63 -> "moderate rain"
+    65 -> "heavy rain"
+    71 -> "slight snow"
+    73 -> "moderate snow"
+    75 -> "heavy snow"
+    80 -> "rain showers"
+    81 -> "moderate rain showers"
+    82 -> "violent rain showers"
+    95 -> "thunderstorm"
+    96 -> "thunderstorm with hail"
+    99 -> "thunderstorm with heavy hail"
+    else -> "cloudy"
+}
+
+private fun generateWeatherSummary(info: WeatherInfo, isCelsius: Boolean): String {
+    val current = info.current
+    val today = info.daily.firstOrNull()
+    val nextHours = info.hourly.sortedBy { it.time }.take(6)
+    val nowHour = java.time.LocalDateTime.now().hour
+    val timeOfDay = when {
+        nowHour in 5..11 -> "this morning"
+        nowHour in 12..16 -> "this afternoon"
+        nowHour in 17..20 -> "this evening"
+        else -> "tonight"
+    }
+    val temp = current.temperature.roundToInt()
+    val high = today?.maxTemp?.roundToInt()
+    val low = today?.minTemp?.roundToInt()
+    val precipHours = nextHours.count { it.weatherCode in 51..82 || it.weatherCode in 95..99 }
+    val windSpeed = current.windSpeed ?: 0.0
+    val isHot = temp >= 35
+    val isCold = temp <= 5
+    val isWindy = windSpeed > 40
+    val isRainy = current.weatherCode in 51..82 || current.weatherCode in 95..99
+    val isStormy = current.weatherCode in 95..99
+
+    return buildString {
+        // Opening sentence
+        when {
+            isStormy -> append("Stormy conditions with thunder and lightning $timeOfDay.")
+            isRainy && windSpeed > 30 -> append("Rain and gusty winds $timeOfDay.")
+            isRainy -> append("Rain expected $timeOfDay.")
+            isHot -> append("Very hot at ${temp}° — stay hydrated and avoid prolonged sun exposure.")
+            isCold -> append("Cold at ${temp}° — dress warmly $timeOfDay.")
+            isWindy -> append("Strong winds of ${windSpeed.roundToInt()} km/h $timeOfDay.")
+            current.weatherCode == 0 && current.isDay -> append("Beautiful clear skies $timeOfDay.")
+            current.weatherCode in 1..2 -> append("Mostly clear with some clouds $timeOfDay.")
+            current.weatherCode == 3 -> append("Overcast skies $timeOfDay.")
+            current.weatherCode in 45..48 -> append("Foggy conditions may reduce visibility.")
+            current.weatherCode in 71..75 -> append("Snow expected $timeOfDay.")
+            else -> append("Current conditions: ${plainWeatherDescription(current.weatherCode, current.isDay)}.")
+        }
+        // Additional context
+        if (precipHours > 2) {
+            append(" Rain likely in $precipHours of the next 6 hours.")
+        }
+        if (high != null && low != null) {
+            val tempDesc = when {
+                high >= 40 -> "extreme heat"
+                high >= 35 -> "very warm"
+                high >= 28 -> "warm"
+                high >= 20 -> "mild"
+                high >= 10 -> "cool"
+                else -> "cold"
+            }
+            append(" Today will be $tempDesc with a high of ${high}° and low of ${low}°.")
+        }
+    }
+}
+
+// ============================================================
 // HOURLY FORECAST — modern horizontal scroller
 // ============================================================
 
@@ -668,6 +810,11 @@ private fun HourlyForecastSection(
     hourlyData: List<HourlyWeather>,
     isCelsius: Boolean
 ) {
+    var selectedHour by remember { mutableStateOf<String?>(null) }
+    val haptic = rememberHapticFeedback()
+    val sorted = remember(hourlyData) { hourlyData.sortedBy { it.time }.take(24) }
+    val selectedData = remember(selectedHour, sorted) { sorted.find { it.time == selectedHour } }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -690,14 +837,55 @@ private fun HourlyForecastSection(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                val sorted = hourlyData.sortedBy { it.time }.take(24)
                 items(sorted.size) { index ->
                     val prevTemp = sorted.getOrNull(index - 1)?.temperature
                     HourlyPillCard(
                         data = sorted[index],
                         isCelsius = isCelsius,
-                        prevTemp = prevTemp
+                        prevTemp = prevTemp,
+                        isSelected = selectedHour == sorted[index].time,
+                        onClick = {
+                            haptic(HapticFeedbackConstants.VIRTUAL_KEY)
+                            selectedHour = if (selectedHour == sorted[index].time) null else sorted[index].time
+                        }
                     )
+                }
+            }
+
+            // Expanded details for selected hour
+            AnimatedVisibility(
+                visible = selectedData != null,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                selectedData?.let { data ->
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 20.dp)
+                            .padding(top = 12.dp)
+                    ) {
+                        HorizontalDivider(
+                            color = Color.White.copy(alpha = 0.08f)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            HourlyDetailItem("Temp", "${convertTemp(data.temperature, isCelsius)}°")
+                            HourlyDetailItem("Wind", "${convertWind(data.windSpeed, WindUnit.KPH)} km/h")
+                            HourlyDetailItem("Humidity", "${data.humidity?.roundToInt() ?: "--"}%")
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            HourlyDetailItem("Pressure", "${data.pressure?.roundToInt() ?: "--"} hPa")
+                            HourlyDetailItem("Visibility", data.visibility?.let { "${(it / 1000).roundToInt()} km" } ?: "--")
+                            HourlyDetailItem("Condition", localizedWeatherDescription(data.weatherCode, true))
+                        }
+                    }
                 }
             }
         }
@@ -705,10 +893,29 @@ private fun HourlyForecastSection(
 }
 
 @Composable
+private fun HourlyDetailItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.5f)
+        )
+    }
+}
+
+@Composable
 private fun HourlyPillCard(
     data: HourlyWeather,
     isCelsius: Boolean,
-    prevTemp: Double? = null
+    prevTemp: Double? = null,
+    isSelected: Boolean = false,
+    onClick: () -> Unit = {}
 ) {
     val currentHour = java.time.LocalDateTime.now()
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
@@ -749,11 +956,15 @@ private fun HourlyPillCard(
         modifier = Modifier
             .width(60.dp)
             .then(
-                if (isNow) Modifier
+                if (isSelected) Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF38BDF8).copy(alpha = 0.18f))
+                else if (isNow) Modifier
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color.White.copy(alpha = 0.12f))
                 else Modifier
             )
+            .clickable(onClick = onClick)
             .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -844,6 +1055,8 @@ private fun DailyForecastSection(
     if (dailyData.isEmpty()) return
     val allMin = remember(dailyData) { dailyData.minOf { it.minTemp }.roundToInt() }
     val allMax = remember(dailyData) { dailyData.maxOf { it.maxTemp }.roundToInt() }
+    var expandedDay by remember { mutableStateOf<String?>(null) }
+    val haptic = rememberHapticFeedback()
 
     Card(
         modifier = Modifier
@@ -869,7 +1082,12 @@ private fun DailyForecastSection(
                     isCelsius = isCelsius,
                     globalMin = allMin,
                     globalMax = allMax,
-                    isLast = index == dailyData.lastIndex
+                    isLast = index == dailyData.lastIndex,
+                    isExpanded = expandedDay == day.date,
+                    onClick = {
+                        haptic(HapticFeedbackConstants.VIRTUAL_KEY)
+                        expandedDay = if (expandedDay == day.date) null else day.date
+                    }
                 )
             }
         }
@@ -882,7 +1100,9 @@ private fun DailyRow(
     isCelsius: Boolean,
     globalMin: Int,
     globalMax: Int,
-    isLast: Boolean = false
+    isLast: Boolean = false,
+    isExpanded: Boolean = false,
+    onClick: () -> Unit = {}
 ) {
     val nowLabel = stringResource(R.string.now)
     val today = java.time.LocalDate.now()
@@ -904,6 +1124,7 @@ private fun DailyRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable(onClick = onClick)
                 .padding(horizontal = 20.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -965,6 +1186,38 @@ private fun DailyRow(
                 modifier = Modifier.width(28.dp),
                 textAlign = TextAlign.End
             )
+        }
+
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .padding(top = 4.dp, bottom = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    HourlyDetailItem("High", "${maxTemp}°")
+                    HourlyDetailItem("Low", "${minTemp}°")
+                    HourlyDetailItem("Rain", data.precipitationProbability?.let { "$it%" } ?: "--")
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    HourlyDetailItem("UV", data.uvIndex?.let { "${it.roundToInt()}" } ?: "--")
+                    HourlyDetailItem("Condition", localizedWeatherDescription(data.weatherCode, true))
+                    if (data.sunrise != null && data.sunset != null) {
+                        HourlyDetailItem("Sun", "${data.sunrise.take(5)} / ${data.sunset.take(5)}")
+                    }
+                }
+            }
         }
 
         if (!isLast) {

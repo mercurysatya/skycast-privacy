@@ -8,13 +8,19 @@ data class RainViewerResponseDto(
     @Json(name = "version") val version: String? = null,
     @Json(name = "generated") val generated: Long? = null,
     @Json(name = "host") val host: String? = null,
-    @Json(name = "radar") val radar: RainViewerRadarDto? = null
+    @Json(name = "radar") val radar: RainViewerRadarDto? = null,
+    @Json(name = "satellite") val satellite: RainViewerSatelliteDto? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class RainViewerRadarDto(
     @Json(name = "past") val past: List<RainViewerFrameDto>? = null,
     @Json(name = "nowcast") val nowcast: List<RainViewerFrameDto>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class RainViewerSatelliteDto(
+    @Json(name = "infrared") val infrared: List<RainViewerFrameDto>? = null
 )
 
 @JsonClass(generateAdapter = true)

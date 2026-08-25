@@ -48,7 +48,7 @@ class BaseMapStyleTest {
 
     @Test
     fun `all styles have 4 entries`() {
-        assertEquals(4, BaseMapStyle.entries.size)
+        assertEquals(5, BaseMapStyle.entries.size)
     }
 
     @Test
