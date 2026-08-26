@@ -131,6 +131,7 @@ import com.vayu.weather.presentation.components.SunArcAnimation
 import com.vayu.weather.presentation.components.StormTrackerCard
 import com.vayu.weather.presentation.components.generateStormAlerts
 import com.vayu.weather.presentation.components.GardeningPetWeatherCard
+import com.vayu.weather.presentation.components.SmartInsightsSection
 import java.time.format.DateTimeFormatter
 import kotlin.math.max
 import kotlin.math.min
@@ -416,6 +417,14 @@ fun WeatherDashboard(
                     item(key = "insights") {
                         Spacer(modifier = Modifier.height(16.dp))
                         AIInsightsCard(
+                            info = info,
+                            isCelsius = isCelsius
+                        )
+                    }
+
+                    item(key = "smart_insights") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SmartInsightsSection(
                             info = info,
                             isCelsius = isCelsius
                         )

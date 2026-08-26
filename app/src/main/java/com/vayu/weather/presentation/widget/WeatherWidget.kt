@@ -3,10 +3,10 @@ package com.vayu.weather.presentation.widget
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
-import android.content.Intent
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -14,18 +14,26 @@ import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
+import androidx.glance.color.ColorProvider
 import androidx.glance.layout.*
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import com.vayu.weather.R
 import com.vayu.weather.domain.model.WeatherDescription
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 private const val TAG = "WeatherWidget"
+
+private val white = ColorProvider(Color.White, Color.White)
+private val whiteAlpha85 = ColorProvider(Color.White.copy(alpha = 0.85f), Color.White.copy(alpha = 0.85f))
+private val whiteAlpha70 = ColorProvider(Color.White.copy(alpha = 0.7f), Color.White.copy(alpha = 0.7f))
+private val whiteAlpha60 = ColorProvider(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.6f))
+private val whiteAlpha55 = ColorProvider(Color.White.copy(alpha = 0.55f), Color.White.copy(alpha = 0.55f))
+private val rainBlue = ColorProvider(Color(0xFF90CAF9), Color(0xFF90CAF9))
 
 class WeatherWidget : GlanceAppWidget() {
 
@@ -39,11 +47,14 @@ class WeatherWidget : GlanceAppWidget() {
         val humidity = prefs.getFloat("humidity", 0f)
         val isFahrenheit = prefs.getBoolean("is_fahrenheit", false)
         val windUnit = prefs.getString("wind_unit", "KPH") ?: "KPH"
+        val cityName = prefs.getString("city_name", "") ?: ""
+        val feelsLikeC = prefs.getFloat("apparent_temperature", tempCelsius)
+        val uvIndex = prefs.getFloat("uv_index", 0f)
 
         Log.d(TAG, "provideGlance: hasData=$hasData, temp=$tempCelsius, code=$weatherCode")
 
-        val res = context.resources
         val displayTemp = if (isFahrenheit) (tempCelsius * 9 / 5 + 32).roundToInt() else tempCelsius.roundToInt()
+        val feelsLike = if (isFahrenheit) (feelsLikeC * 9 / 5 + 32).roundToInt() else feelsLikeC.roundToInt()
         val tempLabel = if (isFahrenheit) "°F" else "°C"
         val displayWind = when (windUnit) {
             "MPH" -> "${(windKph * 0.621371).roundToInt()}"
@@ -52,15 +63,10 @@ class WeatherWidget : GlanceAppWidget() {
             else -> "${windKph.roundToInt()}"
         }
         val windLabel = when (windUnit) {
-            "MPH" -> "mph"
-            "MS" -> "m/s"
-            "KNOTS" -> "kn"
-            else -> "km/h"
+            "MPH" -> "mph"; "MS" -> "m/s"; "KNOTS" -> "kn"; else -> "km/h"
         }
 
-        // Load 3-day forecast
         val forecastDays = prefs.getInt("forecast_days", 0)
-        Log.d(TAG, "forecast_days=$forecastDays")
         val forecast = mutableListOf<ForecastDay>()
         for (i in 0 until forecastDays) {
             val date = prefs.getString("day_${i}_date", null) ?: continue
@@ -68,97 +74,47 @@ class WeatherWidget : GlanceAppWidget() {
             val maxTemp = prefs.getFloat("day_${i}_max_temp", 0f)
             val code = prefs.getInt("day_${i}_weather_code", 0)
             val precip = prefs.getInt("day_${i}_precipitation", 0)
-
-            Log.d(TAG, "Day $i: date=$date, min=$minTemp, max=$maxTemp, code=$code, precip=$precip")
-
             val displayMin = if (isFahrenheit) (minTemp * 9 / 5 + 32).roundToInt() else minTemp.roundToInt()
             val displayMax = if (isFahrenheit) (maxTemp * 9 / 5 + 32).roundToInt() else maxTemp.roundToInt()
-
             val dayLabel = try {
                 val localDate = LocalDate.parse(date)
                 val today = LocalDate.now()
                 when (localDate) {
-                    today -> "Today"
-                    today.plusDays(1) -> "Tomorrow"
+                    today -> "Today"; today.plusDays(1) -> "Tmrw"
                     else -> localDate.format(DateTimeFormatter.ofPattern("EEE"))
                 }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to parse date: $date", e)
-                date.takeLast(2)
-            }
-
-            forecast.add(
-                ForecastDay(
-                    dayLabel = dayLabel,
-                    minTemp = displayMin,
-                    maxTemp = displayMax,
-                    weatherCode = code,
-                    precipitation = precip
-                )
-            )
+            } catch (e: Exception) { date.takeLast(2) }
+            forecast.add(ForecastDay(dayLabel, displayMin, displayMax, code, precip))
         }
-        Log.d(TAG, "Loaded ${forecast.size} forecast days")
 
         val widgetSize = prefs.getString("widget_size", "MEDIUM") ?: "MEDIUM"
+        val bgColor = getWeatherBgColor(weatherCode, isDay)
 
         provideContent {
             GlanceTheme {
                 Column(
                     modifier = GlanceModifier
                         .fillMaxSize()
-                        .background(GlanceTheme.colors.background)
+                        .cornerRadius(24.dp)
+                        .background(bgColor)
                         .padding(16.dp)
-                        .clickable(actionStartActivity(android.content.ComponentName(context, com.vayu.weather.MainActivity::class.java))),
+                        .clickable(actionStartActivity(
+                            android.content.ComponentName(context, com.vayu.weather.MainActivity::class.java)
+                        )),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalAlignment = Alignment.Top
                 ) {
                     if (hasData) {
                         when (widgetSize) {
-                            "SMALL" -> SmallWidgetContent(
-                                res = res,
-                                displayTemp = displayTemp,
-                                tempLabel = tempLabel,
-                                weatherCode = weatherCode
-                            )
-                            "LARGE" -> LargeWidgetContent(
-                                res = res,
-                                displayTemp = displayTemp,
-                                tempLabel = tempLabel,
-                                weatherCode = weatherCode,
-                                humidity = humidity,
-                                displayWind = displayWind,
-                                windLabel = windLabel,
-                                forecast = forecast
-                            )
-                            else -> MediumWidgetContent(
-                                res = res,
-                                displayTemp = displayTemp,
-                                tempLabel = tempLabel,
-                                weatherCode = weatherCode,
-                                humidity = humidity,
-                                displayWind = displayWind,
-                                windLabel = windLabel,
-                                forecast = forecast
-                            )
+                            "SMALL" -> SmallWidgetContent(displayTemp, tempLabel, weatherCode, cityName)
+                            "LARGE" -> LargeWidgetContent(displayTemp, tempLabel, weatherCode, humidity, displayWind, windLabel, forecast, cityName, feelsLike, uvIndex, isDay)
+                            else -> MediumWidgetContent(displayTemp, tempLabel, weatherCode, humidity, displayWind, windLabel, forecast, cityName, feelsLike, isDay)
                         }
                     } else {
-                        // Loading state
-                        Text(
-                            text = res.getString(R.string.app_name),
-                            style = TextStyle(
-                                color = GlanceTheme.colors.onSurface,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
+                        Spacer(modifier = GlanceModifier.height(16.dp))
+                        Text(text = "SkyCast", style = TextStyle(color = white, fontSize = 18.sp, fontWeight = FontWeight.Bold))
                         Spacer(modifier = GlanceModifier.height(8.dp))
-                        Text(
-                            text = res.getString(R.string.widget_loading),
-                            style = TextStyle(
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                                fontSize = 14.sp
-                            )
-                        )
+                        Text(text = "Tap to load weather", style = TextStyle(color = whiteAlpha60, fontSize = 13.sp))
                     }
                 }
             }
@@ -167,367 +123,144 @@ class WeatherWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun SmallWidgetContent(
-    res: android.content.res.Resources,
-    displayTemp: Int,
-    tempLabel: String,
-    weatherCode: Int
-) {
-    // Compact: just app name, temp, and condition
-    Text(
-        text = res.getString(R.string.app_name),
-        style = TextStyle(
-            color = GlanceTheme.colors.onSurface,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
-        )
-    )
-
-    Spacer(modifier = GlanceModifier.height(6.dp))
-
-    Text(
-        text = "$displayTemp$tempLabel",
-        style = TextStyle(
-            color = GlanceTheme.colors.primary,
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold
-        )
-    )
-
+private fun SmallWidgetContent(displayTemp: Int, tempLabel: String, weatherCode: Int, cityName: String) {
+    if (cityName.isNotEmpty()) {
+        Text(text = cityName, style = TextStyle(color = white, fontSize = 12.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+        Spacer(modifier = GlanceModifier.height(4.dp))
+    }
+    Text(text = "$displayTemp$tempLabel", style = TextStyle(color = white, fontSize = 40.sp, fontWeight = FontWeight.Bold))
     Spacer(modifier = GlanceModifier.height(2.dp))
-
-    Text(
-        text = getWeatherDescription(weatherCode),
-        style = TextStyle(
-            color = GlanceTheme.colors.onSurfaceVariant,
-            fontSize = 12.sp
-        ),
-        maxLines = 1
-    )
+    Text(text = "${getWeatherEmoji(weatherCode)} ${getWeatherDescription(weatherCode)}", style = TextStyle(color = whiteAlpha85, fontSize = 11.sp), maxLines = 1)
 }
 
 @Composable
-private fun MediumWidgetContent(
-    res: android.content.res.Resources,
-    displayTemp: Int,
-    tempLabel: String,
-    weatherCode: Int,
-    humidity: Float,
-    displayWind: String,
-    windLabel: String,
-    forecast: List<ForecastDay>
-) {
-    // Header
-    Text(
-        text = res.getString(R.string.app_name),
-        style = TextStyle(
-            color = GlanceTheme.colors.onSurface,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
-    )
-
-    Spacer(modifier = GlanceModifier.height(8.dp))
-
-    // Temperature
-    Text(
-        text = "$displayTemp$tempLabel",
-        style = TextStyle(
-            color = GlanceTheme.colors.primary,
-            fontSize = 42.sp,
-            fontWeight = FontWeight.Bold
-        )
-    )
-
-    Spacer(modifier = GlanceModifier.height(2.dp))
-
-    // Weather condition
-    Text(
-        text = getWeatherDescription(weatherCode),
-        style = TextStyle(
-            color = GlanceTheme.colors.onSurfaceVariant,
-            fontSize = 13.sp
-        ),
-        maxLines = 1
-    )
-
-    Spacer(modifier = GlanceModifier.height(12.dp))
-
-    // Humidity & Wind row
-    Row(
-        modifier = GlanceModifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "${humidity.toInt()}%",
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-            Text(
-                text = res.getString(R.string.humidity),
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 10.sp
-                )
-            )
-        }
-        Spacer(modifier = GlanceModifier.width(32.dp))
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "$displayWind $windLabel",
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-            Text(
-                text = res.getString(R.string.wind),
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 10.sp
-                )
-            )
-        }
-    }
-
-    // 3-Day Forecast
-    if (forecast.isNotEmpty()) {
-        Spacer(modifier = GlanceModifier.height(16.dp))
-
-        Text(
-            text = res.getString(R.string.widget_3day_forecast),
-            style = TextStyle(
-                color = GlanceTheme.colors.onSurface,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            modifier = GlanceModifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = GlanceModifier.height(6.dp))
-
-        forecast.forEach { day ->
-            Row(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .padding(vertical = 3.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = day.dayLabel,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 11.sp
-                    ),
-                    modifier = GlanceModifier.defaultWeight()
-                )
-                Text(
-                    text = getWeatherDescription(day.weatherCode),
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 11.sp
-                    ),
-                    modifier = GlanceModifier.defaultWeight(),
-                    maxLines = 1
-                )
-                Text(
-                    text = "${day.minTemp}°/${day.maxTemp}°",
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    modifier = GlanceModifier.defaultWeight()
-                )
-                if (day.precipitation > 0) {
-                    Text(
-                        text = "${day.precipitation}%",
-                        style = TextStyle(
-                            color = GlanceTheme.colors.primary,
-                            fontSize = 11.sp
-                        ),
-                        modifier = GlanceModifier.defaultWeight()
-                    )
-                } else {
-                    Spacer(modifier = GlanceModifier.defaultWeight())
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LargeWidgetContent(
-    res: android.content.res.Resources,
-    displayTemp: Int,
-    tempLabel: String,
-    weatherCode: Int,
-    humidity: Float,
-    displayWind: String,
-    windLabel: String,
-    forecast: List<ForecastDay>
-) {
-    // Expanded: full layout with all details + 3-day forecast
-    Row(
-        modifier = GlanceModifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.Start
-    ) {
+private fun MediumWidgetContent(displayTemp: Int, tempLabel: String, weatherCode: Int, humidity: Float, displayWind: String, windLabel: String, forecast: List<ForecastDay>, cityName: String, feelsLike: Int, isDay: Boolean) {
+    Row(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
         Column(modifier = GlanceModifier.defaultWeight()) {
-            Text(
-                text = res.getString(R.string.app_name),
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            )
-
-            Spacer(modifier = GlanceModifier.height(4.dp))
-
-            // Temperature
-            Text(
-                text = "$displayTemp$tempLabel",
-                style = TextStyle(
-                    color = GlanceTheme.colors.primary,
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-
-            // Weather condition
-            Text(
-                text = getWeatherDescription(weatherCode),
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 14.sp
-                ),
-                maxLines = 1
-            )
+            if (cityName.isNotEmpty()) {
+                Text(text = cityName, style = TextStyle(color = white, fontSize = 13.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+            }
         }
-
-        // Stats column on the right
-        Column(
-            modifier = GlanceModifier.padding(top = 24.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            Text(
-                text = "${humidity.toInt()}% ${res.getString(R.string.humidity)}",
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = 13.sp
-                )
-            )
-            Spacer(modifier = GlanceModifier.height(4.dp))
-            Text(
-                text = "$displayWind $windLabel ${res.getString(R.string.wind)}",
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = 13.sp
-                )
-            )
+        Text(text = if (isDay) "☀ Day" else "🌙 Night", style = TextStyle(color = whiteAlpha60, fontSize = 10.sp))
+    }
+    Spacer(modifier = GlanceModifier.height(4.dp))
+    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+        Text(text = "$displayTemp$tempLabel", style = TextStyle(color = white, fontSize = 48.sp, fontWeight = FontWeight.Bold))
+        Spacer(modifier = GlanceModifier.width(8.dp))
+        Column(modifier = GlanceModifier.padding(bottom = 6.dp)) {
+            Text(text = "${getWeatherEmoji(weatherCode)} ${getWeatherDescription(weatherCode)}", style = TextStyle(color = whiteAlpha85, fontSize = 12.sp), maxLines = 1)
+            Text(text = "Feels like $feelsLike$tempLabel", style = TextStyle(color = whiteAlpha60, fontSize = 11.sp))
         }
     }
-
-    // Divider
     Spacer(modifier = GlanceModifier.height(12.dp))
-
-    // 3-Day Forecast
+    Row(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        WStatItem(label = "Humidity", value = "${humidity.toInt()}%")
+        Spacer(modifier = GlanceModifier.width(24.dp))
+        WStatItem(label = "Wind", value = "$displayWind $windLabel")
+    }
     if (forecast.isNotEmpty()) {
-        Text(
-            text = res.getString(R.string.widget_3day_forecast),
-            style = TextStyle(
-                color = GlanceTheme.colors.onSurface,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            modifier = GlanceModifier.fillMaxWidth()
-        )
+        Spacer(modifier = GlanceModifier.height(14.dp))
+        forecast.take(3).forEach { day ->
+            Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(text = day.dayLabel, style = TextStyle(color = white, fontSize = 12.sp), modifier = GlanceModifier.defaultWeight())
+                Text(text = "${getWeatherEmoji(day.weatherCode)} ${getWeatherDescription(day.weatherCode)}", style = TextStyle(color = whiteAlpha70, fontSize = 11.sp), modifier = GlanceModifier.defaultWeight(), maxLines = 1)
+                Text(text = "${day.minTemp}° / ${day.maxTemp}°", style = TextStyle(color = white, fontSize = 12.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
+            }
+        }
+    }
+}
 
+@Composable
+private fun LargeWidgetContent(displayTemp: Int, tempLabel: String, weatherCode: Int, humidity: Float, displayWind: String, windLabel: String, forecast: List<ForecastDay>, cityName: String, feelsLike: Int, uvIndex: Float, isDay: Boolean) {
+    Row(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+        Column(modifier = GlanceModifier.defaultWeight()) {
+            if (cityName.isNotEmpty()) {
+                Text(text = cityName, style = TextStyle(color = white, fontSize = 14.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+            }
+        }
+        Text(text = if (isDay) "☀ Day" else "🌙 Night", style = TextStyle(color = whiteAlpha60, fontSize = 11.sp))
+    }
+    Spacer(modifier = GlanceModifier.height(2.dp))
+    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+        Text(text = "$displayTemp$tempLabel", style = TextStyle(color = white, fontSize = 56.sp, fontWeight = FontWeight.Bold))
+        Spacer(modifier = GlanceModifier.width(12.dp))
+        Column(modifier = GlanceModifier.padding(bottom = 8.dp)) {
+            Text(text = "${getWeatherEmoji(weatherCode)} ${getWeatherDescription(weatherCode)}", style = TextStyle(color = whiteAlpha85, fontSize = 14.sp), maxLines = 1)
+            Text(text = "Feels like $feelsLike$tempLabel", style = TextStyle(color = whiteAlpha60, fontSize = 12.sp))
+        }
+    }
+    Spacer(modifier = GlanceModifier.height(14.dp))
+    Row(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        WStatItem(label = "Humidity", value = "${humidity.toInt()}%")
+        Spacer(modifier = GlanceModifier.width(16.dp))
+        WStatItem(label = "Wind", value = "$displayWind $windLabel")
+        Spacer(modifier = GlanceModifier.width(16.dp))
+        WStatItem(label = "UV", value = if (uvIndex > 0) "${uvIndex.roundToInt()}" else "--")
+    }
+    Spacer(modifier = GlanceModifier.height(16.dp))
+    if (forecast.isNotEmpty()) {
+        Text(text = "3-Day Forecast", style = TextStyle(color = whiteAlpha70, fontSize = 11.sp, fontWeight = FontWeight.Medium), modifier = GlanceModifier.fillMaxWidth())
         Spacer(modifier = GlanceModifier.height(6.dp))
-
-        forecast.forEach { day ->
-            Row(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = day.dayLabel,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    modifier = GlanceModifier.defaultWeight()
-                )
-                Text(
-                    text = getWeatherDescription(day.weatherCode),
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 12.sp
-                    ),
-                    modifier = GlanceModifier.defaultWeight(),
-                    maxLines = 1
-                )
-                Text(
-                    text = "${day.minTemp}°/${day.maxTemp}°",
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    modifier = GlanceModifier.defaultWeight()
-                )
+        forecast.take(3).forEach { day ->
+            Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(text = day.dayLabel, style = TextStyle(color = white, fontSize = 12.sp, fontWeight = FontWeight.Medium), modifier = GlanceModifier.defaultWeight())
+                Text(text = "${getWeatherEmoji(day.weatherCode)} ${getWeatherDescription(day.weatherCode)}", style = TextStyle(color = whiteAlpha70, fontSize = 11.sp), modifier = GlanceModifier.defaultWeight(), maxLines = 1)
+                Text(text = "${day.minTemp}° / ${day.maxTemp}°", style = TextStyle(color = white, fontSize = 12.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
                 if (day.precipitation > 0) {
-                    Text(
-                        text = "💧 ${day.precipitation}%",
-                        style = TextStyle(
-                            color = GlanceTheme.colors.primary,
-                            fontSize = 11.sp
-                        ),
-                        modifier = GlanceModifier.defaultWeight()
-                    )
+                    Text(text = "💧${day.precipitation}%", style = TextStyle(color = rainBlue, fontSize = 11.sp), modifier = GlanceModifier.defaultWeight())
                 } else {
                     Spacer(modifier = GlanceModifier.defaultWeight())
                 }
             }
         }
     }
+}
+
+@Composable
+private fun WStatItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = value, style = TextStyle(color = white, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+        Text(text = label, style = TextStyle(color = whiteAlpha55, fontSize = 10.sp))
+    }
+}
+
+private fun getWeatherEmoji(code: Int): String = when (code) {
+    0 -> "☀️"; 1 -> "🌤️"; 2 -> "⛅"; 3 -> "☁️"
+    45, 48 -> "🌫️"; 51, 53, 55 -> "🌦️"; 56, 57 -> "🌧️"
+    61, 63, 65 -> "🌧️"; 66, 67 -> "🌧️"
+    71, 73, 75 -> "❄️"; 77 -> "🌨️"
+    80, 81, 82 -> "🌧️"; 85, 86 -> "🌨️"
+    95 -> "⛈️"; 96, 99 -> "⛈️"
+    else -> "🌤️"
+}
+
+private fun getWeatherBgColor(code: Int, isDay: Boolean): Color = when {
+    code in listOf(95, 96, 99) -> Color(0xFF1a1a2e)
+    code in listOf(61, 63, 65, 66, 67, 80, 81, 82) -> Color(0xFF1e3a5f)
+    code in listOf(71, 73, 75, 77, 85, 86) -> Color(0xFF4a6580)
+    code == 0 && isDay -> Color(0xFF1565C0)
+    code == 0 && !isDay -> Color(0xFF1a237e)
+    code in listOf(45, 48) -> Color(0xFF546E7A)
+    isDay -> Color(0xFF1976D2)
+    else -> Color(0xFF1a237e)
 }
 
 private data class ForecastDay(
-    val dayLabel: String,
-    val minTemp: Int,
-    val maxTemp: Int,
-    val weatherCode: Int,
-    val precipitation: Int
+    val dayLabel: String, val minTemp: Int, val maxTemp: Int,
+    val weatherCode: Int, val precipitation: Int
 )
 
-private fun getWeatherDescription(code: Int): String {
-    return WeatherDescription.getWeatherDescription(code, isDay = true)
-}
+private fun getWeatherDescription(code: Int): String = WeatherDescription.getWeatherDescription(code, isDay = true)
 
 class WeatherWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = WeatherWidget()
 
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: android.appwidget.AppWidgetManager,
-        appWidgetIds: IntArray
-    ) {
+    override fun onUpdate(context: Context, appWidgetManager: android.appwidget.AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        // Trigger immediate widget refresh when added or updated
         androidx.work.WorkManager.getInstance(context).enqueueUniqueWork(
             "WeatherWidgetImmediateUpdate",
             androidx.work.ExistingWorkPolicy.REPLACE,
-            androidx.work.OneTimeWorkRequestBuilder<com.vayu.weather.data.worker.WeatherWidgetWorker>()
-                .build()
+            androidx.work.OneTimeWorkRequestBuilder<com.vayu.weather.data.worker.WeatherWidgetWorker>().build()
         )
     }
 }
