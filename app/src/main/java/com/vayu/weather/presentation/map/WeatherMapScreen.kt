@@ -126,6 +126,7 @@ import org.maplibre.compose.layers.RasterLayer
 import org.maplibre.compose.map.GestureOptions
 import org.maplibre.compose.map.MapOptions
 import org.maplibre.compose.map.MaplibreMap
+import org.maplibre.compose.util.ClickResult
 import org.maplibre.compose.map.OrnamentOptions
 import org.maplibre.compose.map.RenderOptions
 import org.maplibre.compose.sources.TileSetOptions
@@ -318,6 +319,10 @@ fun WeatherMapScreen(
             baseStyle = mapStyle,
             zoomRange = MAP_MIN_ZOOM..MAP_MAX_ZOOM,
             onMapLoadFailed = { Log.w(TAG, "Map load failed: $it") },
+            onMapClick = { point, _ ->
+                mapViewModel.onMapTap(point.latitude, point.longitude)
+                ClickResult.Consume
+            },
             options = mapOptions
         ) {
             // Radar overlay — key on URL forces source update during autoplay
