@@ -64,8 +64,8 @@ data class RadarState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val colorScheme: RadarColorScheme = RadarColorScheme.ORIGINAL,
-    val opacity: Float = 0.65f,
-    val overlayType: OverlayType = OverlayType.RADAR
+    val opacity: Float = 0.45f,
+    val overlayType: OverlayType = OverlayType.NONE
 ) {
     val currentPath: String?
         get() = if (selectedFrameIndex in frames.indices) frames[selectedFrameIndex].path else null
