@@ -38,6 +38,11 @@ val FogEnd = Color(0xFF64748B)
 val ThunderStart = Color(0xFF1E1B4B)
 val ThunderEnd = Color(0xFF0F172A)
 val NightStart = Color(0xFF0F172A)
+
+// ── Semantic accent colors ──
+val TrendingGreen = Color(0xFF4ADE80)
+val TrendingRed = Color(0xFFF87171)
+val WarningAmber = Color(0xFFF59E0B)
 val NightEnd = Color(0xFF1E1B4B)
 
 val GlassSunny = Color(0x30FBBF24)

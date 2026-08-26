@@ -351,7 +351,7 @@ private fun DetailInfoItem(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = label,
             tint = if (isPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.size(20.dp)
         )
@@ -374,7 +374,7 @@ private fun DetailInfoItem(
             Spacer(modifier = Modifier.height(2.dp))
             Icon(
                 imageVector = Icons.Rounded.ExpandMore,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.expand),
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                 modifier = Modifier.size(12.dp)
             )
@@ -449,7 +449,7 @@ private fun HourlyForecastExpanded(
                         // Weather icon
                         Icon(
                             imageVector = getWeatherIcon(hour.weatherCode, true),
-                            contentDescription = null,
+                            contentDescription = WeatherDescription.getWeatherDescription(hour.weatherCode, true),
                             modifier = Modifier.size(24.dp),
                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -471,7 +471,7 @@ private fun HourlyForecastExpanded(
                             if (humidity > 50) {
                                 Icon(
                                     imageVector = Icons.Rounded.WaterDrop,
-                                    contentDescription = null,
+                                    contentDescription = stringResource(R.string.humidity),
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                                 )
@@ -673,13 +673,12 @@ private fun DailyDetailItem(
                     .padding(start = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                data.sunrise?.let { sr ->
-                    Icon(
-                        imageVector = Icons.Rounded.WbSunny,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)
-                    )
+                data.sunrise?.let { sr ->                Icon(
+                    imageVector = Icons.Rounded.WbSunny,
+                    contentDescription = stringResource(R.string.sunrise),
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)
+                )
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(
                         text = formatTimeFromISO(sr),
@@ -691,7 +690,7 @@ private fun DailyDetailItem(
                 data.sunset?.let { ss ->
                     Icon(
                         imageVector = Icons.Rounded.NightsStay,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.sunset),
                         modifier = Modifier.size(12.dp),
                         tint = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)
                     )

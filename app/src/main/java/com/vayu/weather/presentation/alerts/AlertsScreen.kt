@@ -226,7 +226,7 @@ fun AlertsScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         imageVector = Icons.Rounded.NotificationsNone,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.no_alerts),
                         modifier = Modifier.size(80.dp),
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                     )
@@ -359,7 +359,7 @@ private fun AlertCard(
                 Icon(
                     imageVector = if (alert.severity == "high")
                         Icons.Rounded.Warning else Icons.Rounded.PriorityHigh,
-                    contentDescription = null,
+                    contentDescription = alert.severity,
                     tint = severityColor,
                     modifier = Modifier.size(24.dp)
                 )
@@ -413,7 +413,7 @@ private fun AlertCard(
 
                 Icon(
                     imageVector = if (isExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                    contentDescription = null,
+                    contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                     modifier = Modifier.size(20.dp)
                 )

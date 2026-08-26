@@ -89,7 +89,7 @@ fun SearchScreen(
             leadingIcon = {
                 Icon(
                     Icons.Rounded.Search,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.search_for_city),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },

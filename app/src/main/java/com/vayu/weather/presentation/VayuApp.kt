@@ -37,6 +37,8 @@ import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.WeatherDashboard
 import com.vayu.weather.presentation.weather.WeatherDetailScreen
 import com.vayu.weather.presentation.onboarding.OnboardingScreen
+import com.vayu.weather.ui.theme.SkyBlue
+import com.vayu.weather.ui.theme.StormGray
 import com.vayu.weather.presentation.history.WeatherHistoryScreen
 import com.vayu.weather.presentation.history.WeatherHistoryViewModel
 import com.vayu.weather.presentation.weather.WeatherCardRenderer
@@ -55,16 +57,16 @@ import kotlinx.coroutines.withContext
 @Composable
 fun VayuApp() {
     val navColors = NavigationBarItemDefaults.colors(
-        selectedIconColor = Color(0xFF38BDF8),
-        selectedTextColor = Color(0xFF38BDF8),
-        indicatorColor = Color(0xFF38BDF8).copy(alpha = 0.14f),
-        unselectedIconColor = Color(0xFF64748B),
-        unselectedTextColor = Color(0xFF64748B)
+        selectedIconColor = SkyBlue,
+        selectedTextColor = SkyBlue,
+        indicatorColor = SkyBlue.copy(alpha = 0.14f),
+        unselectedIconColor = StormGray,
+        unselectedTextColor = StormGray
     )
     val railColors = NavigationRailItemDefaults.colors(
-        selectedIconColor = Color(0xFF38BDF8),
-        unselectedIconColor = Color(0xFF64748B),
-        indicatorColor = Color(0xFF38BDF8).copy(alpha = 0.14f)
+        selectedIconColor = SkyBlue,
+        unselectedIconColor = StormGray,
+        indicatorColor = SkyBlue.copy(alpha = 0.14f)
     )
     Log.d("VayuApp", "VayuApp Composing")
     val weatherViewModel: WeatherViewModel = hiltViewModel()

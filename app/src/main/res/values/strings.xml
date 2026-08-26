@@ -115,6 +115,17 @@
     <string name="country_singapore">Singapore</string>
     <string name="country_india">India</string>
 
+    <!-- Accessibility -->
+    <string name="trending_up">Temperature rising</string>
+    <string name="trending_down">Temperature falling</string>
+    <string name="expand">Expand</string>
+    <string name="collapse">Collapse</string>
+    <string name="location_icon">Location</string>
+    <string name="weather_icon">Weather condition</string>
+    <string name="precipitation_chance">Precipitation chance</string>
+    <string name="day_high">Day high</string>
+    <string name="day_low">Day low</string>
+
     <!-- Favorites Screen -->
     <string name="no_favorites">No Favorites Yet</string>
     <string name="no_favorites_subtitle">Search for cities and tap the heart icon\nto add them to your favorites.</string>

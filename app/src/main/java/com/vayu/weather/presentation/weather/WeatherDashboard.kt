@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
@@ -107,6 +109,14 @@ import com.vayu.weather.domain.model.HourlyWeather
 import com.vayu.weather.domain.model.WeatherDescription
 import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.presentation.ads.AdBanner
+import com.vayu.weather.ui.theme.AmberGlow
+import com.vayu.weather.ui.theme.FreshGreen
+import com.vayu.weather.ui.theme.SkyBlue
+import com.vayu.weather.ui.theme.SunsetRed
+import com.vayu.weather.ui.theme.TrendingGreen
+import com.vayu.weather.ui.theme.TrendingRed
+import com.vayu.weather.ui.theme.WarmOrange
+import com.vayu.weather.ui.theme.WarningAmber
 import com.vayu.weather.presentation.components.AirQualityCard
 import com.vayu.weather.presentation.components.WeatherBackground
 import com.vayu.weather.presentation.components.WeatherTrends
@@ -322,45 +332,69 @@ fun WeatherDashboard(
                     item {
                         Spacer(modifier = Modifier.height(20.dp))
                         StaggeredEntry(index = 4) {
-                            // Premium UV, Wind, Pressure cards in a row
-                            Row(
-                                modifier = Modifier.padding(horizontal = 20.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                UvIndexCard(
-                                    uvIndex = info.daily.firstOrNull()?.uvIndex,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                WindCard(
-                                    speed = info.current.windSpeed,
-                                    direction = info.current.windDirection,
-                                    gusts = info.current.windGusts,
-                                    unitLabel = when (settings.windUnit) {
-                                        WindUnit.KPH -> "km/h"
-                                        WindUnit.MPH -> "mph"
-                                        WindUnit.MS -> "m/s"
-                                        WindUnit.KNOTS -> "kn"
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
+                            // Premium metric cards — responsive: 2 cols phone, 4 cols tablet
+                            val windUnitLabel = when (settings.windUnit) {
+                                WindUnit.KPH -> "km/h"
+                                WindUnit.MPH -> "mph"
+                                WindUnit.MS -> "m/s"
+                                WindUnit.KNOTS -> "kn"
                             }
-                        }
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        StaggeredEntry(index = 4) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 20.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            androidx.compose.foundation.layout.BoxWithConstraints(
+                                modifier = Modifier.padding(horizontal = 20.dp)
                             ) {
-                                PressureCard(
-                                    pressure = info.current.surfacePressure,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                MoonPhaseCard(
-                                    modifier = Modifier.weight(1f)
-                                )
+                                val isWide = maxWidth > 480.dp
+                                if (isWide) {
+                                    // 4-column grid for tablets/foldables
+                                    androidx.compose.foundation.layout.FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        UvIndexCard(
+                                            uvIndex = info.daily.firstOrNull()?.uvIndex,
+                                            modifier = Modifier.width(180.dp)
+                                        )
+                                        WindCard(
+                                            speed = info.current.windSpeed,
+                                            direction = info.current.windDirection,
+                                            gusts = info.current.windGusts,
+                                            unitLabel = windUnitLabel,
+                                            modifier = Modifier.width(180.dp)
+                                        )
+                                        PressureCard(
+                                            pressure = info.current.surfacePressure,
+                                            modifier = Modifier.width(180.dp)
+                                        )
+                                        MoonPhaseCard(
+                                            modifier = Modifier.width(180.dp)
+                                        )
+                                    }
+                                } else {
+                                    // 2-column grid for phones
+                                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            UvIndexCard(
+                                                uvIndex = info.daily.firstOrNull()?.uvIndex,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            WindCard(
+                                                speed = info.current.windSpeed,
+                                                direction = info.current.windDirection,
+                                                gusts = info.current.windGusts,
+                                                unitLabel = windUnitLabel,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            PressureCard(
+                                                pressure = info.current.surfacePressure,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            MoonPhaseCard(
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -450,7 +484,7 @@ fun WeatherDashboard(
                     .statusBarsPadding()
                     .padding(top = 56.dp, start = 16.dp, end = 16.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFF59E0B).copy(alpha = 0.15f))
+                    .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f))
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -460,14 +494,14 @@ fun WeatherDashboard(
                 ) {
                     Icon(
                         Icons.Rounded.CloudOff,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.offline_indicator),
                         modifier = Modifier.size(16.dp),
-                        tint = Color(0xFFFBBF24)
+                        tint = MaterialTheme.colorScheme.tertiary
                     )
                     Text(
                         text = stringResource(R.string.offline_indicator),
                         style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFFFBBF24)
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                 }
             }
@@ -511,7 +545,7 @@ private fun TopBar(
         ) {
             Icon(
                 imageVector = Icons.Rounded.LocationOn,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.current_location),
                 modifier = Modifier.size(18.dp),
                 tint = Color.White.copy(alpha = 0.7f)
             )
@@ -958,7 +992,7 @@ private fun HourlyPillCard(
             .then(
                 if (isSelected) Modifier
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF38BDF8).copy(alpha = 0.18f))
+                    .background(SkyBlue.copy(alpha = 0.18f))
                 else if (isNow) Modifier
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color.White.copy(alpha = 0.12f))
@@ -980,7 +1014,7 @@ private fun HourlyPillCard(
 
         Icon(
             imageVector = getWeatherIcon(data.weatherCode, true),
-            contentDescription = null,
+            contentDescription = plainWeatherDescription(data.weatherCode, true),
             modifier = Modifier.size(22.dp),
             tint = Color.White.copy(alpha = 0.85f)
         )
@@ -1000,16 +1034,16 @@ private fun HourlyPillCard(
             if (trendArrow == "up") {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.TrendingUp,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.trending_up),
                     modifier = Modifier.size(10.dp),
-                    tint = Color(0xFF4ADE80)
+                    tint = TrendingGreen
                 )
             } else if (trendArrow == "down") {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.TrendingDown,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.trending_down),
                     modifier = Modifier.size(10.dp),
-                    tint = Color(0xFFF87171)
+                    tint = TrendingRed
                 )
             }
         }
@@ -1028,7 +1062,7 @@ private fun HourlyPillCard(
                         .fillMaxHeight()
                         .fillMaxWidth(fraction = (precipProb / 100f).coerceIn(0.1f, 1f))
                         .background(
-                            Color(0xFF38BDF8).copy(alpha = 0.7f),
+                            SkyBlue.copy(alpha = 0.7f),
                             RoundedCornerShape(2.dp)
                         )
                 )
@@ -1036,7 +1070,7 @@ private fun HourlyPillCard(
             Text(
                 text = "$precipProb%",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF38BDF8).copy(alpha = 0.85f),
+                color = SkyBlue.copy(alpha = 0.85f),
                 fontSize = 9.sp
             )
         }
@@ -1139,7 +1173,7 @@ private fun DailyRow(
 
             Icon(
                 imageVector = getWeatherIcon(data.weatherCode, true),
-                contentDescription = null,
+                contentDescription = plainWeatherDescription(data.weatherCode, true),
                 modifier = Modifier.size(20.dp),
                 tint = Color.White.copy(alpha = 0.75f)
             )
@@ -1149,7 +1183,7 @@ private fun DailyRow(
             Text(
                 text = precipText,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF38BDF8),
+                color = SkyBlue,
                 modifier = Modifier.width(32.dp),
                 textAlign = TextAlign.End
             )
@@ -1243,8 +1277,8 @@ fun TempRangeBar(
 
     Canvas(modifier = modifier) {
         val trackColor = Color.White.copy(alpha = 0.1f)
-        val warmColor = Color(0xFFF97316)
-        val coolColor = Color(0xFF38BDF8)
+        val warmColor = WarmOrange
+        val coolColor = SkyBlue
         drawRoundRect(color = trackColor, cornerRadius = CornerRadius(4f))
         drawRoundRect(
             brush = Brush.horizontalGradient(
@@ -1427,7 +1461,7 @@ private fun ExpandableDetailCard(
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = null,
+                    contentDescription = label,
                     modifier = Modifier.size(16.dp),
                     tint = Color.White.copy(alpha = 0.6f)
                 )
@@ -1506,9 +1540,9 @@ private fun AIInsightsCard(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.WbSunny,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.ai_insights),
                     modifier = Modifier.size(18.dp),
-                    tint = Color(0xFFFBBF24)
+                    tint = MaterialTheme.colorScheme.tertiary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -1532,9 +1566,9 @@ private fun AIInsightsCard(
                             .clip(RoundedCornerShape(8.dp))
                             .background(
                                 color = when (insight.severity) {
-                                    InsightSeverity.WARNING -> Color(0xFFFBBF24).copy(alpha = 0.15f)
-                                    InsightSeverity.ALERT -> Color(0xFFEF4444).copy(alpha = 0.15f)
-                                    InsightSeverity.POSITIVE -> Color(0xFF22C55E).copy(alpha = 0.15f)
+                                    InsightSeverity.WARNING -> AmberGlow.copy(alpha = 0.15f)
+                                    InsightSeverity.ALERT -> SunsetRed.copy(alpha = 0.15f)
+                                    InsightSeverity.POSITIVE -> FreshGreen.copy(alpha = 0.15f)
                                     else -> Color.White.copy(alpha = 0.06f)
                                 }
                             ),
@@ -1542,12 +1576,12 @@ private fun AIInsightsCard(
                     ) {
                         Icon(
                             imageVector = insight.icon,
-                            contentDescription = null,
+                            contentDescription = insight.text,
                             modifier = Modifier.size(14.dp),
                             tint = when (insight.severity) {
-                                InsightSeverity.WARNING -> Color(0xFFFBBF24)
-                                InsightSeverity.ALERT -> Color(0xFFEF4444)
-                                InsightSeverity.POSITIVE -> Color(0xFF22C55E)
+                                InsightSeverity.WARNING -> AmberGlow
+                                InsightSeverity.ALERT -> SunsetRed
+                                InsightSeverity.POSITIVE -> FreshGreen
                                 else -> Color.White.copy(alpha = 0.6f)
                             }
                         )
@@ -1791,27 +1825,27 @@ private fun SunArc(
         }.toFloat()
 
         drawCircle(
-            color = Color(0xFFFBBF24).copy(alpha = 0.85f),
+            color = AmberGlow.copy(alpha = 0.85f),
             radius = 10f,
             center = Offset(sunX, sunY)
         )
 
         drawCircle(
-            color = Color(0xFFFBBF24).copy(alpha = 0.2f),
+            color = AmberGlow.copy(alpha = 0.2f),
             radius = 16f,
             center = Offset(sunX, sunY)
         )
 
         val sunriseX = width * 0.1f
         drawCircle(
-            color = Color(0xFFFBBF24).copy(alpha = 0.5f),
+            color = AmberGlow.copy(alpha = 0.5f),
             radius = 5f,
             center = Offset(sunriseX, centerY)
         )
 
         val sunsetX = width * 0.9f
         drawCircle(
-            color = Color(0xFFF97316).copy(alpha = 0.5f),
+            color = WarmOrange.copy(alpha = 0.5f),
             radius = 5f,
             center = Offset(sunsetX, centerY)
         )
@@ -1827,8 +1861,8 @@ private fun SunMoonItem(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
-            tint = Color(0xFFFBBF24),
+            contentDescription = label,
+            tint = AmberGlow,
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -2245,7 +2279,7 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
             ) {
                 Icon(
                     Icons.Rounded.CloudOff,
-                    contentDescription = null,
+                    contentDescription = message,
                     modifier = Modifier.size(48.dp),
                     tint = Color.White.copy(alpha = 0.4f)
                 )
@@ -2257,10 +2291,12 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(20.dp))
+                val retryLabel = stringResource(R.string.retry_loading)
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color.White.copy(alpha = 0.12f))
+                        .semantics { contentDescription = retryLabel }
                         .clickable(onClick = onRetry)
                         .padding(horizontal = 24.dp, vertical = 12.dp),
                     contentAlignment = Alignment.Center

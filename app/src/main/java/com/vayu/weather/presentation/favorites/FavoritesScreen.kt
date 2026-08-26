@@ -81,7 +81,7 @@ fun FavoritesScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         imageVector = Icons.Rounded.FavoriteBorder,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.no_favorites),
                         modifier = Modifier.size(72.dp),
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                     )
@@ -226,7 +226,7 @@ private fun FavoriteCityCard(
 
             Icon(
                 imageVector = Icons.Rounded.LocationOn,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.current_location),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
@@ -271,7 +271,7 @@ private fun FavoriteCityCard(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.delete_alert),
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(18.dp)
                 )

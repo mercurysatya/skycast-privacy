@@ -32,6 +32,27 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.random.Random
 
+/**
+ * Returns true when the user has enabled Reduce Motion in accessibility settings.
+ * When true, weather background animations are suppressed to respect user preferences
+ * and reduce battery drain.
+ */
+@Composable
+private fun isReduceMotionEnabled(): Boolean {
+    val view = androidx.compose.ui.platform.LocalView.current
+    return remember(view) {
+        try {
+            val resolver = view.context.contentResolver
+            val durationScale = android.provider.Settings.Global.getFloat(
+                resolver,
+                android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f
+            )
+            durationScale == 0f
+        } catch (_: Exception) { false }
+    }
+}
+
 @Composable
 fun WeatherBackground(
     weatherCode: Int,
@@ -39,6 +60,7 @@ fun WeatherBackground(
     modifier: Modifier = Modifier
 ) {
     val bgColors = remember(weatherCode, isDay) { computeSkyGradient(weatherCode, isDay) }
+    val reduceMotion = isReduceMotionEnabled()
 
     Box(
         modifier = modifier
@@ -56,6 +78,7 @@ fun WeatherBackground(
         }
 
         when {
+            reduceMotion -> { /* No animations — static gradient only */ }
             !isDay -> NightAnimation(weatherCode)
             weatherCode == 0 -> SunnyBackground()
             weatherCode in 1..3 -> CloudyBackground(weatherCode)
