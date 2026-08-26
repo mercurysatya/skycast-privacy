@@ -60,6 +60,8 @@ import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -354,7 +356,7 @@ fun WeatherMapScreen(
         // === RIGHT SIDE FABs ===
         // === EXPANDABLE FAB MENU (single FAB that expands) ===
         var fabExpanded by remember { mutableStateOf(false) }
-        val fabBottomPadding = if (radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0) 160.dp else 16.dp
+        val fabBottomPadding = if (radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0) 80.dp else 16.dp
 
         Column(
             modifier = Modifier
@@ -410,7 +412,7 @@ fun WeatherMapScreen(
 
         // === LEGEND ===
         if (showLegend && radarState.overlayType != OverlayType.NONE) {
-            val legendBottomPadding = if (radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0) 170.dp else 140.dp
+            val legendBottomPadding = if (radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0) 90.dp else 80.dp
             RadarLegend(overlayType = radarState.overlayType, modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = legendBottomPadding))
         }
 
@@ -419,24 +421,19 @@ fun WeatherMapScreen(
             MapWeatherCard(info = info, onDismiss = { mapViewModel.dismissTappedWeather() }, modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp))
         }
 
-        // === TIME SLIDER WITH FRAME THUMBNAILS ===
+        // === TIME SLIDER (compact) ===
         if (radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0) {
             RadarTimeSlider(
                 overlayType = radarState.overlayType,
                 currentLabel = mapViewModel.getActiveFrameLabel(),
                 frameIndex = mapViewModel.getActiveFrameIndex(),
                 frameCount = mapViewModel.getActiveFrameCount(),
-                frames = when (radarState.overlayType) {
-                    OverlayType.RADAR -> radarState.frames.map { it.label }
-                    OverlayType.CLOUDS -> cloudState.frames.map { it.label }
-                    else -> emptyList()
-                },
                 onFrameSelected = { mapViewModel.selectFrame(it) },
                 onPreviousFrame = { mapViewModel.selectPreviousFrame() },
                 onNextFrame = { mapViewModel.selectNextFrame() },
                 onToggleAutoPlay = { mapViewModel.toggleAutoPlay() },
                 isAutoPlaying = isAutoPlaying,
-                modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp, start = 12.dp, end = 60.dp)
+                modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp, start = 12.dp, end = 76.dp)
             )
         }
     }
@@ -858,7 +855,6 @@ private fun RadarTimeSlider(
     currentLabel: String,
     frameIndex: Int,
     frameCount: Int,
-    frames: List<String>,
     onFrameSelected: (Int) -> Unit,
     onPreviousFrame: () -> Unit,
     onNextFrame: () -> Unit,
@@ -866,75 +862,46 @@ private fun RadarTimeSlider(
     isAutoPlaying: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Card(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)), elevation = CardDefaults.cardElevation(6.dp)) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-            // Header row: play controls + timestamp + frame counter
+    var expanded by remember { mutableStateOf(false) }
+    Card(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)), elevation = CardDefaults.cardElevation(6.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            // Single row: play controls + timestamp + expand toggle
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Play controls — inline with header to save vertical space
-                IconButton(onClick = onPreviousFrame, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Rounded.SkipPrevious, contentDescription = "Previous frame", modifier = Modifier.size(20.dp))
+                IconButton(onClick = onPreviousFrame, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Rounded.SkipPrevious, contentDescription = "Previous frame", modifier = Modifier.size(18.dp))
                 }
-                FilledTonalIconButton(onClick = onToggleAutoPlay, modifier = Modifier.size(36.dp)) {
+                FilledTonalIconButton(onClick = onToggleAutoPlay, modifier = Modifier.size(32.dp)) {
                     Icon(imageVector = if (isAutoPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                          contentDescription = if (isAutoPlaying) "Pause autoplay" else "Play autoplay",
-                         modifier = Modifier.size(22.dp))
+                         modifier = Modifier.size(18.dp))
                 }
-                IconButton(onClick = onNextFrame, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Rounded.SkipNext, contentDescription = "Next frame", modifier = Modifier.size(20.dp))
+                IconButton(onClick = onNextFrame, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Rounded.SkipNext, contentDescription = "Next frame", modifier = Modifier.size(18.dp))
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Timestamp label — grows to fill space
-                Text(currentLabel, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold,
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(currentLabel, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
                      color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-
-                // Frame counter
                 Text("${(frameIndex + 1).coerceAtLeast(0)}/$frameCount",
                      style = MaterialTheme.typography.labelSmall,
                      color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Rounded.ExpandMore else Icons.Rounded.ExpandLess,
+                        contentDescription = if (expanded) "Collapse" else "Expand",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            // Slider
-            Slider(
-                value = frameIndex.toFloat().coerceIn(0f, (frameCount - 1).coerceAtLeast(1).toFloat()),
-                onValueChange = { onFrameSelected(it.toInt()) },
-                valueRange = 0f..(frameCount - 1).coerceAtLeast(1).toFloat(),
-                modifier = Modifier.fillMaxWidth(),
-                colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
-            )
-
-            // Frame thumbnail strip — compact
-            if (frames.isNotEmpty()) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().height(22.dp),
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    itemsIndexed(frames) { index, label ->
-                        val isSelected = index == frameIndex
-                        Box(
-                            modifier = Modifier
-                                .height(20.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                )
-                                .clickable { onFrameSelected(index) }
-                                .padding(horizontal = 5.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                label,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = 8.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                        }
-                    }
+            // Expandable slider
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    Slider(
+                        value = frameIndex.toFloat().coerceIn(0f, (frameCount - 1).coerceAtLeast(1).toFloat()),
+                        onValueChange = { onFrameSelected(it.toInt()) },
+                        valueRange = 0f..(frameCount - 1).coerceAtLeast(1).toFloat(),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
+                    )
                 }
             }
         }
