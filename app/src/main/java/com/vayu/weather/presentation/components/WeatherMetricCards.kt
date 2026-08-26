@@ -305,24 +305,88 @@ fun PressureCard(
 fun MoonPhaseCard(
     modifier: Modifier = Modifier
 ) {
-    // Approximate moon phase based on current date
+    // Accurate moon phase calculation using multiple reference points
     val moonPhase = remember {
         val now = java.time.LocalDate.now()
-        val knownNewMoon = java.time.LocalDate.of(2024, 1, 11)
-        val daysSinceNew = java.time.temporal.ChronoUnit.DAYS.between(knownNewMoon, now) % 29.53058770576
-        val phase = daysSinceNew / 29.53058770576
+        // Use the most recent known new moon before today
+        // New moons from 2024-2027 (UTC dates)
+        val newMoons = listOf(
+            java.time.LocalDate.of(2024, 1, 11),
+            java.time.LocalDate.of(2024, 2, 9),
+            java.time.LocalDate.of(2024, 3, 10),
+            java.time.LocalDate.of(2024, 4, 8),
+            java.time.LocalDate.of(2024, 5, 8),
+            java.time.LocalDate.of(2024, 6, 6),
+            java.time.LocalDate.of(2024, 7, 5),
+            java.time.LocalDate.of(2024, 8, 4),
+            java.time.LocalDate.of(2024, 9, 3),
+            java.time.LocalDate.of(2024, 10, 2),
+            java.time.LocalDate.of(2024, 11, 1),
+            java.time.LocalDate.of(2024, 12, 1),
+            java.time.LocalDate.of(2025, 1, 29),
+            java.time.LocalDate.of(2025, 2, 28),
+            java.time.LocalDate.of(2025, 3, 29),
+            java.time.LocalDate.of(2025, 4, 27),
+            java.time.LocalDate.of(2025, 5, 27),
+            java.time.LocalDate.of(2025, 6, 25),
+            java.time.LocalDate.of(2025, 7, 24),
+            java.time.LocalDate.of(2025, 8, 23),
+            java.time.LocalDate.of(2025, 9, 21),
+            java.time.LocalDate.of(2025, 10, 21),
+            java.time.LocalDate.of(2025, 11, 20),
+            java.time.LocalDate.of(2025, 12, 20),
+            java.time.LocalDate.of(2026, 1, 18),
+            java.time.LocalDate.of(2026, 2, 17),
+            java.time.LocalDate.of(2026, 3, 19),
+            java.time.LocalDate.of(2026, 4, 17),
+            java.time.LocalDate.of(2026, 5, 16),
+            java.time.LocalDate.of(2026, 6, 15),
+            java.time.LocalDate.of(2026, 7, 14),
+            java.time.LocalDate.of(2026, 8, 12),
+            java.time.LocalDate.of(2026, 9, 11),
+            java.time.LocalDate.of(2026, 10, 11),
+            java.time.LocalDate.of(2026, 11, 9),
+            java.time.LocalDate.of(2026, 12, 9),
+            java.time.LocalDate.of(2027, 1, 7),
+            java.time.LocalDate.of(2027, 2, 6),
+            java.time.LocalDate.of(2027, 3, 8),
+            java.time.LocalDate.of(2027, 4, 6),
+            java.time.LocalDate.of(2027, 5, 6),
+            java.time.LocalDate.of(2027, 6, 4),
+            java.time.LocalDate.of(2027, 7, 4),
+            java.time.LocalDate.of(2027, 8, 2)
+        )
+        // Find the most recent new moon before today
+        val referenceNewMoon = newMoons.lastOrNull { !it.isAfter(now) }
+            ?: newMoons.first()
+        val synodicPeriod = 29.53058770576
+        val daysSinceNew = java.time.temporal.ChronoUnit.DAYS.between(referenceNewMoon, now)
+        val phase = (daysSinceNew / synodicPeriod).coerceIn(0.0, 1.0)
         phase
     }
 
-    val (phaseName, illumination) = when {
-        moonPhase < 0.03 || moonPhase > 0.97 -> "New Moon" to 0
-        moonPhase < 0.22 -> "Waxing Crescent" to (moonPhase * 4 * 100).toInt()
-        moonPhase < 0.28 -> "First Quarter" to 50
-        moonPhase < 0.47 -> "Waxing Gibbous" to (50 + (moonPhase - 0.25) * 2 * 50).toInt()
-        moonPhase < 0.53 -> "Full Moon" to 100
-        moonPhase < 0.72 -> "Waning Gibbous" to (100 - (moonPhase - 0.5) * 2 * 50).toInt()
-        moonPhase < 0.78 -> "Last Quarter" to 50
-        else -> "Waning Crescent" to (50 - (moonPhase - 0.75) * 4 * 50).toInt()
+    // Accurate illumination using cosine formula
+    val illumination = remember(moonPhase) {
+        ((1.0 - kotlin.math.cos(2.0 * Math.PI * moonPhase)) / 2.0 * 100.0).toInt()
+    }
+
+    // Phase name with accurate boundaries
+    val phaseName = remember(moonPhase) {
+        when {
+            moonPhase < 0.0625 || moonPhase > 0.9375 -> "New Moon"
+            moonPhase < 0.1875 -> "Waxing Crescent"
+            moonPhase < 0.3125 -> "First Quarter"
+            moonPhase < 0.4375 -> "Waxing Gibbous"
+            moonPhase < 0.5625 -> "Full Moon"
+            moonPhase < 0.6875 -> "Waning Gibbous"
+            moonPhase < 0.8125 -> "Last Quarter"
+            else -> "Waning Crescent"
+        }
+    }
+
+    // Moon age in days (for display)
+    val moonAge = remember(moonPhase) {
+        (moonPhase * 29.53058770576).toInt()
     }
 
     GlassCard(modifier = modifier) {
@@ -339,25 +403,78 @@ fun MoonPhaseCard(
             )
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Moon visualization
-            Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+            // Moon visualization — accurate terminator line
+            Box(modifier = Modifier.size(64.dp), contentAlignment = Alignment.Center) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    val radius = size.minDimension / 2f
+                    val cx = size.width / 2f
+                    val cy = size.height / 2f
+                    val r = size.minDimension / 2f
 
-                    // Moon base
+                    // 1) Draw illuminated moon base
                     drawCircle(
                         color = com.vayu.weather.ui.theme.MoonBase,
-                        radius = radius,
-                        center = center
+                        radius = r,
+                        center = Offset(cx, cy)
                     )
 
-                    // Shadow overlay based on phase
-                    val shadowX = (moonPhase * 2 - 1).toFloat()
+                    // 2) Draw shadow using terminator math
+                    // The terminator is always a half-circle (ellipse)
+                    // Its width varies: 0 at full/new, full radius at quarters
+                    val terminatorWidth = (kotlin.math.cos(2.0 * Math.PI * moonPhase) * r).toFloat()
+
+                    // Shadow = circle clipped by the terminator
+                    // For waxing phases (0-0.5), shadow is on the right
+                    // For waning phases (0.5-1.0), shadow is on the left
+                    if (moonPhase < 0.0625 || moonPhase > 0.9375) {
+                        // New Moon — fully dark
+                        drawCircle(
+                            color = com.vayu.weather.ui.theme.MoonShadow.copy(alpha = 0.9f),
+                            radius = r,
+                            center = Offset(cx, cy)
+                        )
+                    } else if (moonPhase > 0.4375 && moonPhase < 0.5625) {
+                        // Full Moon — no shadow (skip drawing)
+                    } else {
+                        // All other phases — draw terminator shadow
+                        // The shadow is a rectangle covering half the moon,
+                        // with a curved edge (ellipse) for the terminator
+                        val isWaxing = moonPhase < 0.5
+
+                        // Shadow rectangle (covers the dark side)
+                        if (isWaxing) {
+                            // Waxing: right side is dark, terminator curves from center
+                            // Draw shadow rectangle on right side
+                            drawRect(
+                                color = com.vayu.weather.ui.theme.MoonShadow.copy(alpha = 0.9f),
+                                topLeft = Offset(cx, cy - r),
+                                size = Size(r, r * 2)
+                            )
+                            // Clip the curved terminator edge
+                            drawCircle(
+                                color = com.vayu.weather.ui.theme.MoonBase,
+                                radius = kotlin.math.abs(terminatorWidth),
+                                center = Offset(cx + terminatorWidth, cy)
+                            )
+                        } else {
+                            // Waning: left side is dark, terminator curves from center
+                            drawRect(
+                                color = com.vayu.weather.ui.theme.MoonShadow.copy(alpha = 0.9f),
+                                topLeft = Offset(cx - r, cy - r),
+                                size = Size(r, r * 2)
+                            )
+                            drawCircle(
+                                color = com.vayu.weather.ui.theme.MoonBase,
+                                radius = kotlin.math.abs(terminatorWidth),
+                                center = Offset(cx + terminatorWidth, cy)
+                            )
+                        }
+                    }
+
+                    // Subtle glow around moon
                     drawCircle(
-                        color = com.vayu.weather.ui.theme.MoonShadow.copy(alpha = 0.85f),
-                        radius = radius,
-                        center = Offset(center.x + shadowX * radius * 0.5f, center.y)
+                        color = com.vayu.weather.ui.theme.MoonBase.copy(alpha = 0.15f),
+                        radius = r + 4f,
+                        center = Offset(cx, cy)
                     )
                 }
             }
@@ -374,6 +491,11 @@ fun MoonPhaseCard(
                 text = "${illumination.coerceIn(0, 100)}% illuminated",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = WeatherOpacity.TEXT_SECONDARY)
+            )
+            Text(
+                text = "Day $moonAge of 29",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = WeatherOpacity.TEXT_SECONDARY * 0.7f)
             )
         }
     }
