@@ -20,6 +20,15 @@ Thumbs.db
 /.agent/
 /.mimocode/
 
+# Temporary files
+build.log
+*.hprof
+screenshots/
+store-listing/
+app/google-services.json
+app/release/
+FINAL_VERIFICATION_REPORT.md
+
 # Keep privacy policy and gitignore
 !/privacy-policy.html
 !/.gitignore
