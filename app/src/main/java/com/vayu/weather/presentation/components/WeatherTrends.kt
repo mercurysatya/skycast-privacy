@@ -1,26 +1,36 @@
 package com.vayu.weather.presentation.components
 
-import android.util.Log
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.sp
 import com.vayu.weather.R
-import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.data.Entry
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
 import com.vayu.weather.domain.model.HourlyWeather
+import com.vayu.weather.presentation.weather.getWeatherIcon
 import com.vayu.weather.ui.theme.SkyBlue
+import com.vayu.weather.ui.theme.WarmOrange
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
@@ -30,124 +40,360 @@ fun WeatherTrends(
     isCelsius: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    if (hourlyData.isEmpty()) {
-        Log.w("WeatherTrends", "Hourly data is empty, skipping chart")
-        return
-    }
+    if (hourlyData.isEmpty()) return
 
-    val chartData = remember(hourlyData) {
+    val sorted = remember(hourlyData) {
         val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
-        val startIndex = hourlyData.indexOfFirst { it.time >= now }
-        if (startIndex >= 0) hourlyData.drop(startIndex).take(24) else hourlyData.take(24)
+        val start = hourlyData.indexOfFirst { it.time >= now }
+        val data = if (start >= 0) hourlyData.drop(start).take(24) else hourlyData.take(24)
+        data.sortedBy { it.time }
     }
 
-    val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
-    val primaryColorCompose = MaterialTheme.colorScheme.primary
-    val surfaceColor = MaterialTheme.colorScheme.surface.toArgb()
-    val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    if (sorted.isEmpty()) return
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.temperature_trends),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = if (chartData.isNotEmpty()) {
-                    val min = chartData.minOf { it.temperature }.roundToInt()
-                    val max = chartData.maxOf { it.temperature }.roundToInt()
-                    "$min° - $max°"
-                } else "",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
+    val unit = if (isCelsius) "°C" else "°F"
+
+    // Convert temperatures
+    val temps = remember(sorted, isCelsius) {
+        sorted.map {
+            if (isCelsius) it.temperature.toFloat()
+            else ((it.temperature * 9.0 / 5.0) + 32.0).toFloat()
         }
+    }
+    val minTemp = temps.min()
+    val maxTemp = temps.max()
+    val minIndex = temps.indexOf(minTemp)
+    val maxIndex = temps.indexOf(maxTemp)
 
-        AndroidView(
-            factory = { context ->
-                Log.d("WeatherTrends", "Creating LineChart")
-                LineChart(context).apply {
-                    description.isEnabled = false
-                    legend.isEnabled = false
-                    setTouchEnabled(true)
-                    setPinchZoom(true)
-                    setDrawGridBackground(false)
-                    setBackgroundColor(surfaceColor)
-                    xAxis.textColor = onSurfaceColor
-                    xAxis.setDrawGridLines(false)
-                    xAxis.setDrawAxisLine(false)
-                    axisLeft.textColor = onSurfaceColor
-                    axisLeft.setDrawGridLines(true)
-                    axisLeft.gridColor = onSurfaceColor and 0x20FFFFFF
-                    axisLeft.setDrawAxisLine(false)
-                    axisRight.isEnabled = false
-                    setNoDataText("Loading chart...")
-                    setViewPortOffsets(0f, 8f, 0f, 16f)
-                }
-            },
-            update = { chart ->
-                Log.d("WeatherTrends", "Updating LineChart with ${chartData.size} items")
-                try {
-                    val entries = chartData.mapIndexed { index, hourly ->
-                        val temp = if (isCelsius) hourly.temperature.toFloat()
-                        else ((hourly.temperature * 9 / 5) + 32).toFloat()
-                        Entry(index.toFloat(), temp)
-                    }
+    // Selected point for tap
+    var selectedIndex by remember { mutableStateOf<Int?>(null) }
 
-                    if (entries.isEmpty()) {
-                        chart.clear()
-                        return@AndroidView
-                    }
+    // Animate chart drawing
+    val animProgress = remember { Animatable(0f) }
+    LaunchedEffect(sorted) {
+        animProgress.snapTo(0f)
+        animProgress.animateTo(1f, animationSpec = tween(1000, easing = FastOutSlowInEasing))
+    }
 
-                    val minTemp = entries.minOf { it.y }
-                    val maxTemp = entries.maxOf { it.y }
+    // Capture theme colors before Canvas (non-composable scope)
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val inverseSurfaceColor = MaterialTheme.colorScheme.inverseSurface
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
 
-                    val dataSet = LineDataSet(entries, "Temperature").apply {
-                        color = primaryColor
-                        setCircleColor(primaryColor)
-                        lineWidth = 3f
-                        circleRadius = 5f
-                        setDrawCircleHole(false)
-                        circleHoleColor = primaryColor
-                        valueTextColor = onSurfaceColor
-                        valueTextSize = 0f
-                        setDrawValues(false)
-                        mode = LineDataSet.Mode.CUBIC_BEZIER
-                        setDrawFilled(true)
-                        fillDrawable = android.graphics.drawable.GradientDrawable(
-                            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                            intArrayOf(primaryColor and 0x40FFFFFF, primaryColor and 0x05FFFFFF)
-                        )
-                        setDrawHighlightIndicators(false)
-                    }
+    Card(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.temperature_trends),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "${minTemp.roundToInt()}$unit — ${maxTemp.roundToInt()}$unit",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
 
-                    chart.data = LineData(dataSet)
-                    chart.axisLeft.axisMinimum = minTemp - 2f
-                    chart.axisLeft.axisMaximum = maxTemp + 2f
-                    chart.axisLeft.setLabelCount(4, true)
-                    chart.xAxis.setLabelCount(6, true)
-                    chart.xAxis.valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
-                        override fun getFormattedValue(value: Float): String {
-                            val idx = value.toInt().coerceIn(0, chartData.lastIndex)
-                            return chartData[idx].time.take(2) + "h"
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Chart canvas
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .pointerInput(temps) {
+                        detectTapGestures { offset ->
+                            val chartWidth = size.width - 40f
+                            val startX = 20f
+                            val fraction = ((offset.x - startX) / chartWidth).coerceIn(0f, 1f)
+                            val index = (fraction * (temps.size - 1)).roundToInt()
+                            selectedIndex = if (selectedIndex == index) null else index
                         }
                     }
-                    chart.invalidate()
-                } catch (e: Exception) {
-                    Log.e("WeatherTrends", "Error updating chart", e)
+            ) {
+                val width = size.width
+                val height = size.height
+                val paddingLeft = 30f  // Space for temp labels
+                val paddingRight = 16f
+                val paddingTop = 30f   // Space for selected value
+                val paddingBottom = 30f // Space for time labels
+                val chartWidth = width - paddingLeft - paddingRight
+                val chartHeight = height - paddingTop - paddingBottom
+                val range = (maxTemp - minTemp).coerceAtLeast(1f)
+
+                // ── Day/Night background shading ──
+                sorted.forEachIndexed { index, hour ->
+                    val x = paddingLeft + chartWidth * index / (sorted.size - 1).coerceAtLeast(1)
+                    val barWidth = chartWidth / sorted.size
+                    val isDay = try {
+                        val timeStr = hour.time.substringAfter("T").take(5)
+                        val h = timeStr.split(":")[0].toIntOrNull() ?: 12
+                        h in 6..18
+                    } catch (_: Exception) { true }
+
+                    drawRect(
+                        color = if (isDay)
+                            Color(0xFFFFF8E1).copy(alpha = 0.15f)
+                        else
+                            Color(0xFF1A237E).copy(alpha = 0.1f),
+                        topLeft = Offset(x - barWidth / 2, paddingTop),
+                        size = Size(barWidth, chartHeight)
+                    )
                 }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
-        )
+
+                // ── Grid lines ──
+                for (i in 0..4) {
+                    val y = paddingTop + chartHeight * i / 4f
+                    drawLine(
+                        color = Color.LightGray.copy(alpha = 0.15f),
+                        start = Offset(paddingLeft, y),
+                        end = Offset(width - paddingRight, y),
+                        strokeWidth = 1f
+                    )
+                }
+
+                // ── Calculate point positions ──
+                val points = temps.mapIndexed { index, temp ->
+                    val x = paddingLeft + chartWidth * index / (sorted.size - 1).coerceAtLeast(1)
+                    val normalizedTemp = (temp - minTemp) / range
+                    val y = paddingTop + chartHeight * (1f - normalizedTemp)
+                    Offset(x, y)
+                }
+
+                // Animated visible points
+                val visibleCount = (points.size * animProgress.value).toInt().coerceAtMost(points.size)
+                val visiblePoints = points.take(visibleCount)
+
+                if (visiblePoints.size >= 2) {
+                    // ── Gradient area fill ──
+                    val areaPath = Path().apply {
+                        moveTo(visiblePoints.first().x, paddingTop + chartHeight)
+                        visiblePoints.forEach { lineTo(it.x, it.y) }
+                        lineTo(visiblePoints.last().x, paddingTop + chartHeight)
+                        close()
+                    }
+
+                    // Gradient from SkyBlue to transparent
+                    drawPath(
+                        areaPath,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                SkyBlue.copy(alpha = 0.25f),
+                                SkyBlue.copy(alpha = 0.02f)
+                            ),
+                            startY = paddingTop,
+                            endY = paddingTop + chartHeight
+                        )
+                    )
+
+                    // ── Smooth bezier line ──
+                    val linePath = Path().apply {
+                        moveTo(visiblePoints.first().x, visiblePoints.first().y)
+                        for (i in 1 until visiblePoints.size) {
+                            val prev = visiblePoints[i - 1]
+                            val curr = visiblePoints[i]
+                            val controlX1 = prev.x + (curr.x - prev.x) * 0.4f
+                            val controlX2 = curr.x - (curr.x - prev.x) * 0.4f
+                            cubicTo(controlX1, prev.y, controlX2, curr.y, curr.x, curr.y)
+                        }
+                    }
+                    drawPath(
+                        linePath,
+                        SkyBlue,
+                        style = Stroke(width = 3f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    )
+
+                    // ── Data points ──
+                    visiblePoints.forEachIndexed { index, point ->
+                        val isSelected = selectedIndex == index
+                        val isMin = index == minIndex
+                        val isMax = index == maxIndex
+
+                        if (isMin || isMax || isSelected) {
+                            // Highlight ring
+                            drawCircle(
+                                color = if (isMax) WarmOrange.copy(alpha = 0.3f)
+                                    else if (isMin) SkyBlue.copy(alpha = 0.3f)
+                                    else primaryColor.copy(alpha = 0.3f),
+                                radius = if (isSelected) 16f else 12f,
+                                center = point
+                            )
+                            // Dot
+                            drawCircle(
+                                color = if (isMax) WarmOrange
+                                    else if (isMin) SkyBlue
+                                    else primaryColor,
+                                radius = if (isSelected) 6f else 5f,
+                                center = point
+                            )
+                            drawCircle(
+                                color = Color.White,
+                                radius = 3f,
+                                center = point
+                            )
+                        }
+                    }
+
+                    // ── Selected value tooltip ──
+                    selectedIndex?.let { idx ->
+                        if (idx < visiblePoints.size) {
+                            val point = visiblePoints[idx]
+                            val temp = temps[idx]
+
+                            // Tooltip background
+                            val tooltipWidth = 90f
+                            val tooltipHeight = 40f
+                            val tooltipX = (point.x - tooltipWidth / 2).coerceIn(0f, width - tooltipWidth)
+                            val tooltipY = (point.y - tooltipHeight - 10f).coerceAtLeast(0f)
+
+                            drawRoundRect(
+                                color = inverseSurfaceColor.copy(alpha = 0.9f),
+                                topLeft = Offset(tooltipX, tooltipY),
+                                size = Size(tooltipWidth, tooltipHeight),
+                                cornerRadius = CornerRadius(8f)
+                            )
+
+                            // Tooltip text
+                            drawContext.canvas.nativeCanvas.apply {
+                                val paint = android.graphics.Paint().apply {
+                                    color = android.graphics.Color.WHITE
+                                    textSize = 14f
+                                    textAlign = android.graphics.Paint.Align.CENTER
+                                    isAntiAlias = true
+                                }
+                                paint.textSize = 28f
+                                drawText(
+                                    "${temp.roundToInt()}$unit",
+                                    tooltipX + tooltipWidth / 2,
+                                    tooltipY + 28f,
+                                    paint
+                                )
+                            }
+                        }
+                    }
+
+                    // ── Min/Max labels ──
+                    if (minIndex < points.size) {
+                        val p = points[minIndex]
+                        drawContext.canvas.nativeCanvas.apply {
+                            val paint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.parseColor("#38BDF8")
+                                textSize = 22f
+                                textAlign = android.graphics.Paint.Align.CENTER
+                                isAntiAlias = true
+                                isFakeBoldText = true
+                            }
+                            drawText(
+                                "${minTemp.roundToInt()}°",
+                                p.x,
+                                p.y + 32f,
+                                paint
+                            )
+                        }
+                    }
+                    if (maxIndex < points.size && maxIndex != minIndex) {
+                        val p = points[maxIndex]
+                        drawContext.canvas.nativeCanvas.apply {
+                            val paint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.parseColor("#F97316")
+                                textSize = 22f
+                                textAlign = android.graphics.Paint.Align.CENTER
+                                isAntiAlias = true
+                                isFakeBoldText = true
+                            }
+                            drawText(
+                                "${maxTemp.roundToInt()}°",
+                                p.x,
+                                p.y - 14f,
+                                paint
+                            )
+                        }
+                    }
+
+                    // ── Time labels on x-axis ──
+                    val labelInterval = (sorted.size / 6).coerceAtLeast(1)
+                    sorted.forEachIndexed { index, hour ->
+                        if (index % labelInterval == 0 && index < points.size) {
+                            val x = points[index].x
+                            val timeLabel = try {
+                                val timeStr = hour.time.substringAfter("T").take(5)
+                                val h = timeStr.split(":")[0].toIntOrNull() ?: 0
+                                when {
+                                    h == 0 -> "12a"
+                                    h < 12 -> "${h}a"
+                                    h == 12 -> "12p"
+                                    else -> "${h - 12}p"
+                                }
+                            } catch (_: Exception) { "--" }
+
+                            drawContext.canvas.nativeCanvas.apply {
+                                val paint = android.graphics.Paint().apply {
+                                    color = android.graphics.Color.parseColor("#94A3B8")
+                                    textSize = 20f
+                                    textAlign = android.graphics.Paint.Align.CENTER
+                                    isAntiAlias = true
+                                }
+                                drawText(
+                                    timeLabel,
+                                    x,
+                                    height - 6f,
+                                    paint
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Legend row ──
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Canvas(modifier = Modifier.size(8.dp)) {
+                        drawCircle(SkyBlue)
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Low: ${minTemp.roundToInt()}$unit",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
+                Text(
+                    text = "Tap chart for details",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Canvas(modifier = Modifier.size(8.dp)) {
+                        drawCircle(WarmOrange)
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "High: ${maxTemp.roundToInt()}$unit",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        }
     }
 }
