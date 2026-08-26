@@ -329,6 +329,7 @@ fun WeatherDashboard(
                         Spacer(modifier = Modifier.height(16.dp))
                         DailyForecastSection(
                             dailyData = info.daily,
+                            hourlyData = info.hourly,
                             isCelsius = isCelsius
                         )
                     }
@@ -1148,6 +1149,7 @@ private fun HourlyPillCard(
 @Composable
 private fun DailyForecastSection(
     dailyData: List<DailyWeather>,
+    hourlyData: List<HourlyWeather>,
     isCelsius: Boolean
 ) {
     if (dailyData.isEmpty()) return
@@ -1177,6 +1179,7 @@ private fun DailyForecastSection(
             dailyData.forEachIndexed { index, day ->
                 DailyRow(
                     data = day,
+                    hourlyForDay = hourlyData.filter { it.time.startsWith(day.date) },
                     isCelsius = isCelsius,
                     globalMin = allMin,
                     globalMax = allMax,
@@ -1195,6 +1198,7 @@ private fun DailyForecastSection(
 @Composable
 private fun DailyRow(
     data: DailyWeather,
+    hourlyForDay: List<HourlyWeather> = emptyList(),
     isCelsius: Boolean,
     globalMin: Int,
     globalMax: Int,
@@ -1313,6 +1317,70 @@ private fun DailyRow(
                     HourlyDetailItem("Condition", localizedWeatherDescription(data.weatherCode, true))
                     if (data.sunrise != null && data.sunset != null) {
                         HourlyDetailItem("Sun", "${data.sunrise.take(5)} / ${data.sunset.take(5)}")
+                    }
+                }
+                // Hourly breakdown for this day
+                if (hourlyForDay.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.06f))
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Hourly Forecast",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(hourlyForDay.size) { index ->
+                            val hour = hourlyForDay[index]
+                            val hourLabel = try {
+                                val time = java.time.LocalTime.parse(hour.time.substringAfter("T"))
+                                time.format(DateTimeFormatter.ofPattern("ha"))
+                            } catch (e: Exception) { "--" }
+                            val hourTemp = convertTemp(hour.temperature, isCelsius)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .background(
+                                        Color.White.copy(alpha = 0.06f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    hourLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 10.sp
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Icon(
+                                    imageVector = getWeatherIcon(hour.weatherCode, true),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Color.White.copy(alpha = 0.7f)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    "${hourTemp}°",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                                hour.precipitationProbability?.let { prob ->
+                                    if (prob > 0) {
+                                        Text(
+                                            "${prob}%",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = SkyBlue,
+                                            fontSize = 9.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
