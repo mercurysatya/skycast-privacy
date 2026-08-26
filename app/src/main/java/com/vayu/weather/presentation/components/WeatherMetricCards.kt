@@ -165,7 +165,7 @@ fun WindCard(
                         textAlign = android.graphics.Paint.Align.CENTER
                         isAntiAlias = true
                     }
-                    val labels = listOf("N" to -90f, "E" to 0f, "S" to 90f, "W" to 180f)
+                    val labels = listOf("N" to 0f, "E" to 90f, "S" to 180f, "W" to 270f)
                     labels.forEach { (label, angle) ->
                         val rad2 = Math.toRadians(angle.toDouble())
                         val lx = center.x + (radius * 0.85f * Math.sin(rad2)).toFloat()
