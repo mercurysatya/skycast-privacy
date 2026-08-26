@@ -1382,7 +1382,18 @@ private fun WeatherDetailsSection(
                     icon = Icons.Rounded.WaterDrop,
                     label = stringResource(R.string.humidity),
                     value = "${info.current.humidity?.roundToInt() ?: "--"}%",
-                    extra = info.current.humidity?.let { "${(it / 100f * 0.5 + 0.5).roundToInt()}/10 Comfort" } ?: "",
+                    extra = info.current.humidity?.let { h ->
+                        val tempC = info.current.temperature
+                        val comfort = when {
+                            tempC > 35 && h > 70 -> "Uncomfortable"
+                            tempC > 30 && h > 80 -> "Muggy"
+                            tempC in 20.0..30.0 && h in 30.0..60.0 -> "Comfortable"
+                            h < 30 -> "Dry"
+                            h > 80 -> "Humid"
+                            else -> "Moderate"
+                        }
+                        "$comfort"
+                    } ?: "",
                     isExpanded = expandedCard == "humidity",
                     onClick = {
                         expandedCard = if (expandedCard == "humidity") null else "humidity"
@@ -1394,7 +1405,7 @@ private fun WeatherDetailsSection(
                     icon = Icons.Rounded.Air,
                     label = stringResource(R.string.wind),
                     value = "${convertWind(info.current.windSpeed, windUnit)} ${windUnitLabel(windUnit)}",
-                    extra = info.current.windSpeed?.let { "${(it * 0.1).roundToInt()} gusts" } ?: "",
+                    extra = info.current.windGusts?.let { "Gusts ${convertWind(it, windUnit)} ${windUnitLabel(windUnit)}" } ?: "",
                     isExpanded = expandedCard == "wind",
                     onClick = {
                         expandedCard = if (expandedCard == "wind") null else "wind"
@@ -1414,7 +1425,14 @@ private fun WeatherDetailsSection(
                     icon = Icons.Rounded.Thermostat,
                     label = stringResource(R.string.pressure),
                     value = info.current.surfacePressure?.let { "${it.roundToInt()} hPa" } ?: "--",
-                    extra = if ((info.current.surfacePressure ?: 1013.0) > 1013.0) "High pressure" else "Low pressure",
+                    extra = info.current.surfacePressure?.let { p ->
+                        when {
+                            p >= 1020 -> "High pressure — fair weather likely"
+                            p >= 1013 -> "Normal pressure"
+                            p >= 1005 -> "Below normal — possible rain"
+                            else -> "Low pressure — stormy conditions possible"
+                        }
+                    } ?: "--",
                     isExpanded = expandedCard == "pressure",
                     onClick = {
                         expandedCard = if (expandedCard == "pressure") null else "pressure"
