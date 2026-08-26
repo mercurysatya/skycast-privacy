@@ -39,10 +39,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.Map
+import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -93,6 +95,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -353,42 +356,59 @@ fun WeatherMapScreen(
         }
 
         // === RIGHT SIDE FABs ===
-        // Position above the radar slider when overlay is active
+        // === EXPANDABLE FAB MENU (single FAB that expands) ===
+        var fabExpanded by remember { mutableStateOf(false) }
         val fabBottomPadding = if (radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0) 160.dp else 16.dp
-        Column(modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp).padding(bottom = fabBottomPadding), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // Share FAB
-            FloatingActionButton(onClick = { scope.launch { shareMapScreenshot(context, cameraState) } }, containerColor = MaterialTheme.colorScheme.surfaceVariant, elevation = FloatingActionButtonDefaults.elevation(0.dp), modifier = Modifier.size(44.dp)) {
-                Icon(Icons.Rounded.Share, contentDescription = "Share map", modifier = Modifier.size(20.dp))
-            }
-            // Legend FAB
-            FloatingActionButton(onClick = { showLegend = !showLegend }, containerColor = if (showLegend && radarState.overlayType != OverlayType.NONE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.Rounded.CloudQueue, contentDescription = "Legend", tint = if (showLegend && radarState.overlayType != OverlayType.NONE) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-            }
-            // Search FAB
-            FloatingActionButton(onClick = { showSearch = !showSearch }, containerColor = if (showSearch) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.Rounded.Search, contentDescription = "Search", tint = if (showSearch) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-            }
-            // Tilt FAB
-            FloatingActionButton(onClick = { mapViewModel.cycleTilt() }, containerColor = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.Rounded.Explore, contentDescription = "Tilt: ${mapTilt.label}", modifier = Modifier.size(20.dp))
-            }
-            // Layers FAB
-            FloatingActionButton(onClick = { showLayerPanel = !showLayerPanel }, containerColor = if (showLayerPanel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.Rounded.Layers, contentDescription = stringResource(R.string.map_layers), tint = if (showLayerPanel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-            }
-            // My Location FAB
-            FloatingActionButton(onClick = {
-                userLocation?.let { loc ->
-                    cameraState.position = CameraPosition(
-                        target = Position(loc.latitude, loc.longitude),
-                        zoom = clampZoom(FAB_ZOOM.toDouble()),
-                        bearing = cameraState.position.bearing,
-                        tilt = mapTilt.degrees.toDouble()
-                    )
-                    mapViewModel.onBoundsChanged(loc.latitude, loc.longitude, FAB_ZOOM.toDouble())
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = fabBottomPadding),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            // Expanded menu items
+            AnimatedVisibility(
+                visible = fabExpanded,
+                enter = fadeIn() + slideInVertically { it / 2 },
+                exit = fadeOut() + slideOutVertically { it / 2 }
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    MapFabItem(Icons.Rounded.MyLocation, "My Location") {
+                        userLocation?.let { loc ->
+                            cameraState.position = CameraPosition(
+                                target = Position(loc.latitude, loc.longitude),
+                                zoom = clampZoom(FAB_ZOOM.toDouble()),
+                                bearing = cameraState.position.bearing,
+                                tilt = mapTilt.degrees.toDouble()
+                            )
+                            mapViewModel.onBoundsChanged(loc.latitude, loc.longitude, FAB_ZOOM.toDouble())
+                        }
+                        fabExpanded = false
+                    }
+                    MapFabItem(Icons.Rounded.Search, "Search") { showSearch = !showSearch; fabExpanded = false }
+                    MapFabItem(Icons.Rounded.Layers, "Layers") { showLayerPanel = !showLayerPanel; fabExpanded = false }
+                    MapFabItem(Icons.Rounded.Explore, "Tilt: ${mapTilt.label}") { mapViewModel.cycleTilt(); fabExpanded = false }
+                    MapFabItem(Icons.Rounded.CloudQueue, "Legend") { showLegend = !showLegend; fabExpanded = false }
+                    MapFabItem(Icons.Rounded.Share, "Share") { scope.launch { shareMapScreenshot(context, cameraState) }; fabExpanded = false }
                 }
-            }, containerColor = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.Rounded.MyLocation, contentDescription = stringResource(R.string.center_on_location), tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+            }
+
+            // Main FAB
+            FloatingActionButton(
+                onClick = { fabExpanded = !fabExpanded },
+                containerColor = if (fabExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(52.dp)
+            ) {
+                Icon(
+                    imageVector = if (fabExpanded) Icons.Rounded.Close else Icons.Rounded.Menu,
+                    contentDescription = if (fabExpanded) "Close menu" else "Map options",
+                    tint = if (fabExpanded) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
 
@@ -795,13 +815,43 @@ private fun LayerSelectorPanel(selectedBaseMap: BaseMapStyle, overlayType: Overl
             Text(stringResource(R.string.map_base_map), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), modifier = Modifier.padding(bottom = 2.dp))
             BaseMapStyle.entries.forEach { style ->
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onBaseMapSelected(style); onDismiss() }.background(if (selectedBaseMap == style) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent).padding(vertical = 8.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = when (style) { BaseMapStyle.STREET -> Icons.Rounded.Map; BaseMapStyle.SATELLITE -> Icons.Rounded.SatelliteAlt; BaseMapStyle.TERRAIN -> Icons.Rounded.Terrain; BaseMapStyle.DARK -> Icons.Rounded.DarkMode; BaseMapStyle.TOPO -> Icons.Rounded.Terrain }, contentDescription = null, tint = if (selectedBaseMap == style) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+                    Icon(imageVector = when (style) { BaseMapStyle.STREET -> Icons.Rounded.Map; BaseMapStyle.VOYAGER -> Icons.Rounded.Terrain; BaseMapStyle.DARK -> Icons.Rounded.DarkMode; BaseMapStyle.SATELLITE -> Icons.Rounded.SatelliteAlt }, contentDescription = null, tint = if (selectedBaseMap == style) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(style.displayName, style = MaterialTheme.typography.bodyMedium, color = if (selectedBaseMap == style) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = if (selectedBaseMap == style) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f))
                     if (selectedBaseMap == style) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 }
             }
         }
+    }
+}
+
+// === Expandable FAB Menu Item ===
+@Composable
+private fun MapFabItem(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(28.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(end = 10.dp)
+        )
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
     }
 }
 

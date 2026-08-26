@@ -17,8 +17,8 @@ class BaseMapStyleTest {
     }
 
     @Test
-    fun `TERRAIN has correct display name`() {
-        assertEquals("Terrain", BaseMapStyle.TERRAIN.displayName)
+    fun `VOYAGER has correct display name`() {
+        assertEquals("Voyager", BaseMapStyle.VOYAGER.displayName)
     }
 
     @Test
@@ -37,8 +37,8 @@ class BaseMapStyleTest {
     }
 
     @Test
-    fun `TERRAIN style URL contains voyager`() {
-        assertTrue(BaseMapStyle.TERRAIN.styleUrl.contains("voyager"))
+    fun `VOYAGER style URL contains voyager`() {
+        assertTrue(BaseMapStyle.VOYAGER.styleUrl.contains("voyager"))
     }
 
     @Test
@@ -48,7 +48,7 @@ class BaseMapStyleTest {
 
     @Test
     fun `all styles have 4 entries`() {
-        assertEquals(5, BaseMapStyle.entries.size)
+        assertEquals(4, BaseMapStyle.entries.size)
     }
 
     @Test
