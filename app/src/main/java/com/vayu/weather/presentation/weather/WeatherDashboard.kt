@@ -274,7 +274,7 @@ fun WeatherDashboard(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 100.dp)
                 ) {
-                    item {
+                    item(key = "topbar") {
                         TopBar(
                             onToggleUnit = onToggleUnit,
                             onOpenSettings = onOpenSettings,
@@ -288,7 +288,7 @@ fun WeatherDashboard(
                         )
                     }
 
-                    item {
+                    item(key = "hero") {
                         HeroSection(
                             info = info,
                             cityName = cityName,
@@ -297,47 +297,40 @@ fun WeatherDashboard(
                         )
                     }
 
-                    item {
+                    item(key = "summary") {
                         WeatherSummary(
                             info = info,
                             isCelsius = isCelsius
                         )
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(28.dp))
-                        StaggeredEntry(index = 1) {
+                    item(key = "hourly") {
+                        Spacer(modifier = Modifier.height(24.dp))
                         HourlyForecastSection(
                             hourlyData = info.hourly,
                             isCelsius = isCelsius
                         )
-                        }
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        StaggeredEntry(index = 2) {
+                    item(key = "daily") {
+                        Spacer(modifier = Modifier.height(16.dp))
                         DailyForecastSection(
                             dailyData = info.daily,
                             isCelsius = isCelsius
                         )
-                        }
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        StaggeredEntry(index = 3) {
+                    item(key = "details") {
+                        Spacer(modifier = Modifier.height(16.dp))
                         WeatherDetailsSection(
                             info = info,
                             isCelsius = isCelsius,
                             windUnit = settings.windUnit
                         )
-                        }
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        StaggeredEntry(index = 4) {
+                    item(key = "metrics") {
+                        Spacer(modifier = Modifier.height(16.dp))
                             // Premium metric cards — responsive: 2 cols phone, 4 cols tablet
                             val windUnitLabel = when (settings.windUnit) {
                                 WindUnit.KPH -> "km/h"
@@ -403,30 +396,25 @@ fun WeatherDashboard(
                                 }
                             }
                         }
-                    }
 
-                    item {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        StaggeredEntry(index = 5) {
+                    item(key = "precip") {
+                        Spacer(modifier = Modifier.height(16.dp))
                             PrecipitationTimelineCard(
                                 hourlyData = info.hourly,
                                 modifier = Modifier.padding(horizontal = 20.dp)
                             )
-                        }
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        StaggeredEntry(index = 6) {
+                    item(key = "insights") {
+                        Spacer(modifier = Modifier.height(16.dp))
                         AIInsightsCard(
                             info = info,
                             isCelsius = isCelsius
                         )
-                        }
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
+                    item(key = "trends") {
+                        Spacer(modifier = Modifier.height(16.dp))
                         WeatherTrends(
                             hourlyData = info.hourly,
                             isCelsius = isCelsius,
@@ -435,50 +423,40 @@ fun WeatherDashboard(
                     }
 
                     // === SMART SUGGESTIONS ===
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        StaggeredEntry(index = 7) {
-                            SmartSuggestionsCard(weatherInfo = info)
-                        }
+                    item(key = "suggestions") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SmartSuggestionsCard(weatherInfo = info)
                     }
 
                     // === STORM TRACKER ===
-                    item {
+                    item(key = "storm") {
                         val stormAlerts = remember(info) { generateStormAlerts(info) }
                         if (stormAlerts.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(20.dp))
-                            StaggeredEntry(index = 8) {
-                                StormTrackerCard(alerts = stormAlerts)
-                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            StormTrackerCard(alerts = stormAlerts)
                         }
                     }
 
                     // === PRESSURE TREND ===
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        StaggeredEntry(index = 9) {
-                            PressureTrendChart(hourlyData = info.hourly)
-                        }
+                    item(key = "pressure") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        PressureTrendChart(hourlyData = info.hourly)
                     }
 
                     // === SUN ARC ===
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        StaggeredEntry(index = 10) {
-                            SunArcAnimation(dailyData = info.daily)
-                        }
+                    item(key = "sunarc") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SunArcAnimation(dailyData = info.daily)
                     }
 
                     // === GARDENING / PET ===
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        StaggeredEntry(index = 11) {
-                            GardeningPetWeatherCard(weatherInfo = info)
-                        }
+                    item(key = "activities") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        GardeningPetWeatherCard(weatherInfo = info)
                     }
 
                     if (state.lastUpdatedTime != null) {
-                        item {
+                        item(key = "updated") {
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = state.lastUpdatedTime!!,
@@ -490,14 +468,14 @@ fun WeatherDashboard(
                         }
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
+                    item(key = "sunmoon") {
+                        Spacer(modifier = Modifier.height(16.dp))
                         SunMoonSection(dailyData = info.daily)
                     }
 
                     if (state.airQuality != null) {
-                        item {
-                            Spacer(modifier = Modifier.height(20.dp))
+                        item(key = "aqi") {
+                            Spacer(modifier = Modifier.height(16.dp))
                             AirQualityCard(
                                 airQuality = state.airQuality,
                                 modifier = Modifier.padding(horizontal = 20.dp)
@@ -505,8 +483,8 @@ fun WeatherDashboard(
                         }
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                    item(key = "ad") {
+                        Spacer(modifier = Modifier.height(12.dp))
                         AdBanner()
                     }
                 }
@@ -2235,30 +2213,8 @@ private fun StaggeredEntry(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    var visible by remember { mutableStateOf(false)
-    }
-    LaunchedEffect(Unit) {
-        delay(index * 80L)
-        visible = true
-    }
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(300),
-        label = "entry_alpha"
-    )
-    val offsetY by animateFloatAsState(
-        targetValue = if (visible) 0f else 30f,
-        animationSpec = tween(400),
-        label = "entry_offset"
-    )
-    Box(
-        modifier = modifier.graphicsLayer {
-            this.alpha = alpha
-            translationY = offsetY
-        }
-    ) {
-        content()
-    }
+    // Simplified: instant render, no animation delays that cause blank scroll spaces
+    content()
 }
 
 // ============================================================
