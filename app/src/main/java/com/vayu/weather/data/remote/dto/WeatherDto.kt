@@ -60,7 +60,13 @@ data class HourlyWeatherDto(
     @Json(name = "wind_speed_10m")
     val windSpeeds: List<Double?>? = null,
     @Json(name = "visibility")
-    val visibility: List<Double?>? = null
+    val visibility: List<Double?>? = null,
+    @Json(name = "precipitation_probability")
+    val precipitationProbabilities: List<Int?>? = null,
+    @Json(name = "wind_direction_10m")
+    val windDirections: List<Double?>? = null,
+    @Json(name = "precipitation")
+    val precipitations: List<Double?>? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -81,4 +87,11 @@ data class DailyWeatherDto(
     val sunrise: List<String?>? = null,
     @Json(name = "sunset")
     val sunset: List<String?>? = null
+)
+
+/** Lightweight grid data response for temperature heatmap */
+data class GridWeatherResponse(
+    val temperature_2m: List<List<Double>>? = null,
+    val wind_speed_10m: List<List<Double>>? = null,
+    val wind_direction_10m: List<List<Double>>? = null
 )

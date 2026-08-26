@@ -33,7 +33,10 @@ data class HourlyWeather(
     val humidity: Double?,
     val pressure: Double?,
     val windSpeed: Double?,
-    val visibility: Double? = null
+    val visibility: Double? = null,
+    val precipitationProbability: Int? = null,
+    val windDirection: Double? = null,
+    val precipitation: Double? = null
 )
 
 @Serializable

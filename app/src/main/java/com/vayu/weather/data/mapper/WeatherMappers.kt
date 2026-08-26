@@ -45,7 +45,10 @@ fun HourlyWeatherDto.toHourlyWeather(): List<HourlyWeather> {
                 humidity = humidities?.getOrNull(index),
                 pressure = pressures?.getOrNull(index),
                 windSpeed = windSpeeds?.getOrNull(index),
-                visibility = visibility?.getOrNull(index)
+                visibility = visibility?.getOrNull(index),
+                precipitationProbability = precipitationProbabilities?.getOrNull(index),
+                windDirection = windDirections?.getOrNull(index),
+                precipitation = precipitations?.getOrNull(index)
             )
         } catch (e: Exception) {
             Log.e("WeatherMappers", "Error mapping HourlyWeather at index $index", e)

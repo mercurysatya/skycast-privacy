@@ -178,6 +178,14 @@ private fun windUnitLabel(unit: WindUnit): String = when (unit) {
     WindUnit.KNOTS -> stringResource(R.string.wind_knots)
 }
 
+private fun formatWindDirection(degrees: Double): String {
+    val directions = arrayOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+    if (degrees.isNaN()) return "--"
+    val normalized = ((degrees % 360) + 360) % 360
+    val index = ((normalized + 22.5) / 45).toInt() % 8
+    return directions[index.coerceIn(0, directions.lastIndex)]
+}
+
 fun getWeatherIcon(weatherCode: Int, isDay: Boolean): ImageVector {
     return when (weatherCode) {
         0 -> if (isDay) Icons.Rounded.WbSunny else Icons.Rounded.NightsStay
@@ -942,9 +950,18 @@ private fun HourlyForecastSection(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
+                            HourlyDetailItem("Rain", data.precipitationProbability?.let { "$it%" } ?: "--")
+                            HourlyDetailItem("Wind Dir", data.windDirection?.let { formatWindDirection(it) } ?: "--")
+                            HourlyDetailItem("Condition", localizedWeatherDescription(data.weatherCode, true))
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
                             HourlyDetailItem("Pressure", "${data.pressure?.roundToInt() ?: "--"} hPa")
                             HourlyDetailItem("Visibility", data.visibility?.let { "${(it / 1000).roundToInt()} km" } ?: "--")
-                            HourlyDetailItem("Condition", localizedWeatherDescription(data.weatherCode, true))
+                            HourlyDetailItem("Precip", data.precipitation?.let { "${String.format("%.1f", it)} mm" } ?: "--")
                         }
                     }
                 }
@@ -991,17 +1008,18 @@ private fun HourlyPillCard(
         } catch (e: Exception) { data.time.takeLast(5) }
     }
 
-    val precipProb = when (data.weatherCode) {
-        0 -> 0
-        1, 2, 3 -> 5
-        45, 48 -> 15
-        51, 53, 55 -> 40 + (data.weatherCode - 51) * 15
-        61, 63, 65 -> 50 + (data.weatherCode - 61) * 20
-        80, 81, 82 -> 60 + (data.weatherCode - 80) * 15
-        71, 73, 75 -> 70 + (data.weatherCode - 71) * 10
-        95, 96, 99 -> 85
-        else -> 0
-    }
+    val precipProb = data.precipitationProbability
+        ?: when (data.weatherCode) {
+            0 -> 0
+            1, 2, 3 -> 5
+            45, 48 -> 15
+            51, 53, 55 -> 40 + (data.weatherCode - 51) * 15
+            61, 63, 65 -> 50 + (data.weatherCode - 61) * 20
+            80, 81, 82 -> 60 + (data.weatherCode - 80) * 15
+            71, 73, 75 -> 70 + (data.weatherCode - 71) * 10
+            95, 96, 99 -> 85
+            else -> 0
+        }
     val showPrecip = precipProb >= 20
 
     val trendArrow = remember(prevTemp, data.temperature) {
