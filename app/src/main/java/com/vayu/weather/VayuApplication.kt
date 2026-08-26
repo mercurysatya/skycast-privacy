@@ -36,6 +36,7 @@ class VayuApplication : Application(), Configuration.Provider {
 
         setupWeatherAlerts()
         setupWidgetUpdate()
+        setupWeatherNotifications()
     }
 
     private fun configureAds() {
@@ -94,6 +95,11 @@ class VayuApplication : Application(), Configuration.Provider {
             ExistingPeriodicWorkPolicy.KEEP,
             workRequest
         )
+    }
+
+    private fun setupWeatherNotifications() {
+        com.vayu.weather.data.worker.WeatherNotificationWorker.scheduleCurrentWeather(this)
+        com.vayu.weather.data.worker.WeatherNotificationWorker.scheduleMorningForecast(this)
     }
 
     override val workManagerConfiguration: Configuration

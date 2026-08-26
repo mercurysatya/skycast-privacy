@@ -125,6 +125,12 @@ import com.vayu.weather.presentation.components.WindCard
 import com.vayu.weather.presentation.components.PressureCard
 import com.vayu.weather.presentation.components.MoonPhaseCard
 import com.vayu.weather.presentation.components.PrecipitationTimelineCard
+import com.vayu.weather.presentation.components.SmartSuggestionsCard
+import com.vayu.weather.presentation.components.PressureTrendChart
+import com.vayu.weather.presentation.components.SunArcAnimation
+import com.vayu.weather.presentation.components.StormTrackerCard
+import com.vayu.weather.presentation.components.generateStormAlerts
+import com.vayu.weather.presentation.components.GardeningPetWeatherCard
 import java.time.format.DateTimeFormatter
 import kotlin.math.max
 import kotlin.math.min
@@ -426,6 +432,49 @@ fun WeatherDashboard(
                             isCelsius = isCelsius,
                             modifier = Modifier.padding(horizontal = 20.dp)
                         )
+                    }
+
+                    // === SMART SUGGESTIONS ===
+                    item {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        StaggeredEntry(index = 7) {
+                            SmartSuggestionsCard(weatherInfo = info)
+                        }
+                    }
+
+                    // === STORM TRACKER ===
+                    item {
+                        val stormAlerts = remember(info) { generateStormAlerts(info) }
+                        if (stormAlerts.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(20.dp))
+                            StaggeredEntry(index = 8) {
+                                StormTrackerCard(alerts = stormAlerts)
+                            }
+                        }
+                    }
+
+                    // === PRESSURE TREND ===
+                    item {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        StaggeredEntry(index = 9) {
+                            PressureTrendChart(hourlyData = info.hourly)
+                        }
+                    }
+
+                    // === SUN ARC ===
+                    item {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        StaggeredEntry(index = 10) {
+                            SunArcAnimation(dailyData = info.daily)
+                        }
+                    }
+
+                    // === GARDENING / PET ===
+                    item {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        StaggeredEntry(index = 11) {
+                            GardeningPetWeatherCard(weatherInfo = info)
+                        }
                     }
 
                     if (state.lastUpdatedTime != null) {
