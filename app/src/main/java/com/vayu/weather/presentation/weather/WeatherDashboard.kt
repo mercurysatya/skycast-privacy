@@ -80,6 +80,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import android.view.HapticFeedbackConstants
 import androidx.compose.ui.Alignment
@@ -132,6 +133,8 @@ import com.vayu.weather.presentation.components.StormTrackerCard
 import com.vayu.weather.presentation.components.generateStormAlerts
 import com.vayu.weather.presentation.components.GardeningPetWeatherCard
 import com.vayu.weather.presentation.components.SmartInsightsSection
+import com.vayu.weather.presentation.components.WeatherStreakCard
+import com.vayu.weather.presentation.components.WeatherFunFacts
 import java.time.format.DateTimeFormatter
 import kotlin.math.max
 import kotlin.math.min
@@ -256,6 +259,7 @@ fun WeatherDashboard(
     modifier: Modifier = Modifier
 ) {
     val isCelsius = settings.temperatureUnit == TemperatureUnit.CELSIUS
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
 
@@ -428,6 +432,16 @@ fun WeatherDashboard(
                             info = info,
                             isCelsius = isCelsius
                         )
+                    }
+
+                    item(key = "streak") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        WeatherStreakCard(context = context)
+                    }
+
+                    item(key = "fun_facts") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        WeatherFunFacts(info = info)
                     }
 
                     item(key = "trends") {
