@@ -1073,6 +1073,9 @@ fun SettingsScreen(
                     }
                 }
 
+                // Ad banner at bottom of settings
+                Spacer(modifier = Modifier.height(16.dp))
+                com.vayu.weather.presentation.ads.AdBanner()
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }

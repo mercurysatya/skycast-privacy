@@ -138,6 +138,12 @@ fun WeatherDetailScreen(
                         )
                     }
                 }
+
+                // Ad banner at bottom
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    com.vayu.weather.presentation.ads.AdBanner()
+                }
             }
         }
     }

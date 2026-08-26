@@ -190,6 +190,12 @@ fun WeatherHistoryScreen(
                     items(state.dailyData.reversed()) { day ->
                         DailyHistoryRow(day)
                     }
+
+                    // Ad banner at bottom
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        com.vayu.weather.presentation.ads.AdBanner()
+                    }
                 }
             }
         }

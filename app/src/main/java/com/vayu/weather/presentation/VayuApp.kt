@@ -130,6 +130,7 @@ fun VayuApp() {
                 if (ConsentManager.canRequestAds(act)) {
                     AdManager.initializeMobileAds(act)
                     AdManager.loadInterstitial(act)
+                    AdManager.loadRewardedAd(act)
                 }
             }
         }
@@ -418,7 +419,16 @@ fun VayuApp() {
                                             onToggleUnit = settingsViewModel::toggleTemperatureUnit,
                                             onOpenSettings = { showSettings = true },
                                             onOpenAlerts = { showAlerts = true },
-                                            onOpenDetail = { showDetail = true },
+                                            onOpenDetail = {
+                                                val act = activity
+                                                if (act != null) {
+                                                    com.vayu.weather.presentation.ads.AdManager.showInterstitial(act) {
+                                                        showDetail = true
+                                                    }
+                                                } else {
+                                                    showDetail = true
+                                                }
+                                            },
                                             onOpenHistory = { showHistory = true },
                                             onShare = {
                                                 val weatherInfo = weatherViewModel.state.weatherInfo
