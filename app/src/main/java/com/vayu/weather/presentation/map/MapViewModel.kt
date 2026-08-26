@@ -41,7 +41,7 @@ enum class BaseMapStyle(val displayName: String, val styleUrl: String) {
     STREET("Street", "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"),
     VOYAGER("Voyager", "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"),
     DARK("Dark", "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"),
-    SATELLITE("Satellite", "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json")
+    SATELLITE("Satellite", "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}")
 }
 
 enum class OverlayType(val displayName: String) {

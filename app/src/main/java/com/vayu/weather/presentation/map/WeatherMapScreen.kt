@@ -260,13 +260,44 @@ fun WeatherMapScreen(
         )
     }
 
+    // Load grid data when overlay type switches to Temperature or Wind
+    LaunchedEffect(radarState.overlayType) {
+        if (radarState.overlayType == OverlayType.TEMPERATURE || radarState.overlayType == OverlayType.WIND) {
+            val pos = cameraState.position.target
+            mapViewModel.loadGridData(pos.latitude, pos.longitude)
+        }
+    }
+
     val radarTileUrl = remember(radarState) {
         radarState.currentPath?.let { "${radarState.tileHost}$it/256/{z}/{x}/{y}/${radarState.colorScheme.id}/1_1.png" }
     }
     val cloudTileUrl = remember(cloudState) {
         cloudState.currentPath?.let { "${cloudState.tileHost}$it/256/{z}/{x}/{y}/2/1_1.png" }
     }
-    val mapStyle = remember(selectedBaseMap) { BaseStyle.Uri(selectedBaseMap.styleUrl) }
+    val mapStyle = remember(selectedBaseMap) {
+        if (selectedBaseMap == BaseMapStyle.SATELLITE) {
+            BaseStyle.Json(
+                """{
+                    "version": 8,
+                    "sources": {
+                        "satellite": {
+                            "type": "raster",
+                            "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+                            "tileSize": 256,
+                            "maxzoom": 18
+                        }
+                    },
+                    "layers": [{
+                        "id": "satellite",
+                        "type": "raster",
+                        "source": "satellite"
+                    }]
+                }"""
+            )
+        } else {
+            BaseStyle.Uri(selectedBaseMap.styleUrl)
+        }
+    }
     val mapOptions = remember { MapOptions() }
 
     // Animated tilt
@@ -278,6 +309,8 @@ fun WeatherMapScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         // === MAP ===
+        // key on selectedBaseMap forces MaplibreMap to recreate when style changes
+        key(selectedBaseMap) {
         MaplibreMap(
             modifier = Modifier.fillMaxSize(),
             cameraState = cameraState,
@@ -324,6 +357,7 @@ fun WeatherMapScreen(
                 }
             }
         }
+        } // end key(selectedBaseMap)
 
         if (isLoading) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
