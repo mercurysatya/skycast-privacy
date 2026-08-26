@@ -209,6 +209,7 @@ fun WeatherMapScreen(
     val windPoints by mapViewModel.windPoints.collectAsState()
     val mapAlerts by mapViewModel.mapAlerts.collectAsState()
     val mapTilt by mapViewModel.mapTilt.collectAsState()
+    val searchNavigateTo by mapViewModel.searchNavigateTo.collectAsState()
 
     LaunchedEffect(Unit) {
         userLocation = locationTracker.getCurrentLocation()
@@ -225,11 +226,38 @@ fun WeatherMapScreen(
     LaunchedEffect(userLocation) {
         userLocation?.let { loc ->
             cameraState.position = CameraPosition(
-                target = Position(latitude = loc.latitude, longitude = loc.longitude),                    zoom = clampZoom(DEFAULT_ZOOM.toDouble()),
-                    tilt = mapTilt.degrees.toDouble()
+                target = Position(latitude = loc.latitude, longitude = loc.longitude),
+                zoom = clampZoom(DEFAULT_ZOOM.toDouble()),
+                tilt = mapTilt.degrees.toDouble()
             )
             mapViewModel.onBoundsChanged(loc.latitude, loc.longitude, DEFAULT_ZOOM.toDouble())
         }
+    }
+
+    // Navigate camera when search finds a city
+    LaunchedEffect(searchNavigateTo) {
+        searchNavigateTo?.let { (lat, lon) ->
+            cameraState.position = CameraPosition(
+                target = Position(latitude = lat, longitude = lon),
+                zoom = clampZoom(10.0),
+                bearing = cameraState.position.bearing,
+                tilt = mapTilt.degrees.toDouble()
+            )
+            mapViewModel.onBoundsChanged(lat, lon, 10.0)
+            mapViewModel.consumeSearchNavigate()
+            showSearch = false
+            searchQuery = ""
+        }
+    }
+
+    // Apply tilt changes when user taps Tilt FAB item
+    LaunchedEffect(mapTilt) {
+        cameraState.position = CameraPosition(
+            target = cameraState.position.target,
+            zoom = cameraState.position.zoom,
+            bearing = cameraState.position.bearing,
+            tilt = mapTilt.degrees.toDouble()
+        )
     }
 
     val radarTileUrl = remember(radarState) {
@@ -330,12 +358,29 @@ fun WeatherMapScreen(
         CompassIndicator(modifier = Modifier.align(Alignment.TopStart).padding(top = 52.dp, start = 16.dp))
 
         // === SEARCH BAR ===
-        AnimatedVisibility(visible = showSearch, enter = slideInVertically { -it }, exit = slideOutVertically { -it }, modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 48.dp, end = 16.dp)) {
+        AnimatedVisibility(visible = showSearch, enter = slideInVertically { -it }, exit = slideOutVertically { -it }, modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp)) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Search city...", style = MaterialTheme.typography.bodySmall) },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                trailingIcon = {
+                    IconButton(onClick = {
+                        if (searchQuery.isNotBlank()) {
+                            mapViewModel.searchCity(searchQuery)
+                        }
+                    }, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Rounded.Search, contentDescription = "Search", modifier = Modifier.size(18.dp))
+                    }
+                },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSearch = {
+                        if (searchQuery.isNotBlank()) {
+                            mapViewModel.searchCity(searchQuery)
+                        }
+                    }
+                ),
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
@@ -376,7 +421,8 @@ fun WeatherMapScreen(
                     horizontalAlignment = Alignment.End
                 ) {
                     MapFabItem(Icons.Rounded.MyLocation, "My Location") {
-                        userLocation?.let { loc ->
+                        val loc = userLocation
+                        if (loc != null) {
                             cameraState.position = CameraPosition(
                                 target = Position(loc.latitude, loc.longitude),
                                 zoom = clampZoom(FAB_ZOOM.toDouble()),
@@ -384,6 +430,25 @@ fun WeatherMapScreen(
                                 tilt = mapTilt.degrees.toDouble()
                             )
                             mapViewModel.onBoundsChanged(loc.latitude, loc.longitude, FAB_ZOOM.toDouble())
+                        } else {
+                            // Re-request location
+                            scope.launch {
+                                try {
+                                    val freshLoc = locationTracker.getCurrentLocation()
+                                    freshLoc?.let { loc2 ->
+                                        userLocation = loc2
+                                        cameraState.position = CameraPosition(
+                                            target = Position(loc2.latitude, loc2.longitude),
+                                            zoom = clampZoom(FAB_ZOOM.toDouble()),
+                                            bearing = cameraState.position.bearing,
+                                            tilt = mapTilt.degrees.toDouble()
+                                        )
+                                        mapViewModel.onBoundsChanged(loc2.latitude, loc2.longitude, FAB_ZOOM.toDouble())
+                                    }
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "Failed to get location", e)
+                                }
+                            }
                         }
                         fabExpanded = false
                     }
@@ -411,7 +476,7 @@ fun WeatherMapScreen(
         }
 
         // === LEGEND ===
-        if (showLegend && radarState.overlayType != OverlayType.NONE) {
+        if (showLegend) {
             val legendBottomPadding = if (radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0) 90.dp else 80.dp
             RadarLegend(overlayType = radarState.overlayType, modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = legendBottomPadding))
         }

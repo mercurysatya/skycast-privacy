@@ -143,7 +143,8 @@ data class MapFavoritePin(
 class MapViewModel @Inject constructor(
     private val rainViewerApi: RainViewerApi,
     private val openMeteoApi: OpenMeteoApi,
-    private val getFavoritesUseCase: GetFavoritesUseCase
+    private val getFavoritesUseCase: GetFavoritesUseCase,
+    private val geocodingApi: com.vayu.weather.data.remote.GeocodingApi
 ) : ViewModel() {
 
     private val _radarState = MutableStateFlow(RadarState())
@@ -363,7 +364,28 @@ class MapViewModel @Inject constructor(
 
     // === Search ===
 
+    private val _searchNavigateTo = MutableStateFlow<Pair<Double, Double>?>(null)
+    val searchNavigateTo: StateFlow<Pair<Double, Double>?> = _searchNavigateTo.asStateFlow()
+
     fun setSearchQuery(query: String) { _searchQuery.value = query }
+
+    fun searchCity(query: String) {
+        viewModelScope.launch {
+            try {
+                val response = geocodingApi.searchCity(query, count = 1)
+                val result = response.results?.firstOrNull()
+                if (result != null) {
+                    _searchNavigateTo.value = Pair(result.latitude, result.longitude)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Search failed: ${e.message}", e)
+            }
+        }
+    }
+
+    fun consumeSearchNavigate() { _searchNavigateTo.value = null }
 
     // === Tilt ===
 
