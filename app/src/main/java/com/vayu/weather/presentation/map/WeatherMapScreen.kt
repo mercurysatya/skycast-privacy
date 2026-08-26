@@ -120,6 +120,7 @@ import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.layers.RasterLayer
+import org.maplibre.compose.map.GestureOptions
 import org.maplibre.compose.map.MapOptions
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.map.OrnamentOptions
@@ -236,7 +237,7 @@ fun WeatherMapScreen(
         cloudState.currentPath?.let { "${cloudState.tileHost}$it/256/{z}/{x}/{y}/2/1_1.png" }
     }
     val mapStyle = remember(selectedBaseMap) { BaseStyle.Uri(selectedBaseMap.styleUrl) }
-    val mapOptions = remember { MapOptions(renderOptions = RenderOptions(isDebugEnabled = false), ornamentOptions = OrnamentOptions.OnlyLogo) }
+    val mapOptions = remember { MapOptions() }
 
     // Animated tilt
     val animatedTilt by animateFloatAsState(
@@ -301,12 +302,7 @@ fun WeatherMapScreen(
             TemperatureHeatmapOverlay(
                 tempPoints = tempPoints,
                 cameraState = cameraState,
-                modifier = Modifier.fillMaxSize().pointerInput(Unit) {
-                    detectTapGestures { offset ->
-                        // Map tap coordinates back to lat/lon — simplified
-                        mapViewModel.onMapTap(20.0, 0.0)
-                    }
-                }
+                modifier = Modifier.fillMaxSize()
             )
         }
 
