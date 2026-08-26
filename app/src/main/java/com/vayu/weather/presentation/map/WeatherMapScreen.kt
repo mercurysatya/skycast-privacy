@@ -361,23 +361,10 @@ fun WeatherMapScreen(
 
         if (isLoading) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-        // === TEMPERATURE HEATMAP OVERLAY (Canvas-based) ===
-        if (radarState.overlayType == OverlayType.TEMPERATURE && tempPoints.isNotEmpty()) {
-            TemperatureHeatmapOverlay(
-                tempPoints = tempPoints,
-                cameraState = cameraState,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
-        // === WIND STREAMLINES OVERLAY (Canvas-based animated) ===
-        if (radarState.overlayType == OverlayType.WIND && windPoints.isNotEmpty()) {
-            WindStreamlineOverlay(
-                windPoints = windPoints,
-                cameraState = cameraState,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+        // === TEMPERATURE/WIND OVERLAY (Canvas-based) ===
+        // Note: Canvas overlays removed because the map library does not support
+        // lat/lon → screen projection on CameraState. Temperature and wind data
+        // are displayed in the weather detail cards instead.
 
         // === WEATHER ALERT ZONES ===
         mapAlerts.forEach { alert ->
@@ -533,135 +520,6 @@ fun WeatherMapScreen(
                 onToggleAutoPlay = { mapViewModel.toggleAutoPlay() },
                 isAutoPlaying = isAutoPlaying,
                 modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp, start = 12.dp, end = 76.dp)
-            )
-        }
-    }
-}
-
-// === Temperature Heatmap Overlay ===
-@Composable
-private fun TemperatureHeatmapOverlay(
-    tempPoints: List<TempGridPoint>,
-    cameraState: org.maplibre.compose.camera.CameraState,
-    modifier: Modifier = Modifier
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "heatmap_pulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.55f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "heatmap_alpha"
-    )
-
-    Canvas(modifier = modifier) {
-        if (tempPoints.isEmpty()) return@Canvas
-        val centerLat = tempPoints.map { it.lat }.average()
-        val centerLon = tempPoints.map { it.lon }.average()
-        val latRange = tempPoints.maxOf { it.lat } - tempPoints.minOf { it.lat }
-        val lonRange = tempPoints.maxOf { it.lon } - tempPoints.minOf { it.lon }
-        if (latRange == 0.0 || lonRange == 0.0) return@Canvas
-
-        // Draw temperature cells as semi-transparent circles
-        tempPoints.forEach { point ->
-            val normalizedLat = (point.lat - centerLat) / (latRange / 2)
-            val normalizedLon = (point.lon - centerLon) / (lonRange / 2)
-            val x = (0.5f + normalizedLon.toFloat() * 0.45f) * size.width
-            val y = (0.5f - normalizedLat.toFloat() * 0.45f) * size.height
-            val color = tempToColor(point.temp)
-            val radius = size.width * 0.12f
-
-            // Soft gradient circle
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(color.copy(alpha = pulseAlpha), Color.Transparent),
-                    center = Offset(x, y),
-                    radius = radius
-                ),
-                radius = radius,
-                center = Offset(x, y)
-            )
-        }
-    }
-}
-
-// === Wind Streamline Overlay ===
-@Composable
-private fun WindStreamlineOverlay(
-    windPoints: List<WindPoint>,
-    cameraState: org.maplibre.compose.camera.CameraState,
-    modifier: Modifier = Modifier
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "wind_anim")
-    val windOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wind_offset"
-    )
-
-    Canvas(modifier = modifier) {
-        if (windPoints.isEmpty()) return@Canvas
-        val centerLat = windPoints.map { it.lat }.average()
-        val centerLon = windPoints.map { it.lon }.average()
-        val latRange = windPoints.maxOf { it.lat } - windPoints.minOf { it.lat }
-        val lonRange = windPoints.maxOf { it.lon } - windPoints.minOf { it.lon }
-        if (latRange == 0.0 || lonRange == 0.0) return@Canvas
-
-        windPoints.forEach { point ->
-            val normalizedLat = (point.lat - centerLat) / (latRange / 2)
-            val normalizedLon = (point.lon - centerLon) / (lonRange / 2)
-            val x = (0.5f + normalizedLon.toFloat() * 0.45f) * size.width
-            val y = (0.5f - normalizedLat.toFloat() * 0.45f) * size.height
-            val color = windSpeedColor(point.speed)
-
-            // Draw wind arrow (line + head) based on direction
-            val angle = Math.toRadians(point.direction.toDouble())
-            val arrowLength = 30f + (point.speed / 5f).toFloat().coerceAtMost(40f)
-            val dx = sin(angle).toFloat() * arrowLength
-            val dy = -cos(angle).toFloat() * arrowLength
-
-            // Animated dash offset
-            val animDx = dx * windOffset
-            val animDy = dy * windOffset
-
-            // Arrow shaft
-            drawLine(
-                color = color.copy(alpha = 0.7f),
-                start = Offset(x - animDx * 0.3f, y - animDy * 0.3f),
-                end = Offset(x + animDx * 0.7f, y + animDy * 0.7f),
-                strokeWidth = 2f
-            )
-
-            // Arrowhead
-            val headLen = 8f
-            val headAngle1 = angle + 2.5
-            val headAngle2 = angle - 2.5
-            val tipX = x + animDx
-            val tipY = y + animDy
-            drawLine(
-                color = color.copy(alpha = 0.7f),
-                start = Offset(tipX, tipY),
-                end = Offset(tipX - headLen * sin(headAngle1).toFloat(), tipY + headLen * cos(headAngle1).toFloat()),
-                strokeWidth = 2f
-            )
-            drawLine(
-                color = color.copy(alpha = 0.7f),
-                start = Offset(tipX, tipY),
-                end = Offset(tipX - headLen * sin(headAngle2).toFloat(), tipY + headLen * cos(headAngle2).toFloat()),
-                strokeWidth = 2f
-            )
-
-            // Speed label dot
-            drawCircle(
-                color = Color.White.copy(alpha = 0.5f),
-                radius = 3f,
-                center = Offset(x + arrowLength + 4f, y)
             )
         }
     }
@@ -873,7 +731,7 @@ private fun LayerSelectorPanel(selectedBaseMap: BaseMapStyle, overlayType: Overl
 
             // OVERLAY TYPE
             Text("Weather Overlay", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-            OverlayType.entries.forEach { type ->
+            listOf(OverlayType.NONE, OverlayType.RADAR, OverlayType.CLOUDS).forEach { type ->
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onOverlayTypeSelected(type) }.background(if (overlayType == type) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent).padding(vertical = 8.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = when (type) { OverlayType.NONE -> Icons.Rounded.VisibilityOff; OverlayType.RADAR -> Icons.Rounded.Visibility; OverlayType.CLOUDS -> Icons.Rounded.CloudQueue; OverlayType.TEMPERATURE -> Icons.Rounded.Thermostat; OverlayType.WIND -> Icons.Rounded.Waves }, contentDescription = null, tint = if (overlayType == type) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(12.dp))
