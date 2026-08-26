@@ -608,7 +608,7 @@ fun WeatherMapScreen(
                     MapFabItem(Icons.Rounded.Layers, "Layers") { showLayerPanel = !showLayerPanel; fabExpanded = false }
                     MapFabItem(Icons.Rounded.Explore, "Tilt: ${mapTilt.label}") { mapViewModel.cycleTilt(); fabExpanded = false }
                     MapFabItem(Icons.Rounded.CloudQueue, "Legend") { showLegend = !showLegend; fabExpanded = false }
-                    MapFabItem(Icons.Rounded.Share, "Share") { scope.launch { shareMapScreenshot(context, cameraState) }; fabExpanded = false }
+                    MapFabItem(Icons.Rounded.Share, "Share") { scope.launch { shareMapScreenshot(context, cameraState, centerWeather) }; fabExpanded = false }
                 }
             }
 
@@ -1060,31 +1060,96 @@ private fun RadarTimeSlider(
 }
 
 // === Share Map Screenshot ===
-private suspend fun shareMapScreenshot(context: Context, cameraState: org.maplibre.compose.camera.CameraState) {
+private suspend fun shareMapScreenshot(
+    context: Context,
+    cameraState: org.maplibre.compose.camera.CameraState,
+    centerWeather: MapWeatherInfo?
+) {
     withContext(Dispatchers.IO) {
         try {
-            val bitmap = Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888)
-            val canvas = android.graphics.Canvas(bitmap)
-            canvas.drawColor(android.graphics.Color.parseColor("#1a1a2e"))
-            val paint = android.graphics.Paint().apply { color = android.graphics.Color.WHITE; textSize = 48f; isAntiAlias = true }
-            canvas.drawText("Weather Map", 40f, 80f, paint)
-            paint.textSize = 28f
-            canvas.drawText("SkyCast Weather", 40f, 560f, paint.apply { textSize = 24f; color = android.graphics.Color.GRAY })
+            // Capture the activity window as bitmap
+            val activity = context as? android.app.Activity
+            val window = activity?.window
+            val rootView = window?.decorView?.rootView
+            if (rootView == null) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Unable to capture map", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                return@withContext
+            }
 
+            // Wait a frame for rendering to complete
+            kotlinx.coroutines.delay(100)
+
+            // Create bitmap from root viewval bitmap = android.graphics.Bitmap.createBitmap(
+                rootView.width.coerceAtLeast(1),
+                rootView.height.coerceAtLeast(1),
+                android.graphics.Bitmap.Config.ARGB_8888
+            )
+            val canvas = android.graphics.Canvas(bitmap)
+            rootView.draw(canvas)
+
+            // Add weather watermark overlay at bottom
+            val paint = android.graphics.Paint().apply {
+                isAntiAlias = true
+                color = android.graphics.Color.argb(180, 0, 0, 0)
+            }
+            val textPaint = android.graphics.Paint().apply {
+                isAntiAlias = true
+                color = android.graphics.Color.WHITE
+                textSize = 36f
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            }
+            val subPaint = android.graphics.Paint().apply {
+                isAntiAlias = true
+                color = android.graphics.Color.argb(200, 255, 255, 255)
+                textSize = 24f
+            }
+
+            // Draw semi-transparent bar at bottom
+            val barHeight = 120f
+            canvas.drawRect(0f, (bitmap.height - barHeight), bitmap.width.toFloat(), bitmap.height.toFloat(), paint)
+
+            // Draw weather info
+            val temp = centerWeather?.temperature?.let { "${it.toInt()}°" } ?: ""
+            val condition = centerWeather?.let { mapWeatherDescription(it.weatherCode, it.isDay) } ?: ""
+            val pos = cameraState.position.target
+
+            if (temp.isNotEmpty()) {
+                canvas.drawText("$temp  $condition", 24f, bitmap.height - 70f, textPaint)
+            }
+            canvas.drawText("📍 ${"%.1f".format(pos.latitude)}°, ${"%.1f".format(pos.longitude)}°", 24f, bitmap.height - 38f, subPaint)
+
+            // Draw branding
+            canvas.drawText("SkyCast Weather", bitmap.width - 280f, bitmap.height - 38f, subPaint)
+
+            // Save and share
             val file = java.io.File(context.cacheDir, "map_share.png")
-            java.io.FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out) }
+            java.io.FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 90, out) }
             bitmap.recycle()
 
             val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            val shareText = buildString {
+                append("🌤️ Weather at ${"%.1f".format(pos.latitude)}°, ${"%.1f".format(pos.longitude)}°")
+                if (temp.isNotEmpty()) append("\n🌡️ $temp — $condition")
+                if (centerWeather?.windSpeed != null) append("\n💨 Wind: ${centerWeather.windSpeed.toInt()} km/h")
+                if (centerWeather?.humidity != null) append("\n💧 Humidity: ${centerWeather.humidity.toInt()}%")
+                append("\n\n📍 Shared from SkyCast Weather")
+            }
             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                 type = "image/png"
                 putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                putExtra(android.content.Intent.EXTRA_TEXT, "Weather map from SkyCast")
+                putExtra(android.content.Intent.EXTRA_TEXT, shareText)
                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            withContext(Dispatchers.Main) { context.startActivity(android.content.Intent.createChooser(intent, "Share Map")) }
+            withContext(Dispatchers.Main) {
+                context.startActivity(android.content.Intent.createChooser(intent, "Share Weather Map"))
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to share map", e)
+            withContext(Dispatchers.Main) {
+                android.widget.Toast.makeText(context, "Share failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
