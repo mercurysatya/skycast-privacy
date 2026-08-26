@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -409,9 +410,22 @@ fun WeatherMapScreen(
             )
         }
 
-        // === LAYER PANEL ===
-        AnimatedVisibility(visible = showLayerPanel, enter = slideInVertically { -it }, exit = slideOutVertically { -it }, modifier = Modifier.align(Alignment.TopEnd).padding(top = 48.dp, end = 16.dp)) {
-            LayerSelectorPanel(selectedBaseMap = selectedBaseMap, overlayType = radarState.overlayType, radarColorScheme = radarState.colorScheme, radarOpacity = radarState.opacity, cloudOpacity = cloudState.opacity, onBaseMapSelected = { mapViewModel.selectBaseMapStyle(it) }, onOverlayTypeSelected = { mapViewModel.setOverlayType(it) }, onRadarColorSchemeSelected = { mapViewModel.setRadarColorScheme(it) }, onRadarOpacityChange = { mapViewModel.setRadarOpacity(it) }, onCloudOpacityChange = { mapViewModel.setCloudOpacity(it) }, onDismiss = { showLayerPanel = false })
+        // === LAYER PANEL (compact floating card) ===
+        if (showLayerPanel) {
+            LayerSelectorPanel(
+                selectedBaseMap = selectedBaseMap,
+                overlayType = radarState.overlayType,
+                radarColorScheme = radarState.colorScheme,
+                radarOpacity = radarState.opacity,
+                cloudOpacity = cloudState.opacity,
+                onBaseMapSelected = { mapViewModel.selectBaseMapStyle(it) },
+                onOverlayTypeSelected = { mapViewModel.setOverlayType(it) },
+                onRadarColorSchemeSelected = { mapViewModel.setRadarColorScheme(it) },
+                onRadarOpacityChange = { mapViewModel.setRadarOpacity(it) },
+                onCloudOpacityChange = { mapViewModel.setCloudOpacity(it) },
+                onDismiss = { showLayerPanel = false },
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 52.dp, end = 16.dp, start = 60.dp)
+            )
         }
 
         // === FAVORITE PINS ===
@@ -724,10 +738,16 @@ private fun RadarLegend(overlayType: OverlayType, modifier: Modifier = Modifier)
 
 // === Layer Selector ===
 @Composable
-private fun LayerSelectorPanel(selectedBaseMap: BaseMapStyle, overlayType: OverlayType, radarColorScheme: RadarColorScheme, radarOpacity: Float, cloudOpacity: Float, onBaseMapSelected: (BaseMapStyle) -> Unit, onOverlayTypeSelected: (OverlayType) -> Unit, onRadarColorSchemeSelected: (RadarColorScheme) -> Unit, onRadarOpacityChange: (Float) -> Unit, onCloudOpacityChange: (Float) -> Unit, onDismiss: () -> Unit) {
-    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)), elevation = CardDefaults.cardElevation(4.dp)) {
-        Column(modifier = Modifier.width(240.dp).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(stringResource(R.string.map_layers), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(bottom = 4.dp))
+private fun LayerSelectorPanel(selectedBaseMap: BaseMapStyle, overlayType: OverlayType, radarColorScheme: RadarColorScheme, radarOpacity: Float, cloudOpacity: Float, onBaseMapSelected: (BaseMapStyle) -> Unit, onOverlayTypeSelected: (OverlayType) -> Unit, onRadarColorSchemeSelected: (RadarColorScheme) -> Unit, onRadarOpacityChange: (Float) -> Unit, onCloudOpacityChange: (Float) -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    Card(modifier = modifier.heightIn(max = 480.dp), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)), elevation = CardDefaults.cardElevation(6.dp)) {
+        Column(modifier = Modifier.width(200.dp).verticalScroll(rememberScrollState()).padding(10.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            // Header with close button
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.map_layers), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Close", modifier = Modifier.size(16.dp))
+                }
+            }
 
             // OVERLAY TYPE
             Text("Weather Overlay", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
