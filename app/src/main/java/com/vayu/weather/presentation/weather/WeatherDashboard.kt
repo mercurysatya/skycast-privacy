@@ -126,12 +126,11 @@ import com.vayu.weather.presentation.components.WindCard
 import com.vayu.weather.presentation.components.PressureCard
 import com.vayu.weather.presentation.components.MoonPhaseCard
 import com.vayu.weather.presentation.components.PrecipitationTimelineCard
-import com.vayu.weather.presentation.components.SmartSuggestionsCard
+import com.vayu.weather.presentation.components.ClothingOutdoorSuggestionsCard
 import com.vayu.weather.presentation.components.PressureTrendChart
 import com.vayu.weather.presentation.components.SunArcAnimation
 import com.vayu.weather.presentation.components.StormTrackerCard
 import com.vayu.weather.presentation.components.generateStormAlerts
-import com.vayu.weather.presentation.components.GardeningPetWeatherCard
 import com.vayu.weather.presentation.components.SmartInsightsSection
 import com.vayu.weather.presentation.components.WeatherStreakCard
 import com.vayu.weather.presentation.components.WeatherFunFacts
@@ -454,10 +453,10 @@ fun WeatherDashboard(
                         )
                     }
 
-                    // === SMART SUGGESTIONS ===
-                    item(key = "suggestions") {
+                    // === CLOTHING & OUTDOOR SUGGESTIONS ===
+                    item(key = "clothing_outdoor") {
                         Spacer(modifier = Modifier.height(16.dp))
-                        SmartSuggestionsCard(weatherInfo = info)
+                        ClothingOutdoorSuggestionsCard(weatherInfo = info)
                     }
 
                     // === STORM TRACKER ===
@@ -479,12 +478,6 @@ fun WeatherDashboard(
                     item(key = "sunarc") {
                         Spacer(modifier = Modifier.height(16.dp))
                         SunArcAnimation(dailyData = info.daily)
-                    }
-
-                    // === GARDENING / PET ===
-                    item(key = "activities") {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        GardeningPetWeatherCard(weatherInfo = info)
                     }
 
                     val updatedTime = state.lastUpdatedTime
