@@ -155,8 +155,10 @@ class WeatherViewModel @Inject constructor(
                 refreshError = null
             )
             try {
-                if (currentLat != null && currentLon != null) {
-                    refreshWithCoords(currentLat!!, currentLon!!)
+                val lat = currentLat
+                val lon = currentLon
+                if (lat != null && lon != null) {
+                    refreshWithCoords(lat, lon)
                 } else {
                     val location = locationTracker.getCurrentLocation()
                     if (location != null) {

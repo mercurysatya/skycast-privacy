@@ -123,7 +123,7 @@ fun PressureTrendChart(
 
                 val points = sorted.mapIndexed { index, hour ->
                     val x = padding + chartWidth * index / (sorted.size - 1).coerceAtLeast(1)
-                    val normalizedPressure = ((hour.pressure!! - minPressure) / range).toFloat()
+                    val normalizedPressure = (((hour.pressure ?: 1013.0) - minPressure) / range).toFloat()
                     val y = padding + chartHeight * (1f - normalizedPressure.coerceIn(0f, 1f))
                     Offset(x, y)
                 }

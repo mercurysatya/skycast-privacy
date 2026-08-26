@@ -512,9 +512,9 @@ private fun HumidityChart(dailyData: List<WeatherHistoryDay>) {
                 // Fill
                 if (humidityData.size >= 2) {
                     val path = Path().apply {
-                        moveTo(0f, humToY(humidityData[0].humidity!!))
+                        moveTo(0f, humToY(humidityData[0].humidity ?: 50.0))
                         humidityData.drop(1).forEachIndexed { i, day ->
-                            lineTo(stepX * (i + 1), humToY(day.humidity!!))
+                            lineTo(stepX * (i + 1), humToY(day.humidity ?: 50.0))
                         }
                         lineTo(stepX * (humidityData.size - 1), chartHeight)
                         lineTo(0f, chartHeight)
@@ -529,9 +529,9 @@ private fun HumidityChart(dailyData: List<WeatherHistoryDay>) {
 
                     // Line
                     val linePath = Path().apply {
-                        moveTo(0f, humToY(humidityData[0].humidity!!))
+                        moveTo(0f, humToY(humidityData[0].humidity ?: 50.0))
                         humidityData.drop(1).forEachIndexed { i, day ->
-                            lineTo(stepX * (i + 1), humToY(day.humidity!!))
+                            lineTo(stepX * (i + 1), humToY(day.humidity ?: 50.0))
                         }
                     }
                     drawPath(linePath, color = AccentBlue, style = Stroke(width = 2.5f))
@@ -539,7 +539,7 @@ private fun HumidityChart(dailyData: List<WeatherHistoryDay>) {
 
                 // Points
                 humidityData.forEachIndexed { i, day ->
-                    drawCircle(AccentBlue, radius = 3.5f, center = Offset(stepX * i, humToY(day.humidity!!)))
+                    drawCircle(AccentBlue, radius = 3.5f, center = Offset(stepX * i, humToY(day.humidity ?: 50.0)))
                 }
             }
         }

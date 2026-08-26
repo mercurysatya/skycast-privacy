@@ -472,22 +472,18 @@ fun WeatherDashboard(
                         GardeningPetWeatherCard(weatherInfo = info)
                     }
 
-                    if (state.lastUpdatedTime != null) {
+                    val updatedTime = state.lastUpdatedTime
+                    if (updatedTime != null) {
                         item(key = "updated") {
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = state.lastUpdatedTime!!,
+                                text = updatedTime,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White.copy(alpha = 0.4f),
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = TextAlign.Center
                             )
                         }
-                    }
-
-                    item(key = "sunmoon") {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        SunMoonSection(dailyData = info.daily)
                     }
 
                     if (state.airQuality != null) {
@@ -1708,7 +1704,7 @@ private fun generateInsights(info: WeatherInfo, isCelsius: Boolean): List<Insigh
                 )
             }
             if ((current.visibility ?: 10000.0) < 5000) {
-                val visKm = (current.visibility!! / 1000.0).roundToInt()
+                val visKm = ((current.visibility ?: 5000.0) / 1000.0).roundToInt()
                 insights += Insight(
                     icon = Icons.Rounded.Visibility,
                     text = "Reduced visibility ($visKm km). Drive with caution and use headlights.",
