@@ -347,7 +347,7 @@ fun MoonPhaseCard(
 
                     // Moon base
                     drawCircle(
-                        color = Color(0xFFF5F5DC),
+                        color = com.vayu.weather.ui.theme.MoonBase,
                         radius = radius,
                         center = center
                     )
@@ -355,7 +355,7 @@ fun MoonPhaseCard(
                     // Shadow overlay based on phase
                     val shadowX = (moonPhase * 2 - 1).toFloat()
                     drawCircle(
-                        color = Color(0xFF1A1A2E).copy(alpha = 0.85f),
+                        color = com.vayu.weather.ui.theme.MoonShadow.copy(alpha = 0.85f),
                         radius = radius,
                         center = Offset(center.x + shadowX * radius * 0.5f, center.y)
                     )

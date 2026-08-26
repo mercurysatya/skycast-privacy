@@ -43,6 +43,10 @@ val NightStart = Color(0xFF0F172A)
 val TrendingGreen = Color(0xFF4ADE80)
 val TrendingRed = Color(0xFFF87171)
 val WarningAmber = Color(0xFFF59E0B)
+
+// ── Moon colors ──
+val MoonBase = Color(0xFFF5F5DC)
+val MoonShadow = Color(0xFF1A1A2E)
 val NightEnd = Color(0xFF1E1B4B)
 
 val GlassSunny = Color(0x30FBBF24)
