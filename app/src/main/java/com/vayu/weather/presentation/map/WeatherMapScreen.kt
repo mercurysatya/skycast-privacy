@@ -63,12 +63,15 @@ import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -381,8 +384,64 @@ fun WeatherMapScreen(
             )
         }
 
-        // === COMPASS (top-left) ===
-        CompassIndicator(modifier = Modifier.align(Alignment.TopStart).padding(top = 52.dp, start = 16.dp))
+        // === COMPASS + ZOOM CONTROLS (top-left) ===
+        Column(
+            modifier = Modifier.align(Alignment.TopStart).padding(top = 52.dp, start = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CompassIndicator()
+            // Zoom In
+            SmallFloatingActionButton(
+                onClick = {
+                    val currentZoom = cameraState.position.zoom
+                    cameraState.position = CameraPosition(
+                        target = cameraState.position.target,
+                        zoom = clampZoom(currentZoom + 1.0),
+                        bearing = cameraState.position.bearing,
+                        tilt = cameraState.position.tilt
+                    )
+                },
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                elevation = FloatingActionButtonDefaults.elevation(2.dp),
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(Icons.Rounded.Add, contentDescription = "Zoom in", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
+            }
+            // Zoom Out
+            SmallFloatingActionButton(
+                onClick = {
+                    val currentZoom = cameraState.position.zoom
+                    cameraState.position = CameraPosition(
+                        target = cameraState.position.target,
+                        zoom = clampZoom(currentZoom - 1.0),
+                        bearing = cameraState.position.bearing,
+                        tilt = cameraState.position.tilt
+                    )
+                },
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                elevation = FloatingActionButtonDefaults.elevation(2.dp),
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(Icons.Rounded.Remove, contentDescription = "Zoom out", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
+            }
+            // Compass Reset
+            SmallFloatingActionButton(
+                onClick = {
+                    cameraState.position = CameraPosition(
+                        target = cameraState.position.target,
+                        zoom = cameraState.position.zoom,
+                        bearing = 0.0,
+                        tilt = 0.0
+                    )
+                },
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                elevation = FloatingActionButtonDefaults.elevation(2.dp),
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(Icons.Rounded.Explore, contentDescription = "Reset compass", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
+            }
+        }
 
         // === SEARCH BAR ===
         AnimatedVisibility(visible = showSearch, enter = slideInVertically { -it }, exit = slideOutVertically { -it }, modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp)) {
