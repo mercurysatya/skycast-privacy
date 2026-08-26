@@ -34,6 +34,12 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
+enum class TrendType(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    TEMPERATURE("Temp", Icons.Rounded.Thermostat),
+    WIND("Wind", Icons.Rounded.Air),
+    PRECIPITATION("Rain", Icons.Rounded.WaterDrop)
+}
+
 @Composable
 fun WeatherTrends(
     hourlyData: List<HourlyWeather>,
@@ -51,19 +57,31 @@ fun WeatherTrends(
 
     if (sorted.isEmpty()) return
 
-    val unit = if (isCelsius) "°C" else "°F"
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val trendType = TrendType.entries[selectedTab]
 
-    // Convert temperatures
-    val temps = remember(sorted, isCelsius) {
-        sorted.map {
-            if (isCelsius) it.temperature.toFloat()
-            else ((it.temperature * 9.0 / 5.0) + 32.0).toFloat()
+    // Compute chart values based on selected tab
+    val chartValues = remember(sorted, trendType, isCelsius) {
+        sorted.map { hour ->
+            when (trendType) {
+                TrendType.TEMPERATURE -> {
+                    if (isCelsius) hour.temperature.toFloat()
+                    else ((hour.temperature * 9.0 / 5.0) + 32.0).toFloat()
+                }
+                TrendType.WIND -> hour.windSpeed?.toFloat() ?: 0f
+                TrendType.PRECIPITATION -> (hour.precipitationProbability ?: 0).toFloat()
+            }
         }
     }
-    val minTemp = temps.min()
-    val maxTemp = temps.max()
-    val minIndex = temps.indexOf(minTemp)
-    val maxIndex = temps.indexOf(maxTemp)
+    val unit = when (trendType) {
+        TrendType.TEMPERATURE -> if (isCelsius) "°C" else "°F"
+        TrendType.WIND -> "km/h"
+        TrendType.PRECIPITATION -> "%"
+    }
+    val minVal = chartValues.min()
+    val maxVal = chartValues.max()
+    val minIndex = chartValues.indexOf(minVal)
+    val maxIndex = chartValues.indexOf(maxVal)
 
     // Selected point for tap
     var selectedIndex by remember { mutableStateOf<Int?>(null) }
@@ -89,6 +107,30 @@ fun WeatherTrends(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Tab Row
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TrendType.entries.forEachIndexed { index, type ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(type.icon, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(type.label, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -96,13 +138,17 @@ fun WeatherTrends(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.temperature_trends),
+                    text = when (trendType) {
+                        TrendType.TEMPERATURE -> stringResource(R.string.temperature_trends)
+                        TrendType.WIND -> "Wind Speed"
+                        TrendType.PRECIPITATION -> "Precipitation"
+                    },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${minTemp.roundToInt()}$unit — ${maxTemp.roundToInt()}$unit",
+                    text = "${minVal.roundToInt()}$unit — ${maxVal.roundToInt()}$unit",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
@@ -115,12 +161,12 @@ fun WeatherTrends(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-                    .pointerInput(temps) {
+                    .pointerInput(chartValues) {
                         detectTapGestures { offset ->
                             val chartWidth = size.width - 40f
                             val startX = 20f
                             val fraction = ((offset.x - startX) / chartWidth).coerceIn(0f, 1f)
-                            val index = (fraction * (temps.size - 1)).roundToInt()
+                            val index = (fraction * (chartValues.size - 1)).roundToInt()
                             selectedIndex = if (selectedIndex == index) null else index
                         }
                     }
@@ -133,7 +179,7 @@ fun WeatherTrends(
                 val paddingBottom = 30f // Space for time labels
                 val chartWidth = width - paddingLeft - paddingRight
                 val chartHeight = height - paddingTop - paddingBottom
-                val range = (maxTemp - minTemp).coerceAtLeast(1f)
+                val range = (maxVal - minVal).coerceAtLeast(1f)
 
                 // ── Day/Night background shading ──
                 sorted.forEachIndexed { index, hour ->
@@ -167,9 +213,9 @@ fun WeatherTrends(
                 }
 
                 // ── Calculate point positions ──
-                val points = temps.mapIndexed { index, temp ->
+                val points = chartValues.mapIndexed { index, temp ->
                     val x = paddingLeft + chartWidth * index / (sorted.size - 1).coerceAtLeast(1)
-                    val normalizedTemp = (temp - minTemp) / range
+                    val normalizedTemp = (temp - minVal) / range
                     val y = paddingTop + chartHeight * (1f - normalizedTemp)
                     Offset(x, y)
                 }
@@ -252,7 +298,7 @@ fun WeatherTrends(
                     selectedIndex?.let { idx ->
                         if (idx < visiblePoints.size) {
                             val point = visiblePoints[idx]
-                            val temp = temps[idx]
+                            val temp = chartValues[idx]
 
                             // Tooltip background
                             val tooltipWidth = 90f
@@ -298,7 +344,7 @@ fun WeatherTrends(
                                 isFakeBoldText = true
                             }
                             drawText(
-                                "${minTemp.roundToInt()}°",
+                                "${minVal.roundToInt()}$unit",
                                 p.x,
                                 p.y + 32f,
                                 paint
@@ -316,7 +362,7 @@ fun WeatherTrends(
                                 isFakeBoldText = true
                             }
                             drawText(
-                                "${maxTemp.roundToInt()}°",
+                                "${maxVal.roundToInt()}$unit",
                                 p.x,
                                 p.y - 14f,
                                 paint
@@ -372,7 +418,7 @@ fun WeatherTrends(
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Low: ${minTemp.roundToInt()}$unit",
+                        text = "Low: ${minVal.roundToInt()}$unit",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
@@ -388,7 +434,7 @@ fun WeatherTrends(
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "High: ${maxTemp.roundToInt()}$unit",
+                        text = "High: ${maxVal.roundToInt()}$unit",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
