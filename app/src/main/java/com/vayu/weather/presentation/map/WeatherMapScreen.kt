@@ -220,6 +220,7 @@ fun WeatherMapScreen(
     LaunchedEffect(Unit) {
         userLocation = locationTracker.getCurrentLocation()
         isLoading = false
+        mapViewModel.refreshFavoritePins()
     }
 
     val cameraState = rememberCameraState(
@@ -531,9 +532,22 @@ fun WeatherMapScreen(
             )
         }
 
-        // === FAVORITE PINS ===
-        favoritePins.forEach { pin ->
-            FavoritePinOverlay(pin = pin, cameraState = cameraState, modifier = Modifier.align(Alignment.TopStart))
+        // === FAVORITE CITIES STRIP (bottom, above radar slider) ===
+        if (favoritePins.isNotEmpty()) {
+            val favBottomPadding = if (radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0) 80.dp else 12.dp
+            FavoriteCitiesStrip(
+                pins = favoritePins,
+                onCityTap = { pin ->
+                    cameraState.position = CameraPosition(
+                        target = Position(pin.city.latitude, pin.city.longitude),
+                        zoom = clampZoom(FAB_ZOOM.toDouble()),
+                        bearing = cameraState.position.bearing,
+                        tilt = cameraState.position.tilt
+                    )
+                    mapViewModel.onBoundsChanged(pin.city.latitude, pin.city.longitude, FAB_ZOOM.toDouble())
+                },
+                modifier = Modifier.align(Alignment.BottomStart).padding(bottom = favBottomPadding, start = 12.dp, end = 12.dp)
+            )
         }
 
         // === RIGHT SIDE FABs ===
@@ -767,6 +781,63 @@ private fun FavoritePinOverlay(pin: MapFavoritePin, cameraState: Any, modifier: 
                     lineTo(size.width / 2, size.height)
                     close()
                 }, color = pinColor)
+            }
+        }
+    }
+}
+
+// === Favorite Cities Strip ===
+@Composable
+private fun FavoriteCitiesStrip(
+    pins: List<MapFavoritePin>,
+    onCityTap: (MapFavoritePin) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(pins.size) { index ->
+            val pin = pins[index]
+            Card(
+                onClick = { onCityTap(pin) },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                ),
+                elevation = CardDefaults.cardElevation(3.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    pin.weatherCode?.let { code ->
+                        Icon(
+                            imageVector = getWeatherIcon(code, pin.isDay),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    Column {
+                        Text(
+                            pin.city.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1
+                        )
+                        pin.temperature?.let { temp ->
+                            Text(
+                                "${temp.roundToInt()}°",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
             }
         }
     }
