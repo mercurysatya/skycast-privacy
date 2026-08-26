@@ -128,7 +128,8 @@ data class MapWeatherAlert(
 enum class MapTilt(val degrees: Float, val label: String) {
     FLAT(0f, "Flat"),
     TILT_20(20f, "20°"),
-    TILT_45(45f, "45°")
+    TILT_45(45f, "45°"),
+    TILT_60(60f, "3D Terrain")
 }
 
 /** A favorite city pin on the map */
