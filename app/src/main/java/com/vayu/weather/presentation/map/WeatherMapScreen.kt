@@ -209,6 +209,7 @@ fun WeatherMapScreen(
     val selectedBaseMap by mapViewModel.selectedBaseMap.collectAsState()
     val isAutoPlaying by mapViewModel.isAutoPlaying.collectAsState()
     val tappedWeather by mapViewModel.tappedWeather.collectAsState()
+    val centerWeather by mapViewModel.centerWeather.collectAsState()
     val favoritePins by mapViewModel.favoritePins.collectAsState()
     val tempPoints by mapViewModel.tempPoints.collectAsState()
     val windPoints by mapViewModel.windPoints.collectAsState()
@@ -443,8 +444,46 @@ fun WeatherMapScreen(
             }
         }
 
+        // === LIVE WEATHER MINI-CARD (top center) ===
+        centerWeather?.let { info ->
+            if (!info.isLoading && info.error == null) {
+                Card(
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 60.dp, end = 60.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)),
+                    elevation = CardDefaults.cardElevation(3.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = getWeatherIcon(info.weatherCode, info.isDay),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "${info.temperature.roundToInt()}°",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            mapWeatherDescription(info.weatherCode, info.isDay),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+
         // === SEARCH BAR ===
-        AnimatedVisibility(visible = showSearch, enter = slideInVertically { -it }, exit = slideOutVertically { -it }, modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp)) {
+        AnimatedVisibility(visible = showSearch, enter = slideInVertically { -it }, exit = slideOutVertically { -it }, modifier = Modifier.align(Alignment.TopCenter).padding(top = if (centerWeather != null && centerWeather?.error == null) 90.dp else 48.dp, start = 16.dp, end = 16.dp)) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },

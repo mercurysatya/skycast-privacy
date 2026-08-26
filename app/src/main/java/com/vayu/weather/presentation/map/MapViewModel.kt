@@ -171,6 +171,11 @@ class MapViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    // Center weather (live conditions at map center)
+    private val _centerWeather = MutableStateFlow<MapWeatherInfo?>(null)
+    val centerWeather: StateFlow<MapWeatherInfo?> = _centerWeather.asStateFlow()
+    private var centerWeatherJob: Job? = null
+
     // Temperature heatmap
     private val _tempPoints = MutableStateFlow<List<TempGridPoint>>(emptyList())
     val tempPoints: StateFlow<List<TempGridPoint>> = _tempPoints.asStateFlow()
@@ -491,6 +496,33 @@ class MapViewModel @Inject constructor(
             loadGridData(centerLat, centerLon, span, span * 1.25)
         }
         loadMapAlerts(centerLat, centerLon)
+        // Debounced center weather fetch (800ms delay)
+        fetchCenterWeather(centerLat, centerLon)
+    }
+
+    private fun fetchCenterWeather(lat: Double, lon: Double) {
+        centerWeatherJob?.cancel()
+        centerWeatherJob = viewModelScope.launch {
+            delay(800)
+            try {
+                val weather = openMeteoApi.getWeather(lat, lon)
+                val current = weather.current
+                _centerWeather.value = MapWeatherInfo(
+                    latitude = lat, longitude = lon,
+                    temperature = current?.temperature ?: 0.0,
+                    weatherCode = current?.weatherCode ?: 0,
+                    humidity = current?.humidity,
+                    windSpeed = current?.windSpeed,
+                    windDirection = current?.windDirection,
+                    isDay = (current?.isDay ?: 1) == 1,
+                    isLoading = false
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch center weather", e)
+            }
+        }
     }
 
     private fun autoRefresh() {
