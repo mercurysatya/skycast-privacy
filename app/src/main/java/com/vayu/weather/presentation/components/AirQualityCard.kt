@@ -1,5 +1,7 @@
 package com.vayu.weather.presentation.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -127,4 +129,49 @@ private fun aqiColor(index: Int): Color = when (index) {
     5 -> Color(0xFFEF4444)
     6 -> Color(0xFFBE185D)
     else -> MaterialTheme.colorScheme.onSurface
+}
+
+@Composable
+fun AirQualityPill(
+    airQuality: AirQuality?,
+    modifier: Modifier = Modifier
+) {
+    if (airQuality == null) return
+
+    val aqi = airQuality.europeanAqi ?: airQuality.usAqi ?: 0
+    val label = airQuality.aqiLabel
+    val color = aqiColor(airQuality.aqiColorIndex)
+
+    Box(
+        modifier = modifier
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .background(
+                color = color.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(20.dp)
+            )
+            .border(
+                width = 1.dp,
+                color = color.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(20.dp)
+            )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Air,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "$label ($aqi)",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = color
+            )
+        }
+    }
 }

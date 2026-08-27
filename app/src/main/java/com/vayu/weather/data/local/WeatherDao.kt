@@ -49,6 +49,12 @@ interface WeatherDao {
     @Query("SELECT * FROM recent_searches WHERE name = :name AND latitude = :lat AND longitude = :lon LIMIT 1")
     suspend fun findRecentSearch(name: String, lat: Double, lon: Double): RecentSearchEntity?
 
+    @Query(
+        "SELECT * FROM recent_searches WHERE name = :name COLLATE NOCASE " +
+        "AND ABS(latitude - :lat) < :epsilon AND ABS(longitude - :lon) < :epsilon LIMIT 1"
+    )
+    suspend fun findRecentSearchFuzzy(name: String, lat: Double, lon: Double, epsilon: Double): RecentSearchEntity?
+
     @Query("DELETE FROM recent_searches WHERE id NOT IN (SELECT id FROM recent_searches ORDER BY timestamp DESC LIMIT 10)")
     suspend fun trimRecentSearches()
 
@@ -58,11 +64,23 @@ interface WeatherDao {
     @Query("DELETE FROM recent_searches")
     suspend fun clearRecentSearches()
 
+    @Query(
+        "DELETE FROM recent_searches WHERE id NOT IN (" +
+        "SELECT MAX(id) FROM recent_searches " +
+        "GROUP BY name COLLATE NOCASE, ROUND(latitude, 2), ROUND(longitude, 2))"
+    )
+    suspend fun dedupeRecentSearches()
+
     @Query("SELECT * FROM weather_alerts ORDER BY timestamp DESC LIMIT :limit")
     fun getWeatherAlerts(limit: Int = 50): Flow<List<WeatherAlertEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWeatherAlert(alert: WeatherAlertEntity)
+
+    @Query(
+        "SELECT * FROM weather_alerts WHERE title = :title AND severity = :severity AND timestamp >= :since LIMIT 1"
+    )
+    suspend fun findRecentWeatherAlert(title: String, severity: String, since: Long): WeatherAlertEntity?
 
     @Query("DELETE FROM weather_alerts WHERE id = :id")
     suspend fun deleteWeatherAlert(id: Long)
@@ -95,4 +113,12 @@ interface WeatherDao {
 
     @Query("DELETE FROM weather_history WHERE id IN (SELECT id FROM weather_history ORDER BY timestamp ASC LIMIT :count)")
     suspend fun deleteOldestWeatherHistory(count: Int)
+
+    // On this day - get history entries for a specific month/day across years
+    @Query("SELECT * FROM weather_history WHERE strftime('%m-%d', timestamp/1000, 'unixepoch') = :monthDay ORDER BY timestamp DESC")
+    fun getWeatherHistoryForMonthDay(monthDay: String): Flow<List<WeatherHistoryEntity>>
+
+    // On this day for specific location
+    @Query("SELECT * FROM weather_history WHERE latitude = :lat AND longitude = :lon AND strftime('%m-%d', timestamp/1000, 'unixepoch') = :monthDay ORDER BY timestamp DESC")
+    fun getWeatherHistoryForLocationAndMonthDay(lat: Double, lon: Double, monthDay: String): Flow<List<WeatherHistoryEntity>>
 }

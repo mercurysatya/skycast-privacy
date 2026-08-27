@@ -367,7 +367,7 @@ Try selecting a different severity level.</string>
     <string name="onboarding_grant_notifications">Enable Notifications</string>
     <string name="onboarding_permission_granted">Permission Granted</string>
 
-<!-- Weather History -->
+    <!-- Weather History -->
     <string name="weather_history_title">Weather History</string>
     <string name="daily_breakdown">Daily Breakdown</string>
     <string name="humidity_trends">Humidity Trends</string>
@@ -381,4 +381,20 @@ Try selecting a different severity level.</string>
     <string name="days_tracked">Days</string>
     <string name="alert_snooze">Snooze for 30 min</string>
     <string name="snooze">Snooze</string>
+    <!-- Quiet Hours and Notification Schedule -->
+    <string name="quiet_hours_group">Quiet Hours &amp; Notification Schedule</string>
+    <string name="quiet_hours">Quiet Hours</string>
+    <string name="quiet_hours_enabled">Quiet hours: %1$02d:%2$02d - %3$02d:%4$02d</string>
+    <string name="quiet_hours_start">Quiet hours start</string>
+    <string name="quiet_hours_end">Quiet hours end</string>
+    <string name="notification_times">Daily Notification Times</string>
+    <string name="notification_time_1">Morning Notification</string>
+    <string name="notification_time_1_time">Morning time</string>
+    <string name="notification_time_2">Midday Notification</string>
+    <string name="notification_time_2_time">Midday time</string>
+    <string name="notification_time_3">Evening Notification</string>
+    <string name="notification_time_3_time">Evening time</string>
+
+    <string name="on_this_day">On This Day</string>
+
 </resources>

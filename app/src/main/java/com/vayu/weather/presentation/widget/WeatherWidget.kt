@@ -12,6 +12,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
+import androidx.glance.action.Action
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.cornerRadius
@@ -22,6 +23,7 @@ import androidx.glance.layout.*
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import com.vayu.weather.data.worker.WeatherWidgetWorker
 import com.vayu.weather.domain.model.WeatherDescription
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -84,11 +86,16 @@ class WeatherWidget : GlanceAppWidget() {
                     else -> localDate.format(DateTimeFormatter.ofPattern("EEE"))
                 }
             } catch (e: Exception) { date.takeLast(2) }
-            forecast.add(ForecastDay(dayLabel, displayMin, displayMax, code, precip))
+            forecast.add(ForecastDay(dayLabel, displayMin, displayMax, code, precip, date))
         }
 
         val widgetSize = prefs.getString("widget_size", "MEDIUM") ?: "MEDIUM"
         val bgColor = getWeatherBgColor(weatherCode, isDay)
+
+        // Create refresh action - simple activity start to trigger refresh
+        val refreshAction = actionStartActivity(
+            android.content.ComponentName(context, com.vayu.weather.MainActivity::class.java)
+        )
 
         provideContent {
             GlanceTheme {
@@ -106,9 +113,9 @@ class WeatherWidget : GlanceAppWidget() {
                 ) {
                     if (hasData) {
                         when (widgetSize) {
-                            "SMALL" -> SmallWidgetContent(displayTemp, tempLabel, weatherCode, cityName)
-                            "LARGE" -> LargeWidgetContent(displayTemp, tempLabel, weatherCode, humidity, displayWind, windLabel, forecast, cityName, feelsLike, uvIndex, isDay)
-                            else -> MediumWidgetContent(displayTemp, tempLabel, weatherCode, humidity, displayWind, windLabel, forecast, cityName, feelsLike, isDay)
+                            "SMALL" -> SmallWidgetContent(displayTemp, tempLabel, weatherCode, cityName, refreshAction)
+                            "LARGE" -> LargeWidgetContent(displayTemp, tempLabel, weatherCode, humidity, displayWind, windLabel, forecast, cityName, feelsLike, uvIndex, isDay, refreshAction, context)
+                            else -> MediumWidgetContent(displayTemp, tempLabel, weatherCode, humidity, displayWind, windLabel, forecast, cityName, feelsLike, isDay, refreshAction, context)
                         }
                     } else {
                         Spacer(modifier = GlanceModifier.height(16.dp))
@@ -123,18 +130,32 @@ class WeatherWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun SmallWidgetContent(displayTemp: Int, tempLabel: String, weatherCode: Int, cityName: String) {
-    if (cityName.isNotEmpty()) {
-        Text(text = cityName, style = TextStyle(color = white, fontSize = 12.sp, fontWeight = FontWeight.Medium), maxLines = 1)
-        Spacer(modifier = GlanceModifier.height(4.dp))
+private fun SmallWidgetContent(displayTemp: Int, tempLabel: String, weatherCode: Int, cityName: String, refreshAction: Action) {
+    Column(modifier = GlanceModifier
+        .fillMaxSize()
+        .padding(12.dp)
+    ) {
+        Column {
+            if (cityName.isNotEmpty()) {
+                Text(text = cityName, style = TextStyle(color = white, fontSize = 12.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+                Spacer(modifier = GlanceModifier.height(4.dp))
+            }
+            Text(text = "$displayTemp$tempLabel", style = TextStyle(color = white, fontSize = 40.sp, fontWeight = FontWeight.Bold))
+            Spacer(modifier = GlanceModifier.height(2.dp))
+            Text(text = "${getWeatherEmoji(weatherCode)} ${getWeatherDescription(weatherCode)}", style = TextStyle(color = whiteAlpha85, fontSize = 11.sp), maxLines = 1)
+        }
+        Spacer(modifier = GlanceModifier.height(16.dp))
+        Row(modifier = GlanceModifier.fillMaxWidth()) {
+            Spacer(modifier = GlanceModifier.defaultWeight())
+            Text(text = "↻", style = TextStyle(color = whiteAlpha70, fontSize = 16.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier
+                .padding(12.dp)
+                .clickable(refreshAction))
+        }
     }
-    Text(text = "$displayTemp$tempLabel", style = TextStyle(color = white, fontSize = 40.sp, fontWeight = FontWeight.Bold))
-    Spacer(modifier = GlanceModifier.height(2.dp))
-    Text(text = "${getWeatherEmoji(weatherCode)} ${getWeatherDescription(weatherCode)}", style = TextStyle(color = whiteAlpha85, fontSize = 11.sp), maxLines = 1)
 }
 
 @Composable
-private fun MediumWidgetContent(displayTemp: Int, tempLabel: String, weatherCode: Int, humidity: Float, displayWind: String, windLabel: String, forecast: List<ForecastDay>, cityName: String, feelsLike: Int, isDay: Boolean) {
+private fun MediumWidgetContent(displayTemp: Int, tempLabel: String, weatherCode: Int, humidity: Float, displayWind: String, windLabel: String, forecast: List<ForecastDay>, cityName: String, feelsLike: Int, isDay: Boolean, refreshAction: Action, context: Context) {
     Row(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
         Column(modifier = GlanceModifier.defaultWeight()) {
             if (cityName.isNotEmpty()) {
@@ -161,7 +182,10 @@ private fun MediumWidgetContent(displayTemp: Int, tempLabel: String, weatherCode
     if (forecast.isNotEmpty()) {
         Spacer(modifier = GlanceModifier.height(14.dp))
         forecast.take(3).forEach { day ->
-            Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+            val openDayAction = actionStartActivity(
+                android.content.ComponentName(context, com.vayu.weather.MainActivity::class.java)
+            )
+            Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 3.dp).clickable(openDayAction), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = day.dayLabel, style = TextStyle(color = white, fontSize = 12.sp), modifier = GlanceModifier.defaultWeight())
                 Text(text = "${getWeatherEmoji(day.weatherCode)} ${getWeatherDescription(day.weatherCode)}", style = TextStyle(color = whiteAlpha70, fontSize = 11.sp), modifier = GlanceModifier.defaultWeight(), maxLines = 1)
                 Text(text = "${day.minTemp}° / ${day.maxTemp}°", style = TextStyle(color = white, fontSize = 12.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
@@ -171,7 +195,7 @@ private fun MediumWidgetContent(displayTemp: Int, tempLabel: String, weatherCode
 }
 
 @Composable
-private fun LargeWidgetContent(displayTemp: Int, tempLabel: String, weatherCode: Int, humidity: Float, displayWind: String, windLabel: String, forecast: List<ForecastDay>, cityName: String, feelsLike: Int, uvIndex: Float, isDay: Boolean) {
+private fun LargeWidgetContent(displayTemp: Int, tempLabel: String, weatherCode: Int, humidity: Float, displayWind: String, windLabel: String, forecast: List<ForecastDay>, cityName: String, feelsLike: Int, uvIndex: Float, isDay: Boolean, refreshAction: Action, context: Context) {
     Row(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
         Column(modifier = GlanceModifier.defaultWeight()) {
             if (cityName.isNotEmpty()) {
@@ -202,7 +226,10 @@ private fun LargeWidgetContent(displayTemp: Int, tempLabel: String, weatherCode:
         Text(text = "3-Day Forecast", style = TextStyle(color = whiteAlpha70, fontSize = 11.sp, fontWeight = FontWeight.Medium), modifier = GlanceModifier.fillMaxWidth())
         Spacer(modifier = GlanceModifier.height(6.dp))
         forecast.take(3).forEach { day ->
-            Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            val openDayAction = actionStartActivity(
+                android.content.ComponentName(context, com.vayu.weather.MainActivity::class.java)
+            )
+            Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 4.dp).clickable(openDayAction), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = day.dayLabel, style = TextStyle(color = white, fontSize = 12.sp, fontWeight = FontWeight.Medium), modifier = GlanceModifier.defaultWeight())
                 Text(text = "${getWeatherEmoji(day.weatherCode)} ${getWeatherDescription(day.weatherCode)}", style = TextStyle(color = whiteAlpha70, fontSize = 11.sp), modifier = GlanceModifier.defaultWeight(), maxLines = 1)
                 Text(text = "${day.minTemp}° / ${day.maxTemp}°", style = TextStyle(color = white, fontSize = 12.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
@@ -247,7 +274,7 @@ private fun getWeatherBgColor(code: Int, isDay: Boolean): Color = when {
 
 private data class ForecastDay(
     val dayLabel: String, val minTemp: Int, val maxTemp: Int,
-    val weatherCode: Int, val precipitation: Int
+    val weatherCode: Int, val precipitation: Int, val date: String
 )
 
 private fun getWeatherDescription(code: Int): String = WeatherDescription.getWeatherDescription(code, isDay = true)

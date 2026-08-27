@@ -196,15 +196,6 @@ private fun NightSkyOverlay(code: Int) {
             )
         }
 
-        // Moon
-        val moonX = size.width * 0.85f
-        val moonY = size.height * 0.08f
-        val moonR = minOf(size.width, size.height) * 0.03f
-        drawCircle(Color(0xFFF5F5DC).copy(alpha = 0.85f), moonR, Offset(moonX, moonY))
-        drawCircle(Color(0xFFF5F5DC).copy(alpha = 0.12f), moonR * 1.5f, Offset(moonX, moonY))
-        drawCircle(Color(0xFFF5F5DC).copy(alpha = 0.06f), moonR * 2.0f, Offset(moonX, moonY))
-        drawCircle(Color(0xFF0A0E27), moonR * 0.8f, Offset(moonX + moonR * 0.25f, moonY - moonR * 0.15f))
-
         if (activeShootingStar >= 0 && shootingProgress >= 0f) {
             val s = shootingStars[activeShootingStar]
             val rad = s.angle * (PI.toFloat() / 180f)

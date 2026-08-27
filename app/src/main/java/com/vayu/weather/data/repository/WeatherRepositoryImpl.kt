@@ -224,6 +224,10 @@ class WeatherRepositoryImpl @Inject constructor(
         dao.clearRecentSearches()
     }
 
+    override suspend fun dedupeRecentSearches() {
+        dao.dedupeRecentSearches()
+    }
+
     override fun getWeatherAlerts(limit: Int): Flow<List<WeatherAlert>> {
         return dao.getWeatherAlerts(limit).map { entities ->
             entities.map { entity ->
@@ -346,4 +350,18 @@ class WeatherRepositoryImpl @Inject constructor(
         uvIndex = uvIndex,
         precipitationProbability = precipitationProbability
     )
+
+    // On this day - get history for a specific month/day
+    override fun getWeatherHistoryForMonthDay(monthDay: String): Flow<List<com.vayu.weather.domain.model.WeatherHistorySnapshot>> {
+        return dao.getWeatherHistoryForMonthDay(monthDay).map { entities ->
+            entities.map { it.toSnapshot() }
+        }
+    }
+
+    // On this day for specific location
+    override fun getWeatherHistoryForLocationAndMonthDay(lat: Double, lon: Double, monthDay: String): Flow<List<com.vayu.weather.domain.model.WeatherHistorySnapshot>> {
+        return dao.getWeatherHistoryForLocationAndMonthDay(lat, lon, monthDay).map { entities ->
+            entities.map { it.toSnapshot() }
+        }
+    }
 }

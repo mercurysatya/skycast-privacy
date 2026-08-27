@@ -33,6 +33,7 @@ fun AdBanner(modifier: Modifier = Modifier) {
             }
         },
         onRelease = { adView ->
+            adView.pause()
             adView.destroy()
         }
     )
@@ -55,6 +56,9 @@ fun AdBannerCompact(modifier: Modifier = Modifier) {
                 loadAd(AdRequest.Builder().build())
             }
         },
-        onRelease = { it.destroy() }
+        onRelease = { adView ->
+            adView.pause()
+            adView.destroy()
+        }
     )
 }

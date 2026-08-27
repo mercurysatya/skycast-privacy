@@ -2,6 +2,7 @@ package com.vayu.weather.ui.theme
 
 import android.app.Activity
 import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -9,10 +10,37 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocal
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+// CompositionLocal for reduce motion preference
+val LocalReduceMotion = staticCompositionLocalOf { false }
+
+@Composable
+fun ProvideReduceMotion(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val reduceMotion = remember(context) {
+        try {
+            val resolver = context.contentResolver
+            val durationScale = Settings.Global.getFloat(
+                resolver,
+                Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f
+            )
+            durationScale == 0f
+        } catch (_: Exception) { false }
+    }
+    CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
+        content()
+    }
+}
 
 private val VayuLight = lightColorScheme(
     primary = DeepBlue,
@@ -103,6 +131,6 @@ fun SkyCastTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = SkyCastTypography,
-        content = content
+        content = { ProvideReduceMotion(content) }
     )
 }

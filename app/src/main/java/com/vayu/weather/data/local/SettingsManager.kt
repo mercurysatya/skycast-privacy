@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -58,10 +59,31 @@ private object Keys {
     val SHOW_WEATHER_DETAILS = booleanPreferencesKey("show_weather_details")
     // Snooze settings
     val ENABLE_SNOOZING = booleanPreferencesKey("enable_snoozing")
+
+    // === Last loaded location (used as a fallback when GPS is unavailable) ===
+    val LAST_LAT = doublePreferencesKey("last_lat")
+    val LAST_LON = doublePreferencesKey("last_lon")
+    val LAST_CITY = stringPreferencesKey("last_city")
     val SNOOZE_DURATION_MS = intPreferencesKey("snooze_duration_ms")
     // Push notification settings
     val ENABLE_PUSH_ALERTS = booleanPreferencesKey("enable_push_alerts")
     val PUSH_ALERT_FREQUENCY_HOURS = intPreferencesKey("push_alert_frequency_hours")
+    // Quiet hours for notifications
+    val QUIET_HOURS_ENABLED = booleanPreferencesKey("quiet_hours_enabled")
+    val QUIET_HOURS_START_HOUR = intPreferencesKey("quiet_hours_start_hour")
+    val QUIET_HOURS_START_MINUTE = intPreferencesKey("quiet_hours_start_minute")
+    val QUIET_HOURS_END_HOUR = intPreferencesKey("quiet_hours_end_hour")
+    val QUIET_HOURS_END_MINUTE = intPreferencesKey("quiet_hours_end_minute")
+    // Per-day notification times (07:00, 12:00, 18:00)
+    val NOTIFICATION_TIME_1_HOUR = intPreferencesKey("notification_time_1_hour")
+    val NOTIFICATION_TIME_1_MINUTE = intPreferencesKey("notification_time_1_minute")
+    val NOTIFICATION_TIME_2_HOUR = intPreferencesKey("notification_time_2_hour")
+    val NOTIFICATION_TIME_2_MINUTE = intPreferencesKey("notification_time_2_minute")
+    val NOTIFICATION_TIME_3_HOUR = intPreferencesKey("notification_time_3_hour")
+    val NOTIFICATION_TIME_3_MINUTE = intPreferencesKey("notification_time_3_minute")
+    val NOTIFICATION_TIME_1_ENABLED = booleanPreferencesKey("notification_time_1_enabled")
+    val NOTIFICATION_TIME_2_ENABLED = booleanPreferencesKey("notification_time_2_enabled")
+    val NOTIFICATION_TIME_3_ENABLED = booleanPreferencesKey("notification_time_3_enabled")
 }
 
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -340,4 +362,51 @@ private object Keys {
     suspend fun setShowWeatherDetails(value: Boolean) {
         dataStore.edit { it[Keys.SHOW_WEATHER_DETAILS] = value }
     }
+
+    // === Last loaded location (persisted across launches) ===
+    suspend fun getLastLat(): Double? = dataStore.data.first()[Keys.LAST_LAT]
+    suspend fun getLastLon(): Double? = dataStore.data.first()[Keys.LAST_LON]
+    suspend fun getLastCity(): String? = dataStore.data.first()[Keys.LAST_CITY]
+
+    suspend fun setLastLocation(lat: Double, lon: Double, city: String?) {
+        dataStore.edit {
+            it[Keys.LAST_LAT] = lat
+            it[Keys.LAST_LON] = lon
+            if (!city.isNullOrBlank()) it[Keys.LAST_CITY] = city
+        }
+    }
+
+    // === Quiet Hours ===
+    suspend fun getQuietHoursEnabled(): Boolean = dataStore.data.first()[Keys.QUIET_HOURS_ENABLED] ?: false
+    suspend fun setQuietHoursEnabled(value: Boolean) { dataStore.edit { it[Keys.QUIET_HOURS_ENABLED] = value } }
+    suspend fun getQuietHoursStartHour(): Int = dataStore.data.first()[Keys.QUIET_HOURS_START_HOUR] ?: 22
+    suspend fun setQuietHoursStartHour(value: Int) { dataStore.edit { it[Keys.QUIET_HOURS_START_HOUR] = value } }
+    suspend fun getQuietHoursStartMinute(): Int = dataStore.data.first()[Keys.QUIET_HOURS_START_MINUTE] ?: 0
+    suspend fun setQuietHoursStartMinute(value: Int) { dataStore.edit { it[Keys.QUIET_HOURS_START_MINUTE] = value } }
+    suspend fun getQuietHoursEndHour(): Int = dataStore.data.first()[Keys.QUIET_HOURS_END_HOUR] ?: 7
+    suspend fun setQuietHoursEndHour(value: Int) { dataStore.edit { it[Keys.QUIET_HOURS_END_HOUR] = value } }
+    suspend fun getQuietHoursEndMinute(): Int = dataStore.data.first()[Keys.QUIET_HOURS_END_MINUTE] ?: 0
+    suspend fun setQuietHoursEndMinute(value: Int) { dataStore.edit { it[Keys.QUIET_HOURS_END_MINUTE] = value } }
+
+    // === Per-day Notification Times ===
+    suspend fun getNotificationTime1Hour(): Int = dataStore.data.first()[Keys.NOTIFICATION_TIME_1_HOUR] ?: 7
+    suspend fun setNotificationTime1Hour(value: Int) { dataStore.edit { it[Keys.NOTIFICATION_TIME_1_HOUR] = value } }
+    suspend fun getNotificationTime1Minute(): Int = dataStore.data.first()[Keys.NOTIFICATION_TIME_1_MINUTE] ?: 0
+    suspend fun setNotificationTime1Minute(value: Int) { dataStore.edit { it[Keys.NOTIFICATION_TIME_1_MINUTE] = value } }
+    suspend fun getNotificationTime1Enabled(): Boolean = dataStore.data.first()[Keys.NOTIFICATION_TIME_1_ENABLED] ?: true
+    suspend fun setNotificationTime1Enabled(value: Boolean) { dataStore.edit { it[Keys.NOTIFICATION_TIME_1_ENABLED] = value } }
+
+    suspend fun getNotificationTime2Hour(): Int = dataStore.data.first()[Keys.NOTIFICATION_TIME_2_HOUR] ?: 12
+    suspend fun setNotificationTime2Hour(value: Int) { dataStore.edit { it[Keys.NOTIFICATION_TIME_2_HOUR] = value } }
+    suspend fun getNotificationTime2Minute(): Int = dataStore.data.first()[Keys.NOTIFICATION_TIME_2_MINUTE] ?: 0
+    suspend fun setNotificationTime2Minute(value: Int) { dataStore.edit { it[Keys.NOTIFICATION_TIME_2_MINUTE] = value } }
+    suspend fun getNotificationTime2Enabled(): Boolean = dataStore.data.first()[Keys.NOTIFICATION_TIME_2_ENABLED] ?: true
+    suspend fun setNotificationTime2Enabled(value: Boolean) { dataStore.edit { it[Keys.NOTIFICATION_TIME_2_ENABLED] = value } }
+
+    suspend fun getNotificationTime3Hour(): Int = dataStore.data.first()[Keys.NOTIFICATION_TIME_3_HOUR] ?: 18
+    suspend fun setNotificationTime3Hour(value: Int) { dataStore.edit { it[Keys.NOTIFICATION_TIME_3_HOUR] = value } }
+    suspend fun getNotificationTime3Minute(): Int = dataStore.data.first()[Keys.NOTIFICATION_TIME_3_MINUTE] ?: 0
+    suspend fun setNotificationTime3Minute(value: Int) { dataStore.edit { it[Keys.NOTIFICATION_TIME_3_MINUTE] = value } }
+    suspend fun getNotificationTime3Enabled(): Boolean = dataStore.data.first()[Keys.NOTIFICATION_TIME_3_ENABLED] ?: true
+    suspend fun setNotificationTime3Enabled(value: Boolean) { dataStore.edit { it[Keys.NOTIFICATION_TIME_3_ENABLED] = value } }
 }

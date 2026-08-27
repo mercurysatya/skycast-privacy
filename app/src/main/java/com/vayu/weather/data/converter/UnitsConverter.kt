@@ -186,18 +186,6 @@ object PrecipitationConverter {
 }
 
 /** Enums for presentation units */
-enum class TemperatureUnit {
-    CELSIUS,
-    FAHRENHEIT
-}
-
-enum class WindUnit {
-    KPH,
-    MPH,
-    MS,
-    KNOTS
-}
-
 enum class PressureUnit {
     HPA,
     INHG

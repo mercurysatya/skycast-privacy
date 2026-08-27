@@ -11,8 +11,6 @@ import com.vayu.weather.domain.use_case.ClearWeatherAlertsUseCase
 import com.vayu.weather.domain.use_case.DeleteWeatherAlertUseCase
 import com.vayu.weather.domain.use_case.GetWeatherAlertsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -108,13 +106,6 @@ class AlertsViewModel @Inject constructor(
 
     private fun scheduleNextPushNotification(frequencyHours: Int) {
         if (frequencyHours <= 0) return
-
-        viewModelScope.launch {
-            delay(frequencyHours * 60 * 60 * 1000L)
-            // Trigger push notification cycle via worker
-            CoroutineScope(Dispatchers.IO).launch {
-                // This will be handled by the WeatherAlertWorker scheduled periodically
-            }
-        }
+        // Push notification scheduling is handled by WeatherAlertWorker periodic worker
     }
 }

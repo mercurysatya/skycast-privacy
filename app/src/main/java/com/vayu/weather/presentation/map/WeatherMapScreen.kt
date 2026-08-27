@@ -1080,70 +1080,74 @@ private suspend fun shareMapScreenshot(
 
             // Wait a frame for rendering to complete
             kotlinx.coroutines.delay(100)
+            // Create bitmap from root view
+            var bitmap: android.graphics.Bitmap? = null
+            try {
+                bitmap = android.graphics.Bitmap.createBitmap(
+                    rootView.width.coerceAtLeast(1),
+                    rootView.height.coerceAtLeast(1),
+                    android.graphics.Bitmap.Config.ARGB_8888
+                )
+                val canvas = android.graphics.Canvas(bitmap)
+                rootView.draw(canvas)
 
-            // Create bitmap from root viewval bitmap = android.graphics.Bitmap.createBitmap(
-                rootView.width.coerceAtLeast(1),
-                rootView.height.coerceAtLeast(1),
-                android.graphics.Bitmap.Config.ARGB_8888
-            )
-            val canvas = android.graphics.Canvas(bitmap)
-            rootView.draw(canvas)
+                // Add weather watermark overlay at bottom
+                val paint = android.graphics.Paint().apply {
+                    isAntiAlias = true
+                    color = android.graphics.Color.argb(180, 0, 0, 0)
+                }
+                val textPaint = android.graphics.Paint().apply {
+                    isAntiAlias = true
+                    color = android.graphics.Color.WHITE
+                    textSize = 36f
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                }
+                val subPaint = android.graphics.Paint().apply {
+                    isAntiAlias = true
+                    color = android.graphics.Color.argb(200, 255, 255, 255)
+                    textSize = 24f
+                }
 
-            // Add weather watermark overlay at bottom
-            val paint = android.graphics.Paint().apply {
-                isAntiAlias = true
-                color = android.graphics.Color.argb(180, 0, 0, 0)
-            }
-            val textPaint = android.graphics.Paint().apply {
-                isAntiAlias = true
-                color = android.graphics.Color.WHITE
-                textSize = 36f
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
-            }
-            val subPaint = android.graphics.Paint().apply {
-                isAntiAlias = true
-                color = android.graphics.Color.argb(200, 255, 255, 255)
-                textSize = 24f
-            }
+                // Draw semi-transparent bar at bottom
+                val barHeight = 120f
+                canvas.drawRect(0f, (bitmap.height - barHeight), bitmap.width.toFloat(), bitmap.height.toFloat(), paint)
 
-            // Draw semi-transparent bar at bottom
-            val barHeight = 120f
-            canvas.drawRect(0f, (bitmap.height - barHeight), bitmap.width.toFloat(), bitmap.height.toFloat(), paint)
+                // Draw weather info
+                val temp = centerWeather?.temperature?.let { "${it.toInt()}°" } ?: ""
+                val condition = centerWeather?.let { mapWeatherDescription(it.weatherCode, it.isDay) } ?: ""
+                val pos = cameraState.position.target
 
-            // Draw weather info
-            val temp = centerWeather?.temperature?.let { "${it.toInt()}°" } ?: ""
-            val condition = centerWeather?.let { mapWeatherDescription(it.weatherCode, it.isDay) } ?: ""
-            val pos = cameraState.position.target
+                if (temp.isNotEmpty()) {
+                    canvas.drawText("$temp  $condition", 24f, bitmap.height - 70f, textPaint)
+                }
+                canvas.drawText("📍 ${"%.1f".format(pos.latitude)}°, ${"%.1f".format(pos.longitude)}°", 24f, bitmap.height - 38f, subPaint)
 
-            if (temp.isNotEmpty()) {
-                canvas.drawText("$temp  $condition", 24f, bitmap.height - 70f, textPaint)
-            }
-            canvas.drawText("📍 ${"%.1f".format(pos.latitude)}°, ${"%.1f".format(pos.longitude)}°", 24f, bitmap.height - 38f, subPaint)
+                // Draw branding
+                canvas.drawText("SkyCast Weather", bitmap.width - 280f, bitmap.height - 38f, subPaint)
 
-            // Draw branding
-            canvas.drawText("SkyCast Weather", bitmap.width - 280f, bitmap.height - 38f, subPaint)
+                // Save and share
+                val file = java.io.File(context.cacheDir, "map_share.png")
+                java.io.FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 90, out) }
 
-            // Save and share
-            val file = java.io.File(context.cacheDir, "map_share.png")
-            java.io.FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 90, out) }
-            bitmap.recycle()
-
-            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-            val shareText = buildString {
-                append("🌤️ Weather at ${"%.1f".format(pos.latitude)}°, ${"%.1f".format(pos.longitude)}°")
-                if (temp.isNotEmpty()) append("\n🌡️ $temp — $condition")
-                if (centerWeather?.windSpeed != null) append("\n💨 Wind: ${centerWeather.windSpeed.toInt()} km/h")
-                if (centerWeather?.humidity != null) append("\n💧 Humidity: ${centerWeather.humidity.toInt()}%")
-                append("\n\n📍 Shared from SkyCast Weather")
-            }
-            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                type = "image/png"
-                putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            withContext(Dispatchers.Main) {
-                context.startActivity(android.content.Intent.createChooser(intent, "Share Weather Map"))
+                val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val shareText = buildString {
+                    append("🌤️ Weather at ${"%.1f".format(pos.latitude)}°, ${"%.1f".format(pos.longitude)}°")
+                    if (temp.isNotEmpty()) append("\n🌡️ $temp — $condition")
+                    if (centerWeather?.windSpeed != null) append("\n💨 Wind: ${centerWeather.windSpeed.toInt()} km/h")
+                    if (centerWeather?.humidity != null) append("\n💧 Humidity: ${centerWeather.humidity.toInt()}%")
+                    append("\n\n📍 Shared from SkyCast Weather")
+                }
+                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                    putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                withContext(Dispatchers.Main) {
+                    context.startActivity(android.content.Intent.createChooser(intent, "Share Weather Map"))
+                }
+            } finally {
+                bitmap?.recycle()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to share map", e)

@@ -71,7 +71,21 @@ class SettingsViewModel @Inject constructor(
                 showHourlyForecast = settingsManager.getShowHourlyForecast(),
                 showSunMoon = settingsManager.getShowSunMoon(),
                 showAirQuality = settingsManager.getShowAirQuality(),
-                showWeatherDetails = settingsManager.getShowWeatherDetails()
+                showWeatherDetails = settingsManager.getShowWeatherDetails(),
+                quietHoursEnabled = settingsManager.getQuietHoursEnabled(),
+                quietHoursStartHour = settingsManager.getQuietHoursStartHour(),
+                quietHoursStartMinute = settingsManager.getQuietHoursStartMinute(),
+                quietHoursEndHour = settingsManager.getQuietHoursEndHour(),
+                quietHoursEndMinute = settingsManager.getQuietHoursEndMinute(),
+                notificationTime1Enabled = settingsManager.getNotificationTime1Enabled(),
+                notificationTime1Hour = settingsManager.getNotificationTime1Hour(),
+                notificationTime1Minute = settingsManager.getNotificationTime1Minute(),
+                notificationTime2Enabled = settingsManager.getNotificationTime2Enabled(),
+                notificationTime2Hour = settingsManager.getNotificationTime2Hour(),
+                notificationTime2Minute = settingsManager.getNotificationTime2Minute(),
+                notificationTime3Enabled = settingsManager.getNotificationTime3Enabled(),
+                notificationTime3Hour = settingsManager.getNotificationTime3Hour(),
+                notificationTime3Minute = settingsManager.getNotificationTime3Minute()
             )
         }
     }
@@ -173,6 +187,106 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsManager.setEnableColdAlerts(value)
             _state.update { it.copy(enableColdAlerts = value) }
+        }
+    }
+
+    // Quiet hours setters
+    fun setQuietHoursEnabled(value: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setQuietHoursEnabled(value)
+            _state.update { it.copy(quietHoursEnabled = value) }
+        }
+    }
+
+    fun setQuietHoursStartHour(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setQuietHoursStartHour(value)
+            _state.update { it.copy(quietHoursStartHour = value) }
+        }
+    }
+
+    fun setQuietHoursStartMinute(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setQuietHoursStartMinute(value)
+            _state.update { it.copy(quietHoursStartMinute = value) }
+        }
+    }
+
+    fun setQuietHoursEndHour(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setQuietHoursEndHour(value)
+            _state.update { it.copy(quietHoursEndHour = value) }
+        }
+    }
+
+    fun setQuietHoursEndMinute(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setQuietHoursEndMinute(value)
+            _state.update { it.copy(quietHoursEndMinute = value) }
+        }
+    }
+
+    // Per-day notification time setters
+    fun setNotificationTime1Enabled(value: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setNotificationTime1Enabled(value)
+            _state.update { it.copy(notificationTime1Enabled = value) }
+        }
+    }
+
+    fun setNotificationTime1Hour(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setNotificationTime1Hour(value)
+            _state.update { it.copy(notificationTime1Hour = value) }
+        }
+    }
+
+    fun setNotificationTime1Minute(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setNotificationTime1Minute(value)
+            _state.update { it.copy(notificationTime1Minute = value) }
+        }
+    }
+
+    fun setNotificationTime2Enabled(value: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setNotificationTime2Enabled(value)
+            _state.update { it.copy(notificationTime2Enabled = value) }
+        }
+    }
+
+    fun setNotificationTime2Hour(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setNotificationTime2Hour(value)
+            _state.update { it.copy(notificationTime2Hour = value) }
+        }
+    }
+
+    fun setNotificationTime2Minute(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setNotificationTime2Minute(value)
+            _state.update { it.copy(notificationTime2Minute = value) }
+        }
+    }
+
+    fun setNotificationTime3Enabled(value: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setNotificationTime3Enabled(value)
+            _state.update { it.copy(notificationTime3Enabled = value) }
+        }
+    }
+
+    fun setNotificationTime3Hour(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setNotificationTime3Hour(value)
+            _state.update { it.copy(notificationTime3Hour = value) }
+        }
+    }
+
+    fun setNotificationTime3Minute(value: Int) {
+        viewModelScope.launch {
+            settingsManager.setNotificationTime3Minute(value)
+            _state.update { it.copy(notificationTime3Minute = value) }
         }
     }
 

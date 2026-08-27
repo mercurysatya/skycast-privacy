@@ -23,7 +23,8 @@ class SearchViewModel @Inject constructor(
     private val searchCityUseCase: SearchCityUseCase,
     private val getRecentSearchesUseCase: GetRecentSearchesUseCase,
     private val addRecentSearchUseCase: AddRecentSearchUseCase,
-    private val clearRecentSearchesUseCase: ClearRecentSearchesUseCase
+    private val clearRecentSearchesUseCase: ClearRecentSearchesUseCase,
+    private val repository: com.vayu.weather.domain.repository.WeatherRepository
 ) : ViewModel() {
 
     var state by mutableStateOf(SearchState())
@@ -32,7 +33,11 @@ class SearchViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     init {
-        loadRecentSearches()
+        // Clean up duplicates created before fuzzy dedup existed, then observe the list
+        viewModelScope.launch {
+            runCatching { repository.dedupeRecentSearches() }
+            loadRecentSearches()
+        }
     }
 
     private fun loadRecentSearches() {

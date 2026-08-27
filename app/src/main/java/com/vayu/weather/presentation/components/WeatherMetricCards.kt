@@ -1,9 +1,20 @@
 package com.vayu.weather.presentation.components
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowForwardIos
+import androidx.compose.material.icons.rounded.Waves
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -15,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -594,6 +606,124 @@ fun PrecipitationTimelineCard(
                     )
                 }
             }
+        }
+    }
+}
+
+// ============================================================
+// UV PILL — compact inline badge
+// ============================================================
+
+@Composable
+fun UvPill(
+    uvIndex: Double?,
+    modifier: Modifier = Modifier
+) {
+    val uv = uvIndex?.roundToInt() ?: 0
+    val (uvColor, uvLabel) = when {
+        uv <= 2 -> WeatherColors.uvLow to "Low"
+        uv <= 5 -> WeatherColors.uvModerate to "Moderate"
+        uv <= 7 -> WeatherColors.uvHigh to "High"
+        uv <= 10 -> WeatherColors.uvVeryHigh to "Very High"
+        else -> WeatherColors.uvExtreme to "Extreme"
+    }
+
+    Box(
+        modifier = modifier
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .background(
+                color = uvColor.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(20.dp)
+            )
+            .border(
+                width = 1.dp,
+                color = uvColor.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(20.dp)
+            )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "\u2600",
+                style = MaterialTheme.typography.labelMedium,
+                color = uvColor
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "UV $uv ($uvLabel)",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = uvColor
+            )
+        }
+    }
+}
+
+// ============================================================
+// RADAR PREVIEW CARD
+// ============================================================
+
+@Composable
+fun RadarPreviewCard(
+    latitude: Double,
+    longitude: Double,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val view = LocalView.current
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clickable {
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                onClick()
+            },
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.05f)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Waves,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Rain Radar",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Tap to view precipitation map",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.Rounded.ArrowForwardIos,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

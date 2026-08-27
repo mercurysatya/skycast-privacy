@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.vayu.weather.presentation.SplashGate
 import com.vayu.weather.presentation.VayuApp
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -12,7 +13,11 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splash = installSplashScreen()
+        // Hold the splash until the app has picked its start destination,
+        // so the Search pane never flashes before the dashboard is shown
+        splash.setKeepOnScreenCondition { !SplashGate.isReady }
+        SplashGate.isReady = false
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()

@@ -112,8 +112,6 @@ dependencies {
     implementation("com.google.firebase:firebase-config")
     implementation("com.google.firebase:firebase-appcheck")
 
-    implementation("com.google.android.gms:play-services-ads:25.4.0")
-
     implementation("com.google.android.ump:user-messaging-platform:2.2.0")
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)

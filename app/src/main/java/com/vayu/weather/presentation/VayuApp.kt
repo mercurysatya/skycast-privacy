@@ -11,10 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
-import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
-import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
-import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,7 +49,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun VayuApp() {
     val navColors = NavigationBarItemDefaults.colors(
@@ -88,7 +83,6 @@ fun VayuApp() {
     var showPrivacyPolicy by remember { mutableStateOf(false) }
     var privacyPolicyAnchor by remember { mutableStateOf<String?>(null) }
 
-    val navigator = rememberListDetailPaneScaffoldNavigator()
     val scope = rememberCoroutineScope()
     var currentRoute by remember { mutableStateOf("Weather") }
 
@@ -113,15 +107,11 @@ fun VayuApp() {
         showSettings = false
     }
 
-    BackHandler(enabled = !showSettings && navigator.canNavigateBack()) {
-        scope.launch {
-            Log.d("VayuApp", "Back pressed, navigating back")
-            navigator.navigateBack()
-        }
-    }
-
     LaunchedEffect(Unit) {
         Log.d("VayuApp", "LaunchedEffect: Loading weather and ad")
+        // First frame is ready — let the splash screen go. The dashboard is the
+        // default tab, so there is no extra navigation to do on cold start.
+        SplashGate.isReady = true
         weatherViewModel.loadWeatherInfo()
         // Gather UMP consent first; initialize/load ads only when allowed
         val act = activity
@@ -211,6 +201,22 @@ fun VayuApp() {
                     onPressureUnitChange = settingsViewModel::setPressureUnit,
                     onPrecipitationUnitChange = settingsViewModel::setPrecipitationUnit,
                     onSectionVisibilityChange = { section, visible -> settingsViewModel.setSectionVisibility(section, visible) },
+                    // Quiet hours
+                    onQuietHoursEnabledChange = settingsViewModel::setQuietHoursEnabled,
+                    onQuietHoursStartHourChange = settingsViewModel::setQuietHoursStartHour,
+                    onQuietHoursStartMinuteChange = settingsViewModel::setQuietHoursStartMinute,
+                    onQuietHoursEndHourChange = settingsViewModel::setQuietHoursEndHour,
+                    onQuietHoursEndMinuteChange = settingsViewModel::setQuietHoursEndMinute,
+                    // Per-day notification times
+                    onNotificationTime1EnabledChange = settingsViewModel::setNotificationTime1Enabled,
+                    onNotificationTime1HourChange = settingsViewModel::setNotificationTime1Hour,
+                    onNotificationTime1MinuteChange = settingsViewModel::setNotificationTime1Minute,
+                    onNotificationTime2EnabledChange = settingsViewModel::setNotificationTime2Enabled,
+                    onNotificationTime2HourChange = settingsViewModel::setNotificationTime2Hour,
+                    onNotificationTime2MinuteChange = settingsViewModel::setNotificationTime2Minute,
+                    onNotificationTime3EnabledChange = settingsViewModel::setNotificationTime3Enabled,
+                    onNotificationTime3HourChange = settingsViewModel::setNotificationTime3Hour,
+                    onNotificationTime3MinuteChange = settingsViewModel::setNotificationTime3Minute,
                     onBack = { showSettings = false },
                     onOpenPrivacyPolicy = { anchor ->
                         privacyPolicyAnchor = anchor
@@ -223,282 +229,179 @@ fun VayuApp() {
             } else {
                 Scaffold(
                     bottomBar = {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            if (navigator.scaffoldDirective.maxHorizontalPartitions == 1) {
-                                NavigationBar(
-                                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                                    tonalElevation = 3.dp
-                                ) {
-                                    NavigationBarItem(
-                                        selected = currentRoute == "Weather",
-                                        onClick = {
-                                            currentRoute = "Weather"
-                                            scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Weather") }
-                                        },
-                                        icon = {
-                                            if (alertsViewModel.state.alerts.isNotEmpty()) {
-                                                BadgedBox(
-                                                    badge = {
-                                                        Badge {
-                                                            Text(alertsViewModel.state.alerts.size.toString())
-                                                        }
-                                                    }
-                                                ) {
-                                                    Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
-                                                }
-                                            } else {
-                                                Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                            tonalElevation = 3.dp
+                        ) {
+                            NavigationBarItem(
+                                selected = currentRoute == "Weather",
+                                onClick = { currentRoute = "Weather" },
+                                icon = {
+                                    if (alertsViewModel.state.alerts.isNotEmpty()) {
+                                        BadgedBox(
+                                            badge = {
+                                                Badge { Text(alertsViewModel.state.alerts.size.toString()) }
                                             }
-                                        },
-                                        label = { Text("Weather") },
-                                        colors = navColors
-                                    )
-                                    NavigationBarItem(
-                                        selected = currentRoute == "Search",
-                                        onClick = {
-                                            currentRoute = "Search"
-                                            scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.List, "Search") }
-                                        },
-                                        icon = { Icon(Icons.Rounded.Search, "Search", Modifier.size(24.dp)) },
-                                        label = { Text("Search") },
-                                        colors = navColors
-                                    )
-                                    NavigationBarItem(
-                                        selected = currentRoute == "Favorites",
-                                        onClick = {
-                                            currentRoute = "Favorites"
-                                            scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.List, "Favorites") }
-                                        },
-                                        icon = { Icon(Icons.Rounded.Favorite, "Favorites", Modifier.size(24.dp)) },
-                                        label = { Text("Favorites") },
-                                        colors = navColors
-                                    )
-                                    NavigationBarItem(
-                                        selected = currentRoute == "Map",
-                                        onClick = {
-                                            currentRoute = "Map"
-                                            scope.launch {
-                                                try {
-                                                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Map")
-                                                } catch (e: Exception) {
-                                                    Log.e("VayuApp", "Nav err", e)
-                                                }
-                                            }
-                                        },
-                                        icon = { Icon(Icons.Rounded.Map, "Map", Modifier.size(24.dp)) },
-                                        label = { Text("Map") },
-                                        colors = navColors
-                                    )
-                                }
-                            }
+                                        ) {
+                                            Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
+                                        }
+                                    } else {
+                                        Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
+                                    }
+                                },
+                                label = { Text("Weather") },
+                                colors = navColors
+                            )
+                            NavigationBarItem(
+                                selected = currentRoute == "Search",
+                                onClick = { currentRoute = "Search" },
+                                icon = { Icon(Icons.Rounded.Search, "Search", Modifier.size(24.dp)) },
+                                label = { Text("Search") },
+                                colors = navColors
+                            )
+                            NavigationBarItem(
+                                selected = currentRoute == "Favorites",
+                                onClick = { currentRoute = "Favorites" },
+                                icon = { Icon(Icons.Rounded.Favorite, "Favorites", Modifier.size(24.dp)) },
+                                label = { Text("Favorites") },
+                                colors = navColors
+                            )
+                            NavigationBarItem(
+                                selected = currentRoute == "Map",
+                                onClick = { currentRoute = "Map" },
+                                icon = { Icon(Icons.Rounded.Map, "Map", Modifier.size(24.dp)) },
+                                label = { Text("Map") },
+                                colors = navColors
+                            )
                         }
                     }
                 ) { padding ->
-                    Row(modifier = Modifier.padding(padding)) {
-                        if (navigator.scaffoldDirective.maxHorizontalPartitions > 1) {
-                            NavigationRail(
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                            ) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                NavigationRailItem(
-                                    selected = currentRoute == "Weather",
-                                    onClick = {
+                    Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+                        when (currentRoute) {
+                            "Search" -> {
+                                SearchScreen(
+                                    state = searchViewModel.state,
+                                    onQueryChange = searchViewModel::onQueryChange,
+                                    onCitySelected = { city ->
+                                        searchViewModel.addToRecentSearches(city)
+                                        weatherViewModel.loadWeatherForCity(
+                                            city.latitude, city.longitude, city.name
+                                        )
                                         currentRoute = "Weather"
-                                        scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Weather") }
                                     },
-                                    icon = { Icon(Icons.Rounded.Cloud, "Weather") },
-                                    label = { Text("Weather") },
-                                    colors = railColors
-                                )
-                                NavigationRailItem(
-                                    selected = currentRoute == "Search",
-                                    onClick = {
-                                        currentRoute = "Search"
-                                        scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.List, "Search") }
+                                    onToggleFavorite = { city ->
+                                        favoritesViewModel.toggleFavorite(city)
                                     },
-                                    icon = { Icon(Icons.Rounded.Search, "Search") },
-                                    label = { Text("Search") },
-                                    colors = railColors
-                                )
-                                NavigationRailItem(
-                                    selected = currentRoute == "Favorites",
-                                    onClick = {
-                                        currentRoute = "Favorites"
-                                        scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.List, "Favorites") }
+                                    isFavorite = { cityId ->
+                                        favoritesViewModel.state.favorites.any { it.id == cityId }
                                     },
-                                    icon = { Icon(Icons.Rounded.Favorite, "Favorites") },
-                                    label = { Text("Favorites") },
-                                    colors = railColors
+                                    onClearRecentSearches = searchViewModel::clearRecentSearches
                                 )
-                                NavigationRailItem(
-                                    selected = currentRoute == "Map",
-                                    onClick = {
-                                        currentRoute = "Map"
-                                        scope.launch {
-                                            try {
-                                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, "Map")
-                                            } catch (e: Exception) {
-                                                Log.e("VayuApp", "Nav err", e)
+                            }
+                            "Favorites" -> {
+                                FavoritesScreen(
+                                    state = favoritesViewModel.state,
+                                    onCitySelected = { city ->
+                                        weatherViewModel.loadWeatherForCity(
+                                            city.latitude, city.longitude, city.name
+                                        )
+                                        currentRoute = "Weather"
+                                    },
+                                    onRemoveFavorite = favoritesViewModel::removeFavorite,
+                                    onReorder = favoritesViewModel::reorderFavorites
+                                )
+                            }
+                            "Map" -> {
+                                WeatherMapScreen(
+                                    locationTracker = weatherViewModel.locationTracker
+                                )
+                            }
+                            else -> {
+                                WeatherDashboard(
+                                    state = weatherViewModel.state,
+                                    settings = settingsState,
+                                    onRetry = { weatherViewModel.loadWeatherInfo() },
+                                    onRefresh = { weatherViewModel.refreshWeatherInfo() },
+                                    onToggleUnit = settingsViewModel::toggleTemperatureUnit,
+                                    onOpenSettings = { showSettings = true },
+                                    onOpenAlerts = { showAlerts = true },
+                                    onOpenDetail = {
+                                        val act = activity
+                                        if (act != null) {
+                                            com.vayu.weather.presentation.ads.AdManager.showInterstitial(act) {
+                                                showDetail = true
+                                            }
+                                        } else {
+                                            showDetail = true
+                                        }
+                                    },
+                                    onOpenHistory = { showHistory = true },
+                                    onShare = {
+                                        val weatherInfo = weatherViewModel.state.weatherInfo
+                                        if (weatherInfo != null) {
+                                            val shareText = WeatherShareFormatter.formatForShare(
+                                                context = context,
+                                                cityName = weatherViewModel.currentCityName,
+                                                weatherInfo = weatherInfo,
+                                                isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS
+                                            )
+                                            scope.launch {
+                                                val imageUri: android.net.Uri? = withContext(Dispatchers.IO) {
+                                                    var bitmap: android.graphics.Bitmap? = null
+                                                    try {
+                                                        bitmap = WeatherCardRenderer.generateWeatherCardBitmap(
+                                                            context = context,
+                                                            cityName = weatherViewModel.currentCityName ?: context.getString(R.string.default_city_name),
+                                                            weatherInfo = weatherInfo,
+                                                            isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS
+                                                        )
+                                                        val file = java.io.File(context.cacheDir, "weather_share.png")
+                                                        java.io.FileOutputStream(file).use { out ->
+                                                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                                                        }
+                                                        androidx.core.content.FileProvider.getUriForFile(
+                                                            context,
+                                                            "${context.packageName}.fileprovider",
+                                                            file
+                                                        )
+                                                    } catch (e: Exception) {
+                                                        Log.e("VayuApp", "Share card generation failed", e)
+                                                        null
+                                                    } finally {
+                                                        bitmap?.recycle()
+                                                    }
+                                                }
+                                                try {
+                                                    if (imageUri != null) {
+                                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                            type = "image/png"
+                                                            putExtra(Intent.EXTRA_STREAM, imageUri)
+                                                            putExtra(Intent.EXTRA_TEXT, shareText)
+                                                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                        }
+                                                        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
+                                                    } else {
+                                                        throw IllegalStateException("No share image")
+                                                    }
+                                                } catch (e: Exception) {
+                                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                        type = "text/plain"
+                                                        putExtra(Intent.EXTRA_TEXT, shareText)
+                                                        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                                                    }
+                                                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
+                                                }
                                             }
                                         }
                                     },
-                                    icon = { Icon(Icons.Rounded.Map, "Map") },
-                                    label = { Text("Map") },
-                                    colors = railColors
+                                    onDismissRefreshError = { weatherViewModel.clearRefreshError() },
+                                    cityName = weatherViewModel.currentCityName,
+                                    latitude = weatherViewModel.currentLat ?: 0.0,
+                                    longitude = weatherViewModel.currentLon ?: 0.0
                                 )
                             }
                         }
-
-                        ListDetailPaneScaffold(
-                            directive = navigator.scaffoldDirective,
-                            value = navigator.scaffoldValue,
-                            listPane = {
-                                val contentKey = navigator.currentDestination?.contentKey
-                                when (contentKey) {
-                                    "Favorites" -> {
-                                        FavoritesScreen(
-                                            state = favoritesViewModel.state,
-                                            onCitySelected = { city ->
-                                                weatherViewModel.loadWeatherForCity(
-                                                    city.latitude, city.longitude, city.name
-                                                )
-                                                scope.launch {
-                                                    try {
-                                                        navigator.navigateTo(
-                                                            ListDetailPaneScaffoldRole.Detail, "Weather"
-                                                        )
-                                                    } catch (e: Exception) { Log.e("VayuApp", "Nav err", e) }
-                                                }
-                                            },
-                                            onRemoveFavorite = favoritesViewModel::removeFavorite,
-                                            onReorder = favoritesViewModel::reorderFavorites
-                                        )
-                                    }
-                                    else -> {
-                                        SearchScreen(
-                                            state = searchViewModel.state,
-                                            onQueryChange = searchViewModel::onQueryChange,
-                                            onCitySelected = { city ->
-                                                searchViewModel.addToRecentSearches(city)
-                                                weatherViewModel.loadWeatherForCity(
-                                                    city.latitude, city.longitude, city.name
-                                                )
-                                                scope.launch {
-                                                    try {
-                                                        navigator.navigateTo(
-                                                            ListDetailPaneScaffoldRole.Detail, "Weather"
-                                                        )
-                                                    } catch (e: Exception) { Log.e("VayuApp", "Nav err", e) }
-                                                }
-                                            },
-                                            onToggleFavorite = { city ->
-                                                favoritesViewModel.toggleFavorite(city)
-                                            },
-                                            isFavorite = { cityId ->
-                                                favoritesViewModel.state.favorites.any { it.id == cityId }
-                                            },
-                                            onClearRecentSearches = searchViewModel::clearRecentSearches
-                                        )
-                                    }
-                                }
-                            },
-                            detailPane = {
-                                val contentKey = navigator.currentDestination?.contentKey
-                                when (contentKey) {
-                                    "Map" -> {
-                                        WeatherMapScreen(
-                                            locationTracker = weatherViewModel.locationTracker
-                                        )
-                                    }
-                                    "Weather", null -> {
-                                        WeatherDashboard(
-                                            state = weatherViewModel.state,
-                                            settings = settingsState,
-                                            onRetry = { weatherViewModel.loadWeatherInfo() },
-                                            onRefresh = { weatherViewModel.refreshWeatherInfo() },
-                                            onToggleUnit = settingsViewModel::toggleTemperatureUnit,
-                                            onOpenSettings = { showSettings = true },
-                                            onOpenAlerts = { showAlerts = true },
-                                            onOpenDetail = {
-                                                val act = activity
-                                                if (act != null) {
-                                                    com.vayu.weather.presentation.ads.AdManager.showInterstitial(act) {
-                                                        showDetail = true
-                                                    }
-                                                } else {
-                                                    showDetail = true
-                                                }
-                                            },
-                                            onOpenHistory = { showHistory = true },
-                                            onShare = {
-                                                val weatherInfo = weatherViewModel.state.weatherInfo
-                                                if (weatherInfo != null) {
-                                                    val shareText = WeatherShareFormatter.formatForShare(
-                                                        context = context,
-                                                        cityName = weatherViewModel.currentCityName,
-                                                        weatherInfo = weatherInfo,
-                                                        isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS
-                                                    )
-                                                    scope.launch {
-                                                        // Heavy bitmap render + file I/O must not run on the main thread
-                                                        val imageUri: android.net.Uri? = withContext(Dispatchers.IO) {
-                                                            try {
-                                                                val bitmap = WeatherCardRenderer.generateWeatherCardBitmap(
-                                                                    context = context,
-                                                                    cityName = weatherViewModel.currentCityName ?: context.getString(R.string.default_city_name),
-                                                                    weatherInfo = weatherInfo,
-                                                                    isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS
-                                                                )
-                                                                val file = java.io.File(context.cacheDir, "weather_share.png")
-                                                                java.io.FileOutputStream(file).use { out ->
-                                                                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
-                                                                }
-                                                                bitmap.recycle()
-                                                                androidx.core.content.FileProvider.getUriForFile(
-                                                                    context,
-                                                                    "${context.packageName}.fileprovider",
-                                                                    file
-                                                                )
-                                                            } catch (e: Exception) {
-                                                                Log.e("VayuApp", "Share card generation failed", e)
-                                                                null
-                                                            }
-                                                        }
-                                                        try {
-                                                            if (imageUri != null) {
-                                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                                    type = "image/png"
-                                                                    putExtra(Intent.EXTRA_STREAM, imageUri)
-                                                                    putExtra(Intent.EXTRA_TEXT, shareText)
-                                                                    putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
-                                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                                }
-                                                                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
-                                                            } else {
-                                                                throw IllegalStateException("No share image")
-                                                            }
-                                                        } catch (e: Exception) {
-                                                            // Fallback to text-only share
-                                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                                type = "text/plain"
-                                                                putExtra(Intent.EXTRA_TEXT, shareText)
-                                                                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
-                                                            }
-                                                            context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
-                                                        }
-                                                    }
-                                                }
-                                            },
-                                            onDismissRefreshError = { weatherViewModel.clearRefreshError() },
-                                            cityName = weatherViewModel.currentCityName
-                                        )
-                                    }
-                                    else -> {
-                                        Box(modifier = Modifier.fillMaxSize())
-                                    }
-                                }
-                            }
-                        )
                     }
                 }
             }

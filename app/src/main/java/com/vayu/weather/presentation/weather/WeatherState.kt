@@ -44,5 +44,21 @@ data class SettingsState(
     val showHourlyForecast: Boolean = true,
     val showSunMoon: Boolean = true,
     val showAirQuality: Boolean = true,
-    val showWeatherDetails: Boolean = true
+    val showWeatherDetails: Boolean = true,
+    // Quiet hours
+    val quietHoursEnabled: Boolean = false,
+    val quietHoursStartHour: Int = 22,
+    val quietHoursStartMinute: Int = 0,
+    val quietHoursEndHour: Int = 7,
+    val quietHoursEndMinute: Int = 0,
+    // Per-day notification times
+    val notificationTime1Enabled: Boolean = true,
+    val notificationTime1Hour: Int = 7,
+    val notificationTime1Minute: Int = 0,
+    val notificationTime2Enabled: Boolean = true,
+    val notificationTime2Hour: Int = 12,
+    val notificationTime2Minute: Int = 0,
+    val notificationTime3Enabled: Boolean = true,
+    val notificationTime3Hour: Int = 18,
+    val notificationTime3Minute: Int = 0
 )

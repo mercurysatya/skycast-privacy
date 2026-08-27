@@ -96,6 +96,22 @@ fun SettingsScreen(
     onDeleteAllData: () -> Unit = {},
     onClearCache: () -> Unit = {},
     onOpenAlerts: () -> Unit = {},
+    // Quiet hours
+    onQuietHoursEnabledChange: (Boolean) -> Unit = {},
+    onQuietHoursStartHourChange: (Int) -> Unit = {},
+    onQuietHoursStartMinuteChange: (Int) -> Unit = {},
+    onQuietHoursEndHourChange: (Int) -> Unit = {},
+    onQuietHoursEndMinuteChange: (Int) -> Unit = {},
+    // Per-day notification times
+    onNotificationTime1EnabledChange: (Boolean) -> Unit = {},
+    onNotificationTime1HourChange: (Int) -> Unit = {},
+    onNotificationTime1MinuteChange: (Int) -> Unit = {},
+    onNotificationTime2EnabledChange: (Boolean) -> Unit = {},
+    onNotificationTime2HourChange: (Int) -> Unit = {},
+    onNotificationTime2MinuteChange: (Int) -> Unit = {},
+    onNotificationTime3EnabledChange: (Boolean) -> Unit = {},
+    onNotificationTime3HourChange: (Int) -> Unit = {},
+    onNotificationTime3MinuteChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -690,6 +706,272 @@ fun SettingsScreen(
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("-10°C", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("10°C", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // === QUIET HOURS & NOTIFICATION SCHEDULE ===
+                SettingsGroup(title = stringResource(R.string.quiet_hours_group)) {
+                    // Quiet hours enabled
+                    SettingsRow(
+                        icon = Icons.Rounded.Bedtime,
+                        title = stringResource(R.string.quiet_hours),
+                        subtitle = if (state.quietHoursEnabled)
+                            stringResource(R.string.quiet_hours_enabled, state.quietHoursStartHour, state.quietHoursStartMinute, state.quietHoursEndHour, state.quietHoursEndMinute)
+                        else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.quietHoursEnabled,
+                            onCheckedChange = { onQuietHoursEnabledChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+
+                    if (state.quietHoursEnabled) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            // Start time
+                            SettingsRow(
+                                icon = Icons.Rounded.Schedule,
+                                title = stringResource(R.string.quiet_hours_start),
+                                subtitle = String.format("%02d:%02d", state.quietHoursStartHour, state.quietHoursStartMinute)
+                            ) {
+                                var expanded by remember { mutableStateOf(false) }
+                                Box {
+                                    TextButton(onClick = { expanded = true }) {
+                                        Text(
+                                            text = String.format("%02d:%02d", state.quietHoursStartHour, state.quietHoursStartMinute),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                        (0..23).forEach { hour ->
+                                            (0..59 step 15).forEach { minute ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(text = String.format("%02d:%02d", hour, minute))
+                                                    },
+                                                    onClick = {
+                                                        onQuietHoursStartHourChange(hour)
+                                                        onQuietHoursStartMinuteChange(minute)
+                                                        expanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // End time
+                            SettingsRow(
+                                icon = Icons.Rounded.WbSunny,
+                                title = stringResource(R.string.quiet_hours_end),
+                                subtitle = String.format("%02d:%02d", state.quietHoursEndHour, state.quietHoursEndMinute)
+                            ) {
+                                var expanded by remember { mutableStateOf(false) }
+                                Box {
+                                    TextButton(onClick = { expanded = true }) {
+                                        Text(
+                                            text = String.format("%02d:%02d", state.quietHoursEndHour, state.quietHoursEndMinute),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                        (0..23).forEach { hour ->
+                                            (0..59 step 15).forEach { minute ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(text = String.format("%02d:%02d", hour, minute))
+                                                    },
+                                                    onClick = {
+                                                        onQuietHoursEndHourChange(hour)
+                                                        onQuietHoursEndMinuteChange(minute)
+                                                        expanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Per-day notification times
+                    Text(
+                        text = stringResource(R.string.notification_times),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 10.dp, start = 4.dp)
+                    )
+
+                    // Time 1 (Morning)
+                    SettingsRow(
+                        icon = Icons.Rounded.WbSunny,
+                        title = stringResource(R.string.notification_time_1),
+                        subtitle = if (state.notificationTime1Enabled)
+                            String.format("%02d:%02d", state.notificationTime1Hour, state.notificationTime1Minute)
+                        else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.notificationTime1Enabled,
+                            onCheckedChange = { onNotificationTime1EnabledChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                    if (state.notificationTime1Enabled) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            SettingsRow(
+                                icon = Icons.Rounded.Schedule,
+                                title = stringResource(R.string.notification_time_1_time),
+                                subtitle = String.format("%02d:%02d", state.notificationTime1Hour, state.notificationTime1Minute)
+                            ) {
+                                var expanded by remember { mutableStateOf(false) }
+                                Box {
+                                    TextButton(onClick = { expanded = true }) {
+                                        Text(
+                                            text = String.format("%02d:%02d", state.notificationTime1Hour, state.notificationTime1Minute),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                        (0..23).forEach { hour ->
+                                            (0..59 step 15).forEach { minute ->
+                                                DropdownMenuItem(
+                                                    text = { Text(text = String.format("%02d:%02d", hour, minute)) },
+                                                    onClick = {
+                                                        onNotificationTime1HourChange(hour)
+                                                        onNotificationTime1MinuteChange(minute)
+                                                        expanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Time 2 (Midday)
+                    SettingsRow(
+                        icon = Icons.Rounded.WbSunny,
+                        title = stringResource(R.string.notification_time_2),
+                        subtitle = if (state.notificationTime2Enabled)
+                            String.format("%02d:%02d", state.notificationTime2Hour, state.notificationTime2Minute)
+                        else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.notificationTime2Enabled,
+                            onCheckedChange = { onNotificationTime2EnabledChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                    if (state.notificationTime2Enabled) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            SettingsRow(
+                                icon = Icons.Rounded.Schedule,
+                                title = stringResource(R.string.notification_time_2_time),
+                                subtitle = String.format("%02d:%02d", state.notificationTime2Hour, state.notificationTime2Minute)
+                            ) {
+                                var expanded by remember { mutableStateOf(false) }
+                                Box {
+                                    TextButton(onClick = { expanded = true }) {
+                                        Text(
+                                            text = String.format("%02d:%02d", state.notificationTime2Hour, state.notificationTime2Minute),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                        (0..23).forEach { hour ->
+                                            (0..59 step 15).forEach { minute ->
+                                                DropdownMenuItem(
+                                                    text = { Text(text = String.format("%02d:%02d", hour, minute)) },
+                                                    onClick = {
+                                                        onNotificationTime2HourChange(hour)
+                                                        onNotificationTime2MinuteChange(minute)
+                                                        expanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Time 3 (Evening)
+                    SettingsRow(
+                        icon = Icons.Rounded.NightsStay,
+                        title = stringResource(R.string.notification_time_3),
+                        subtitle = if (state.notificationTime3Enabled)
+                            String.format("%02d:%02d", state.notificationTime3Hour, state.notificationTime3Minute)
+                        else stringResource(R.string.disabled)
+                    ) {
+                        Switch(
+                            checked = state.notificationTime3Enabled,
+                            onCheckedChange = { onNotificationTime3EnabledChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                    if (state.notificationTime3Enabled) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            SettingsRow(
+                                icon = Icons.Rounded.Schedule,
+                                title = stringResource(R.string.notification_time_3_time),
+                                subtitle = String.format("%02d:%02d", state.notificationTime3Hour, state.notificationTime3Minute)
+                            ) {
+                                var expanded by remember { mutableStateOf(false) }
+                                Box {
+                                    TextButton(onClick = { expanded = true }) {
+                                        Text(
+                                            text = String.format("%02d:%02d", state.notificationTime3Hour, state.notificationTime3Minute),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                        (0..23).forEach { hour ->
+                                            (0..59 step 15).forEach { minute ->
+                                                DropdownMenuItem(
+                                                    text = { Text(text = String.format("%02d:%02d", hour, minute)) },
+                                                    onClick = {
+                                                        onNotificationTime3HourChange(hour)
+                                                        onNotificationTime3MinuteChange(minute)
+                                                        expanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

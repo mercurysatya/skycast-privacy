@@ -18,6 +18,8 @@ object WeatherCardRenderer {
 
     private const val CARD_WIDTH = 1080
     private const val CARD_HEIGHT = 1350
+    private const val STORY_WIDTH = 1080
+    private const val STORY_HEIGHT = 1920
 
     fun generateWeatherCardBitmap(
         context: Context,
@@ -193,6 +195,235 @@ object WeatherCardRenderer {
         canvas.drawText("SkyCast Weather", CARD_WIDTH / 2f, CARD_HEIGHT - 40f, subTextPaint)
 
         return bitmap
+    }
+
+    // ============================================================
+    // INSTAGRAM STORIES 9:16 VARIANT (1080x1920)
+    // ============================================================
+    fun generateWeatherStoryBitmap(
+        context: Context,
+        cityName: String,
+        weatherInfo: WeatherInfo,
+        isCelsius: Boolean
+    ): Bitmap {
+        val bitmap = Bitmap.createBitmap(STORY_WIDTH, STORY_HEIGHT, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val density = context.resources.displayMetrics.density
+
+        val current = weatherInfo.current
+        val today = weatherInfo.daily.firstOrNull()
+        val hourly = weatherInfo.hourly.sortedBy { it.time }.take(10)
+
+        val temp = if (isCelsius) current.temperature.roundToInt()
+            else (current.temperature * 9.0 / 5.0 + 32.0).roundToInt()
+        val unit = if (isCelsius) "°C" else "°F"
+        val high = today?.let {
+            if (isCelsius) it.maxTemp.roundToInt() else (it.maxTemp * 9.0 / 5.0 + 32.0).roundToInt()
+        }
+        val low = today?.let {
+            if (isCelsius) it.minTemp.roundToInt() else (it.minTemp * 9.0 / 5.0 + 32.0).roundToInt()
+        }
+
+        // ── Background gradient based on weather ──
+        val bgColors = computeCardGradientColors(current.weatherCode, current.isDay)
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f, 0f, 0f, STORY_HEIGHT.toFloat(),
+                bgColors, null, Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, STORY_WIDTH.toFloat(), STORY_HEIGHT.toFloat(), bgPaint)
+
+        // ── Decorative circles ──
+        val decorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.argb(15, 255, 255, 255)
+        }
+        canvas.drawCircle(STORY_WIDTH * 0.85f, STORY_HEIGHT * 0.08f, 220f, decorPaint)
+        canvas.drawCircle(STORY_WIDTH * 0.15f, STORY_HEIGHT * 0.92f, 300f, decorPaint)
+
+        // ── Wave decoration at bottom ──
+        val wavePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.argb(20, 255, 255, 255)
+        }
+        val wavePath = Path().apply {
+            moveTo(0f, STORY_HEIGHT * 0.85f)
+            cubicTo(
+                STORY_WIDTH * 0.25f, STORY_HEIGHT * 0.80f,
+                STORY_WIDTH * 0.5f, STORY_HEIGHT * 0.90f,
+                STORY_WIDTH.toFloat(), STORY_HEIGHT * 0.82f
+            )
+            lineTo(STORY_WIDTH.toFloat(), STORY_HEIGHT.toFloat())
+            lineTo(0f, STORY_HEIGHT.toFloat())
+            close()
+        }
+        canvas.drawPath(wavePath, wavePaint)
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+        }
+        val subTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.argb(180, 255, 255, 255)
+            typeface = Typeface.DEFAULT
+            textAlign = Paint.Align.CENTER
+        }
+
+        // ── App branding ──
+        subTextPaint.textSize = 32f
+        canvas.drawText(context.getString(R.string.app_name), STORY_WIDTH / 2f, 80f, subTextPaint)
+
+        // ── City name ──
+        textPaint.textSize = 60f
+        canvas.drawText(cityName, STORY_WIDTH / 2f, 160f, textPaint)
+
+        // ── Timestamp ──
+        subTextPaint.textSize = 32f
+        val timeStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d • h:mm a"))
+        canvas.drawText(timeStr, STORY_WIDTH / 2f, 215f, subTextPaint)
+
+        // ── Large temperature (bigger for story) ──
+        textPaint.textSize = 240f
+        canvas.drawText("${temp}${unit}", STORY_WIDTH / 2f, 480f, textPaint)
+
+        // ── Condition ──
+        textPaint.textSize = 52f
+        canvas.drawText(getConditionText(current.weatherCode), STORY_WIDTH / 2f, 560f, textPaint)
+
+        // ── High / Low ──
+        if (high != null && low != null) {
+            textPaint.textSize = 44f
+            canvas.drawText("H: ${high}${unit}  L: ${low}${unit}", STORY_WIDTH / 2f, 630f, subTextPaint)
+        }
+
+        // ── Feels like ──
+        current.apparentTemperature?.let { apparent ->
+            val feelsLike = if (isCelsius) apparent.roundToInt()
+                else (apparent * 9.0 / 5.0 + 32.0).roundToInt()
+            subTextPaint.textSize = 36f
+            canvas.drawText("Feels like ${feelsLike}${unit}", STORY_WIDTH / 2f, 690f, subTextPaint)
+        }
+
+        // ── Divider ──
+        val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.argb(40, 255, 255, 255)
+            strokeWidth = 3f
+        }
+        canvas.drawLine(100f, 740f, STORY_WIDTH - 100f, 740f, dividerPaint)
+
+        // ── Hourly mini forecast ──
+        subTextPaint.textSize = 30f
+        canvas.drawText("Next 10 Hours", STORY_WIDTH / 2f, 800f, subTextPaint)
+
+        val startX = 80f
+        val itemWidth = (STORY_WIDTH - 160f) / hourly.size.coerceAtLeast(1)
+        hourly.forEachIndexed { index, hour ->
+            val x = startX + itemWidth * index + itemWidth / 2
+
+            subTextPaint.textSize = 26f
+            val hourLabel = try {
+                java.time.LocalTime.parse(hour.time.substringAfter("T"))
+                    .format(DateTimeFormatter.ofPattern("ha"))
+            } catch (_: Exception) { "--" }
+            canvas.drawText(hourLabel, x, 860f, subTextPaint)
+
+            textPaint.textSize = 36f
+            val hTemp = if (isCelsius) hour.temperature.roundToInt()
+                else (hour.temperature * 9.0 / 5.0 + 32.0).roundToInt()
+            canvas.drawText("${hTemp}°", x, 920f, textPaint)
+
+            // Mini condition emoji
+            textPaint.textSize = 28f
+            canvas.drawText(getWeatherEmoji(hour.weatherCode), x, 970f, textPaint)
+        }
+
+        // ── Divider ──
+        canvas.drawLine(100f, 1010f, STORY_WIDTH - 100f, 1010f, dividerPaint)
+
+        // ── Weather metrics row ──
+        val metrics = mutableListOf<String>()
+        current.humidity?.let { metrics.add("Humidity ${it.roundToInt()}%") }
+        current.windSpeed?.let { metrics.add("Wind ${it.roundToInt()} km/h") }
+        today?.uvIndex?.let { metrics.add("UV ${it.roundToInt()}") }
+        current.surfacePressure?.let { metrics.add("${it.roundToInt()} hPa") }
+
+        if (metrics.isNotEmpty()) {
+            val metricPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.argb(200, 255, 255, 255)
+                typeface = Typeface.DEFAULT
+                textAlign = Paint.Align.CENTER
+                textSize = 30f
+            }
+            val metricStartX = STORY_WIDTH / 2f - (metrics.size - 1) * 160f / 2f
+            metrics.take(4).forEachIndexed { i, m ->
+                canvas.drawText(m, metricStartX + i * 320f, 1080f, metricPaint)
+            }
+        }
+
+        // ── Sunrise / Sunset ──
+        today?.sunrise?.let { sr ->
+            today.sunset?.let { ss ->
+                val sunPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb(160, 255, 255, 255)
+                    typeface = Typeface.DEFAULT
+                    textAlign = Paint.Align.CENTER
+                    textSize = 28f
+                }
+                canvas.drawText(
+                    "🌅 ${sr.take(5)}  —  🌇 ${ss.take(5)}",
+                    STORY_WIDTH / 2f, 1150f, sunPaint
+                )
+            }
+        }
+
+        // ── Extended forecast (next 5 days) ──
+        if (weatherInfo.daily.size > 1) {
+            val forecastPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.WHITE
+                typeface = Typeface.DEFAULT
+                textAlign = Paint.Align.CENTER
+                textSize = 26f
+            }
+            canvas.drawText("5-Day Forecast", STORY_WIDTH / 2f, 1240f, subTextPaint.apply { textSize = 30f })
+
+            val dailyStartY = 1280
+            val dailyItemHeight = 80
+            weatherInfo.daily.take(5).forEachIndexed { index, day ->
+                val y = dailyStartY + index * dailyItemHeight
+                val dayLabel = try {
+                    java.time.LocalDate.parse(day.date).format(DateTimeFormatter.ofPattern("EEE"))
+                } catch (_: Exception) { "--" }
+                val minT = if (isCelsius) day.minTemp.roundToInt() else (day.minTemp * 9.0 / 5.0 + 32.0).roundToInt()
+                val maxT = if (isCelsius) day.maxTemp.roundToInt() else (day.maxTemp * 9.0 / 5.0 + 32.0).roundToInt()
+                val precip = day.precipitationProbability ?: 0
+
+                subTextPaint.textSize = 24f
+                canvas.drawText(dayLabel, 120f, y + 30f, subTextPaint)
+                canvas.drawText(getWeatherEmoji(day.weatherCode), STORY_WIDTH / 2f - 80f, y + 30f, subTextPaint)
+                textPaint.textSize = 30f
+                canvas.drawText("${minT}° / ${maxT}°", STORY_WIDTH - 180f, y + 30f, textPaint)
+                if (precip > 0) {
+                    subTextPaint.textSize = 22f
+                    canvas.drawText("💧 $precip%", STORY_WIDTH / 2f + 80f, y + 30f, subTextPaint)
+                }
+            }
+        }
+
+        // ── Bottom branding ──
+        subTextPaint.textSize = 28f
+        canvas.drawText("SkyCast Weather", STORY_WIDTH / 2f, STORY_HEIGHT - 60f, subTextPaint)
+
+        return bitmap
+    }
+
+    private fun getWeatherEmoji(code: Int): String = when (code) {
+        0 -> "☀️"; 1 -> "🌤️"; 2 -> "⛅"; 3 -> "☁️"
+        45, 48 -> "🌫️"; 51, 53, 55 -> "🌦️"; 56, 57 -> "🌧️"
+        61, 63, 65 -> "🌧️"; 66, 67 -> "🌧️"
+        71, 73, 75 -> "❄️"; 77 -> "🌨️"
+        80, 81, 82 -> "🌧️"; 85, 86 -> "🌨️"
+        95 -> "⛈️"; 96, 99 -> "⛈️"
+        else -> "🌤️"
     }
 
     private fun computeCardGradientColors(code: Int, isDay: Boolean): IntArray {

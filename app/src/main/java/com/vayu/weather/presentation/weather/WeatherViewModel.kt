@@ -16,7 +16,9 @@ import com.vayu.weather.domain.use_case.GetWeatherUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -48,6 +50,18 @@ class WeatherViewModel @Inject constructor(
         Log.d("WeatherViewModel", "ViewModel Initialized")
     }
 
+    private fun friendlyError(e: Throwable): String {
+        return when (e) {
+            is java.net.SocketTimeoutException,
+            is java.net.ConnectException,
+            is java.io.IOException -> "Network error. Check your connection and try again."
+            is java.util.concurrent.TimeoutException -> "Request timed out. Please try again."
+            is java.net.UnknownHostException -> "No internet connection. Enable Wi-Fi or mobile data."
+            is CancellationException -> "Request cancelled."
+            else -> "Couldn't retrieve weather data. Please try again."
+        }
+    }
+
     fun setCityName(name: String?) {
         currentCityName = name
     }
@@ -62,6 +76,8 @@ class WeatherViewModel @Inject constructor(
             )
             try {
                 val location = locationTracker.getCurrentLocation()
+                val fallbackLat = currentLat ?: settingsManager.getLastLat()
+                val fallbackLon = currentLon ?: settingsManager.getLastLon()
                 if (location != null) {
                     currentLat = location.latitude
                     currentLon = location.longitude
@@ -79,9 +95,34 @@ class WeatherViewModel @Inject constructor(
                         state = state.copy(
                             weatherInfo = null,
                             isLoading = false,
-                            error = "Couldn't retrieve weather data: ${e.message}"
+                            error = friendlyError(e)
                         )
                     }
+                } else if (fallbackLat != null && fallbackLon != null) {
+                    // GPS unavailable — fall back to the last successfully loaded location
+                    // so the dashboard keeps showing real data instead of an error screen
+                    loadAirQuality(fallbackLat, fallbackLon)
+                    getWeatherUseCase(fallbackLat, fallbackLon)
+.onSuccess { weatherInfo ->
+                            state = state.copy(
+                                weatherInfo = weatherInfo,
+                                isLoading = false,
+                                error = null,
+                                lastUpdatedTime = currentTimeString()
+                            )
+                            saveWeatherSnapshot(weatherInfo, fallbackLat, fallbackLon)
+                            // Persist successful location so future refreshes can fall back to it
+                            viewModelScope.launch { settingsManager.setLastLocation(
+                                fallbackLat, fallbackLon, currentCityName
+                            ) }
+                        }
+                        .onFailure { e ->
+                            state = state.copy(
+                                weatherInfo = null,
+                                isLoading = false,
+                                error = friendlyError(e)
+                            )
+                        }
                 } else {
                     state = state.copy(
                         isLoading = false,
@@ -93,7 +134,7 @@ class WeatherViewModel @Inject constructor(
             } catch (e: Exception) {
                 state = state.copy(
                     isLoading = false,
-                    error = "An unexpected error occurred: ${e.message}"
+                    error = friendlyError(e)
                 )
             }
         }
@@ -120,20 +161,24 @@ class WeatherViewModel @Inject constructor(
             try {
                 loadAirQuality(lat, lon)
                 getWeatherUseCase(lat, lon)
-                    .onSuccess { weatherInfo ->
-                        state = state.copy(
-                            weatherInfo = weatherInfo,
-                            isLoading = false,
-                            error = null,
-                            lastUpdatedTime = currentTimeString()
-                        )
-                        saveWeatherSnapshot(weatherInfo, lat, lon)
-                    }
+                        .onSuccess { weatherInfo ->
+                            state = state.copy(
+                                weatherInfo = weatherInfo,
+                                isLoading = false,
+                                error = null,
+                                lastUpdatedTime = currentTimeString()
+                            )
+                            saveWeatherSnapshot(weatherInfo, lat, lon)
+                            // Persist successful location so future refreshes can fall back to it
+                            viewModelScope.launch { settingsManager.setLastLocation(
+                                lat, lon, currentCityName
+                            ) }
+                        }
                     .onFailure { e ->
                         state = state.copy(
                             weatherInfo = null,
                             isLoading = false,
-                            error = "Couldn't retrieve weather data for this city."
+                            error = friendlyError(e)
                         )
                     }
             } catch (e: CancellationException) {
@@ -141,7 +186,7 @@ class WeatherViewModel @Inject constructor(
             } catch (e: Exception) {
                 state = state.copy(
                     isLoading = false,
-                    error = "Failed to load city weather: ${e.message}"
+                    error = friendlyError(e)
                 )
             }
         }
@@ -175,7 +220,7 @@ class WeatherViewModel @Inject constructor(
             } catch (e: Exception) {
                 state = state.copy(
                     isRefreshing = false,
-                    refreshError = "Unable to update weather. Please try again."
+                    refreshError = friendlyError(e)
                 )
             }
         }
@@ -191,11 +236,12 @@ class WeatherViewModel @Inject constructor(
                     refreshError = null,
                     lastUpdatedTime = currentTimeString()
                 )
+                viewModelScope.launch { settingsManager.setLastLocation(lat, lon, currentCityName) }
             }
-            .onFailure {
+            .onFailure { e ->
                 state = state.copy(
                     isRefreshing = false,
-                    refreshError = "Unable to update weather. Please try again."
+                    refreshError = friendlyError(e)
                 )
             }
     }
@@ -234,5 +280,11 @@ class WeatherViewModel @Inject constructor(
     private fun currentTimeString(): String {
         val now = LocalTime.now()
         return "Updated ${now.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+    }
+
+    // On this day - get historical weather for today's month/day
+    fun getOnThisDayHistory(): Flow<List<com.vayu.weather.domain.model.WeatherHistorySnapshot>> {
+        val monthDay = LocalDate.now().format(DateTimeFormatter.ofPattern("MM-dd"))
+        return repository.getWeatherHistoryForLocationAndMonthDay(currentLat ?: 0.0, currentLon ?: 0.0, monthDay)
     }
 }

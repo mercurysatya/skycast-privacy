@@ -78,7 +78,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -112,6 +111,7 @@ import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.presentation.ads.AdBanner
 import com.vayu.weather.ui.theme.AmberGlow
 import com.vayu.weather.ui.theme.FreshGreen
+import com.vayu.weather.ui.theme.LocalReduceMotion
 import com.vayu.weather.ui.theme.SkyBlue
 import com.vayu.weather.ui.theme.SunsetRed
 import com.vayu.weather.ui.theme.TrendingGreen
@@ -119,13 +119,16 @@ import com.vayu.weather.ui.theme.TrendingRed
 import com.vayu.weather.ui.theme.WarmOrange
 import com.vayu.weather.ui.theme.WarningAmber
 import com.vayu.weather.presentation.components.AirQualityCard
-import com.vayu.weather.presentation.components.WeatherBackground
-import com.vayu.weather.presentation.components.WeatherTrends
+import com.vayu.weather.presentation.components.AirQualityPill
+import com.vayu.weather.presentation.components.UvPill
+import com.vayu.weather.presentation.components.RadarPreviewCard
 import com.vayu.weather.presentation.components.UvIndexCard
 import com.vayu.weather.presentation.components.WindCard
 import com.vayu.weather.presentation.components.PressureCard
 import com.vayu.weather.presentation.components.MoonPhaseCard
 import com.vayu.weather.presentation.components.PrecipitationTimelineCard
+import com.vayu.weather.presentation.components.WeatherBackground
+import com.vayu.weather.presentation.components.WeatherTrends
 import com.vayu.weather.presentation.components.ClothingOutdoorSuggestionsCard
 import com.vayu.weather.presentation.components.PressureTrendChart
 import com.vayu.weather.presentation.components.SunArcAnimation
@@ -255,6 +258,8 @@ fun WeatherDashboard(
     onShare: () -> Unit = {},
     onDismissRefreshError: () -> Unit = {},
     cityName: String? = null,
+    latitude: Double = 0.0,
+    longitude: Double = 0.0,
     modifier: Modifier = Modifier
 ) {
     val isCelsius = settings.temperatureUnit == TemperatureUnit.CELSIUS
@@ -296,6 +301,8 @@ fun WeatherDashboard(
                             weatherCode = info.current.weatherCode,
                             isCelsius = isCelsius,
                             cityName = cityName,
+                            airQuality = state.airQuality,
+                            uvIndex = info.daily.firstOrNull()?.uvIndex,
                             onHaptic = { _ -> }
                         )
                     }
@@ -379,6 +386,11 @@ fun WeatherDashboard(
                                         MoonPhaseCard(
                                             modifier = Modifier.width(180.dp)
                                         )
+                                        RadarPreviewCard(
+                                            latitude = latitude,
+                                            longitude = longitude,
+                                            onClick = { /* Navigate to map screen */ }
+                                        )
                                     }
                                 } else {
                                     // 2-column grid for phones
@@ -396,7 +408,7 @@ fun WeatherDashboard(
                                                 modifier = Modifier.weight(1f)
                                             )
                                         }
-                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                             PressureCard(
                                                 pressure = info.current.surfacePressure,
                                                 modifier = Modifier.weight(1f)
@@ -405,6 +417,13 @@ fun WeatherDashboard(
                                                 modifier = Modifier.weight(1f)
                                             )
                                         }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            RadarPreviewCard(
+                                                latitude = latitude,
+                                                longitude = longitude,
+                                                onClick = { /* Navigate to map screen */ }
+                                            )
+}
                                     }
                                 }
                             }
@@ -560,7 +579,9 @@ fun WeatherDashboard(
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
-}// ============================================================
+}
+
+// ============================================================
 // TOP BAR — premium header
 // ============================================================
 
@@ -574,6 +595,8 @@ private fun TopBar(
     weatherCode: Int? = null,
     isCelsius: Boolean = true,
     cityName: String? = null,
+    airQuality: com.vayu.weather.domain.model.AirQuality? = null,
+    uvIndex: Double? = null,
     onHaptic: (Int) -> Unit = {}
 ) {
     val haptic = rememberHapticFeedback()
@@ -628,6 +651,14 @@ private fun TopBar(
                 contentDescription = stringResource(R.string.share_weather),
                 onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onShare() }
             )
+            // Air quality pill
+            airQuality?.let { aq ->
+                AirQualityPill(airQuality = aq)
+            }
+            // UV pill
+            uvIndex?.let { uv ->
+                UvPill(uvIndex = uv)
+            }
             // Unit toggle pill
             Box(
                 modifier = Modifier
@@ -919,16 +950,16 @@ private fun HourlyForecastSection(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                items(sorted.size) { index ->
-                    val prevTemp = sorted.getOrNull(index - 1)?.temperature
+                items(sorted, key = { it.time }) { data ->
+                    val prevTemp = sorted.getOrNull(sorted.indexOf(data) - 1)?.temperature
                     HourlyPillCard(
-                        data = sorted[index],
+                        data = data,
                         isCelsius = isCelsius,
                         prevTemp = prevTemp,
-                        isSelected = selectedHour == sorted[index].time,
+                        isSelected = selectedHour == data.time,
                         onClick = {
                             haptic(HapticFeedbackConstants.VIRTUAL_KEY)
-                            selectedHour = if (selectedHour == sorted[index].time) null else sorted[index].time
+                            selectedHour = if (selectedHour == data.time) null else data.time
                         }
                     )
                 }
@@ -1169,20 +1200,26 @@ private fun DailyForecastSection(
                 modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)
             )
 
-            dailyData.forEachIndexed { index, day ->
-                DailyRow(
-                    data = day,
-                    hourlyForDay = hourlyData.filter { it.time.startsWith(day.date) },
-                    isCelsius = isCelsius,
-                    globalMin = allMin,
-                    globalMax = allMax,
-                    isLast = index == dailyData.lastIndex,
-                    isExpanded = expandedDay == day.date,
-                    onClick = {
-                        haptic(HapticFeedbackConstants.VIRTUAL_KEY)
-                        expandedDay = if (expandedDay == day.date) null else day.date
-                    }
-                )
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                dailyData.forEachIndexed { index, day ->
+                    val hourlyForDay = hourlyData.filter { it.time.startsWith(day.date) }
+                    DailyRow(
+                        data = day,
+                        hourlyForDay = hourlyForDay,
+                        isCelsius = isCelsius,
+                        globalMin = allMin,
+                        globalMax = allMax,
+                        isLast = dailyData.lastIndex == index,
+                        isExpanded = expandedDay == day.date,
+                        onClick = {
+                            haptic(HapticFeedbackConstants.VIRTUAL_KEY)
+                            expandedDay = if (expandedDay == day.date) null else day.date
+                        }
+                    )
+                }
             }
         }
     }
@@ -2047,6 +2084,9 @@ private fun ConfettiOverlay(modifier: Modifier = Modifier) {
         Color(0xFFFFA07A)
     )
 
+    val reduceMotion = LocalReduceMotion.current
+    if (reduceMotion) return
+
     val particles = remember {
         List(50) {
             ConfettiParticle(
@@ -2106,6 +2146,7 @@ private data class ConfettiParticle(
 
 @Composable
 private fun LoadingState() {
+    val reduceMotion = LocalReduceMotion.current
     val shimmerColors = listOf(
         Color.White.copy(alpha = 0.04f),
         Color.White.copy(alpha = 0.1f),
@@ -2126,7 +2167,43 @@ private fun LoadingState() {
     Box(modifier = Modifier.fillMaxSize().semantics(mergeDescendants = true) {
         contentDescription = "Loading weather data"
     }) {
-        LazyColumn(
+        if (reduceMotion) {
+            // Static loading skeleton without shimmer animation
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 80.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Box(modifier = Modifier.size(120.dp).background(Color.White.copy(alpha = 0.1f)))
+                        Box(modifier = Modifier.size(80.dp).background(Color.White.copy(alpha = 0.1f)))
+                    }
+                }
+                repeat(5) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.1f)))
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Box(modifier = Modifier.height(16.dp).fillMaxWidth().background(Color.White.copy(alpha = 0.1f)))
+                                Box(modifier = Modifier.height(12.dp).fillMaxWidth(0.6f).background(Color.White.copy(alpha = 0.1f)))
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Animated shimmer loading
+            LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -2216,6 +2293,7 @@ private fun LoadingState() {
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
     }
+}
 }
 
 @Composable
@@ -2355,6 +2433,13 @@ private fun PressableCard(
         label = "press_elevation"
     )
 
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            kotlinx.coroutines.delay(150)
+            isPressed = false
+        }
+    }
+
     Card(
         modifier = modifier
             .graphicsLayer {
@@ -2362,12 +2447,10 @@ private fun PressableCard(
                 scaleY = scale
                 shadowElevation = elevation
             }
-            .clickable(
-                onClick = {
-                    isPressed = true
-                    onClick()
-                }
-            ),
+            .clickable {
+                isPressed = true
+                onClick()
+            },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White.copy(alpha = 0.1f)
