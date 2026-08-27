@@ -601,56 +601,73 @@ private fun TopBar(
 ) {
     val haptic = rememberHapticFeedback()
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Left: Location icon + city name
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.LocationOn,
-                contentDescription = stringResource(R.string.current_location),
-                modifier = Modifier.size(18.dp),
-                tint = Color.White.copy(alpha = 0.7f)
-            )
-            Text(
-                text = cityName ?: stringResource(R.string.default_city_name),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = 0.9f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 180.dp)
-            )
-        }
-
-        // Right: Action buttons
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SmallIconButton(
-                icon = Icons.Rounded.NotificationsActive,
-                contentDescription = stringResource(R.string.weather_alerts),
-                onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenAlerts() }
-            )
-            SmallIconButton(
-                icon = Icons.Rounded.History,
-                contentDescription = stringResource(R.string.weather_history_title),
-                onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenHistory() }
-            )
-            SmallIconButton(
-                icon = Icons.Rounded.Share,
-                contentDescription = stringResource(R.string.share_weather),
-                onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onShare() }
-            )
+            // Left: Location icon + city name
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.LocationOn,
+                    contentDescription = stringResource(R.string.current_location),
+                    modifier = Modifier.size(18.dp),
+                    tint = Color.White.copy(alpha = 0.7f)
+                )
+                Text(
+                    text = cityName ?: stringResource(R.string.default_city_name),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.9f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 180.dp)
+                )
+            }
+
+            // Right: Action buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SmallIconButton(
+                    icon = Icons.Rounded.NotificationsActive,
+                    contentDescription = stringResource(R.string.weather_alerts),
+                    onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenAlerts() }
+                )
+                SmallIconButton(
+                    icon = Icons.Rounded.History,
+                    contentDescription = stringResource(R.string.weather_history_title),
+                    onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenHistory() }
+                )
+                SmallIconButton(
+                    icon = Icons.Rounded.Share,
+                    contentDescription = stringResource(R.string.share_weather),
+                    onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onShare() }
+                )
+                SmallIconButton(
+                    icon = Icons.Rounded.Settings,
+                    contentDescription = stringResource(R.string.settings),
+                    onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenSettings() }
+                )
+            }
+        }
+
+        // Second row: Data pills
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             // Air quality pill
             airQuality?.let { aq ->
                 AirQualityPill(airQuality = aq)
@@ -659,6 +676,7 @@ private fun TopBar(
             uvIndex?.let { uv ->
                 UvPill(uvIndex = uv)
             }
+            Spacer(modifier = Modifier.weight(1f))
             // Unit toggle pill
             Box(
                 modifier = Modifier
@@ -675,11 +693,6 @@ private fun TopBar(
                     color = Color.White.copy(alpha = 0.9f)
                 )
             }
-            SmallIconButton(
-                icon = Icons.Rounded.Settings,
-                contentDescription = stringResource(R.string.settings),
-                onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onOpenSettings() }
-            )
         }
     }
 }

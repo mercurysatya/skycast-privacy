@@ -151,11 +151,3 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     ksp(libs.moshi.kotlin.codegen)
 }
-
-afterEvaluate {
-    tasks.matching { it.name.startsWith("hiltJavaCompile") }.configureEach {
-        (this as JavaCompile).apply {
-            options.compilerArgs.add("-proc:none")
-        }
-    }
-}
