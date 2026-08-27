@@ -27,10 +27,11 @@ fun PressureTrendChart(
     }
     if (sorted.isEmpty()) return
 
-    val pressures = sorted.mapNotNull { it.pressure }
+    val pressures = remember(sorted) { sorted.mapNotNull { it.pressure } }
+    if (pressures.isEmpty()) return
     val minPressure = pressures.min()
     val maxPressure = pressures.max()
-    val currentPressure = pressures.lastOrNull() ?: return
+    val currentPressure = pressures.last()
 
     val trend = remember(pressures) {
         when {

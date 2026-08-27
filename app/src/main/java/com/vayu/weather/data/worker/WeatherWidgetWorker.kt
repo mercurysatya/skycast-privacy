@@ -64,7 +64,7 @@ class WeatherWidgetWorker @AssistedInject constructor(
                 }
                 editor.putInt("forecast_days", daily.size)
 
-                editor.commit()
+                editor.apply()
 
                 // Force widget to refresh by calling update on all widget instances
                 try {

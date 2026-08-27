@@ -176,6 +176,6 @@ class WeatherAlertWorker @AssistedInject constructor(
             .setAutoCancel(true)
             .build()
 
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+        notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notification)
     }
 }

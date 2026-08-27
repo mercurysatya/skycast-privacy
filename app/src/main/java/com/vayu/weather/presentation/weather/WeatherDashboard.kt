@@ -1205,7 +1205,9 @@ private fun DailyForecastSection(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 dailyData.forEachIndexed { index, day ->
-                    val hourlyForDay = hourlyData.filter { it.time.startsWith(day.date) }
+                    val hourlyForDay = remember(hourlyData, day.date) {
+                        hourlyData.filter { it.time.startsWith(day.date) }
+                    }
                     DailyRow(
                         data = day,
                         hourlyForDay = hourlyForDay,

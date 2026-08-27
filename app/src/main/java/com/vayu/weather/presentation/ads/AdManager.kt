@@ -25,18 +25,18 @@ import com.vayu.weather.presentation.ConsentManager
  * - Rewarded ads: optional, unlocks detailed 10-day forecast, user-initiated
  */
 object AdManager {
-    private var interstitialAd: InterstitialAd? = null
-    private var rewardedAd: RewardedAd? = null
+    @Volatile private var interstitialAd: InterstitialAd? = null
+    @Volatile private var rewardedAd: RewardedAd? = null
 
     @Volatile
     private var mobileAdsInitialized = false
 
     // Frequency capping: last interstitial shown time
-    private var lastInterstitialTime = 0L
+    @Volatile private var lastInterstitialTime = 0L
     private const val INTERSTITIAL_MIN_INTERVAL_MS = 180_000L // 3 minutes
 
     // Track interstitial show count to limit per session
-    private var interstitialShowCount = 0
+    @Volatile private var interstitialShowCount = 0
     private const val MAX_INTERSTITIALS_PER_SESSION = 10
 
     private const val TAG = "AdManager"

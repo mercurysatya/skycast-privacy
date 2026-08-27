@@ -78,7 +78,7 @@ class PushNotificationWorker @AssistedInject constructor(
                 .setAutoCancel(true)
                 .build()
 
-            notificationManager.notify(alert.id.toInt(), notification)
+            notificationManager.notify((alert.id % Int.MAX_VALUE).toInt(), notification)
         }
     }
 }
