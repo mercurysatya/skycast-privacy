@@ -117,6 +117,7 @@ import com.vayu.weather.ui.theme.SunsetRed
 import com.vayu.weather.ui.theme.TrendingGreen
 import com.vayu.weather.ui.theme.TrendingRed
 import com.vayu.weather.ui.theme.WarmOrange
+import com.vayu.weather.ui.theme.WeatherOpacity
 import com.vayu.weather.ui.theme.WarningAmber
 import com.vayu.weather.presentation.components.AirQualityCard
 import com.vayu.weather.presentation.components.AirQualityPill
@@ -506,7 +507,7 @@ Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(
                                 text = updatedTime,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.4f),
+                                color = Color.White.copy(alpha = WeatherOpacity.TEXT_TERTIARY),
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = TextAlign.Center
                             )
@@ -947,21 +948,22 @@ private fun HourlyForecastSection(
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.1f)
-        )
+            containerColor = Color.White.copy(alpha = WeatherOpacity.GLASS_LIGHT)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
             Text(
                 text = stringResource(R.string.hourly_forecast),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.8f),
+                color = Color.White.copy(alpha = WeatherOpacity.TEXT_PRIMARY),
                 modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp)
             )
 
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(sorted, key = { it.time }) { data ->
                     val prevTemp = sorted.getOrNull(sorted.indexOf(data) - 1)?.temperature
@@ -991,7 +993,7 @@ private fun HourlyForecastSection(
                             .padding(top = 12.dp)
                     ) {
                         HorizontalDivider(
-                            color = Color.White.copy(alpha = 0.08f)
+                            color = Color.White.copy(alpha = WeatherOpacity.DIVIDER)
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(
@@ -1201,15 +1203,16 @@ private fun DailyForecastSection(
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.1f)
-        )
+            containerColor = Color.White.copy(alpha = WeatherOpacity.GLASS_LIGHT)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
             Text(
                 text = stringResource(R.string.seven_day_forecast),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.8f),
+                color = Color.White.copy(alpha = WeatherOpacity.TEXT_PRIMARY),
                 modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)
             )
 
@@ -1489,15 +1492,16 @@ private fun WeatherDetailsSection(
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.1f)
-        )
+            containerColor = Color.White.copy(alpha = WeatherOpacity.GLASS_LIGHT)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = stringResource(R.string.weather_details),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.8f),
+                color = Color.White.copy(alpha = WeatherOpacity.TEXT_PRIMARY),
                 modifier = Modifier.padding(horizontal = 4.dp).padding(bottom = 12.dp)
             )
 
@@ -1725,8 +1729,9 @@ private fun AIInsightsCard(
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.1f)
-        )
+            containerColor = Color.White.copy(alpha = WeatherOpacity.GLASS_LIGHT)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
@@ -1925,15 +1930,16 @@ private fun SunMoonSection(dailyData: List<DailyWeather>) {
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.1f)
-        )
+            containerColor = Color.White.copy(alpha = WeatherOpacity.GLASS_LIGHT)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = stringResource(R.string.sun_and_moon),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.8f),
+                color = Color.White.copy(alpha = WeatherOpacity.TEXT_PRIMARY),
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 

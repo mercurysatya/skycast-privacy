@@ -82,8 +82,8 @@ fun FavoritesScreen(
                     Icon(
                         imageVector = Icons.Rounded.FavoriteBorder,
                         contentDescription = stringResource(R.string.no_favorites),
-                        modifier = Modifier.size(72.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
@@ -97,7 +97,7 @@ fun FavoritesScreen(
                         text = stringResource(R.string.no_favorites_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.45f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 32.dp)
                     )
                 }
@@ -205,9 +205,9 @@ private fun FavoriteCityCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
             modifier = Modifier
@@ -250,7 +250,7 @@ private fun FavoriteCityCard(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -263,7 +263,7 @@ private fun FavoriteCityCard(
                 onClick = onRemove,
                 shape = RoundedCornerShape(12.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.08f)
+                    containerColor = MaterialTheme.colorScheme.errorContainer
                 ),
                 modifier = Modifier.semantics {
                     contentDescription = "Remove ${city.name} from favorites"

@@ -266,7 +266,7 @@ fun SettingsScreen(
                     }
 
                     HorizontalDivider(
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
 
@@ -427,7 +427,7 @@ fun SettingsScreen(
                         }
 
                         HorizontalDivider(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
 
@@ -484,7 +484,7 @@ fun SettingsScreen(
                         }
 
                         HorizontalDivider(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
 
@@ -581,7 +581,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     // UV Alerts
                     SettingsRow(
@@ -624,7 +624,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     // Heat Alerts
                     SettingsRow(
@@ -667,7 +667,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     // Cold Alerts
                     SettingsRow(
@@ -805,7 +805,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     // Per-day notification times
                     Text(
@@ -868,7 +868,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     // Time 2 (Midday)
                     SettingsRow(
@@ -922,7 +922,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     // Time 3 (Evening)
                     SettingsRow(
@@ -1061,7 +1061,7 @@ fun SettingsScreen(
                         )
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     // Pressure Unit
                     SettingsRow(
@@ -1093,7 +1093,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     // Precipitation Unit
                     SettingsRow(
@@ -1145,7 +1145,7 @@ fun SettingsScreen(
                         )
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     SettingsRow(
                         icon = Icons.Rounded.NightsStay,
@@ -1162,7 +1162,7 @@ fun SettingsScreen(
                         )
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     SettingsRow(
                         icon = Icons.Rounded.Air,
@@ -1179,7 +1179,7 @@ fun SettingsScreen(
                         )
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     SettingsRow(
                         icon = Icons.Rounded.Info,
@@ -1207,7 +1207,7 @@ fun SettingsScreen(
                         subtitle = BuildConfig.VERSION_NAME
                     )
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     SettingsRow(
                         icon = Icons.Rounded.Code,
@@ -1215,7 +1215,7 @@ fun SettingsScreen(
                         subtitle = stringResource(R.string.powered_by_open_meteo)
                     )
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     SettingsRow(
                         icon = Icons.Rounded.RateReview,
@@ -1238,7 +1238,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     SettingsRow(
                         icon = Icons.Rounded.PrivacyTip,
@@ -1255,7 +1255,7 @@ fun SettingsScreen(
                         com.vayu.weather.presentation.ConsentManager.isPrivacyOptionsRequired(context)
                     }
                     if (showPrivacyOptions) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                         SettingsRow(
                             icon = Icons.Rounded.ManageAccounts,
@@ -1274,7 +1274,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     SettingsRow(
                         icon = Icons.Rounded.NotificationsActive,
@@ -1286,7 +1286,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     // Delete My Data
                     SettingsRow(
@@ -1320,7 +1320,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     // Clear Cache
                     SettingsRow(
@@ -1384,7 +1384,7 @@ private fun SettingsGroup(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier.padding(vertical = 4.dp),
@@ -1423,7 +1423,7 @@ private fun SettingsRow(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         if (trailing != null) {

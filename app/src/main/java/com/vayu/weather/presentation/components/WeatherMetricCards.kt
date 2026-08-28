@@ -253,7 +253,7 @@ fun PressureCard(
     val trendColor = when {
         hpa > 1020 -> WeatherColors.aqiGood
         hpa < 1000 -> WeatherColors.uvModerate
-        else -> Color.White.copy(alpha = 0.6f)
+        else -> Color.White.copy(alpha = WeatherOpacity.TEXT_SECONDARY)
     }
 
     GlassCard(modifier = modifier) {
@@ -682,10 +682,10 @@ fun RadarPreviewCard(
                 onClick()
             },
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.05f)
+            containerColor = Color.White.copy(alpha = WeatherOpacity.GLASS_LIGHT)
         ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -701,7 +701,7 @@ fun RadarPreviewCard(
                 Icon(
                     imageVector = Icons.Rounded.Waves,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = Color.White.copy(alpha = WeatherOpacity.ICON),
                     modifier = Modifier.size(24.dp)
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -709,19 +709,19 @@ fun RadarPreviewCard(
                         text = "Rain Radar",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = Color.White.copy(alpha = WeatherOpacity.TEXT_PRIMARY)
                     )
                     Text(
                         text = "Tap to view precipitation map",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                        color = Color.White.copy(alpha = WeatherOpacity.TEXT_TERTIARY)
                     )
                 }
             }
             Icon(
                 imageVector = Icons.Rounded.ArrowForwardIos,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                tint = Color.White.copy(alpha = WeatherOpacity.ICON_SECONDARY),
                 modifier = Modifier.size(18.dp)
             )
         }
