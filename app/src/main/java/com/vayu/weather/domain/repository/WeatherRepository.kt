@@ -36,6 +36,12 @@ interface WeatherRepository {
     // On this day
     fun getWeatherHistoryForMonthDay(monthDay: String): Flow<List<com.vayu.weather.domain.model.WeatherHistorySnapshot>>
     fun getWeatherHistoryForLocationAndMonthDay(lat: Double, lon: Double, monthDay: String): Flow<List<com.vayu.weather.domain.model.WeatherHistorySnapshot>>
+
+    /**
+     * Returns the most recent snapshot from ≥18h ago for the given location,
+     * or null if none has been recorded. Used for the "vs yesterday" pill.
+     */
+    suspend fun getYesterdaySnapshot(lat: Double, lon: Double): com.vayu.weather.domain.model.WeatherHistorySnapshot?
 }
 
 data class WeatherAlert(

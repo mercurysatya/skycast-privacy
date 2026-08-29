@@ -16,6 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -165,8 +167,8 @@ private fun NightSkyOverlay(code: Int) {
         infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Restart),
         label = "twinkle"
     )
-    var shootingProgress by remember { mutableStateOf(-1f) }
-    var activeShootingStar by remember { mutableStateOf(-1) }
+    var shootingProgress by remember { mutableFloatStateOf(-1f) }
+    var activeShootingStar by remember { mutableIntStateOf(-1) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -669,7 +671,7 @@ private fun ThunderstormAnimation(color: Color, modifier: Modifier) {
             )
         }
     }
-    var flashAlpha by remember { mutableStateOf(0f) }
+    var flashAlpha by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(3000L + Random.nextLong(4000))

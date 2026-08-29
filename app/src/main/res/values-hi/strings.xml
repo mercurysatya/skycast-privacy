@@ -3,13 +3,13 @@
     <string name="weather">मौसम</string>
     <string name="search">खोजें</string>
     <string name="search_city">शहर खोजें…</string>
-    <string name="no_cities_found">कोई शहर नहीं मिला</string>
+    <string name="no_cities_found">"\u201C%1$s\u201D के लिये कोई शहर नहीं मिला"</string>
     <string name="today">आज</string>
     <string name="hourly_forecast">प्रति घंटा पूर्वानुमान</string>
     <string name="seven_day_forecast">7-दिन का पूर्वानुमान</string>
     <string name="humidity">नमी</string>
     <string name="wind">हवा</string>
-    <string name="error_weather">मौसम डेटा प्राप्त नहीं किया जा सका।</string>
+    <string name="error_weather">"%1$s मौसम डेटा प्राप्त नहीं किया जा सका।"</string>
     <string name="error_location">स्थान प्राप्त नहीं किया जा सका। अनुमति दें और GPS चालू करें।</string>
     <string name="error_search">खोज विफल रही।</string>
 </resources>

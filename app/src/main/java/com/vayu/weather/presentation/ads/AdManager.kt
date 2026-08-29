@@ -119,8 +119,8 @@ object AdManager {
             ad.fullScreenContentCallback = object : FullScreenContentCallback() {
                 override fun onAdDismissedFullScreenContent() {
                     Log.d(TAG, "Interstitial ad dismissed")
-                    loadInterstitial(activity)
                     onAdDismissed()
+                    preloadNext(activity)
                 }
 
                 override fun onAdShowedFullScreenContent() {
@@ -130,6 +130,7 @@ object AdManager {
                 override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                     Log.e(TAG, "Interstitial failed to show: ${adError.message}")
                     onAdDismissed()
+                    preloadNext(activity)
                 }
             }
             ad.show(activity)
@@ -188,8 +189,8 @@ object AdManager {
             ad.fullScreenContentCallback = object : FullScreenContentCallback() {
                 override fun onAdDismissedFullScreenContent() {
                     Log.d(TAG, "Rewarded ad dismissed")
-                    loadRewardedAd(activity)
                     onAdDismissed()
+                    preloadNext(activity)
                 }
 
                 override fun onAdShowedFullScreenContent() {
@@ -199,6 +200,7 @@ object AdManager {
                 override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                     Log.e(TAG, "Rewarded ad failed to show: ${adError.message}")
                     onAdDismissed()
+                    preloadNext(activity)
                 }
             }
 

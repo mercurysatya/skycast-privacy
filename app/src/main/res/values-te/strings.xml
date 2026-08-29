@@ -3,13 +3,13 @@
     <string name="weather">వాతావరణం</string>
     <string name="search">వెతుకు</string>
     <string name="search_city">నగరం కోసం వెతకండి…</string>
-    <string name="no_cities_found">నగరాలు కనుగొనబడలేదు</string>
+    <string name="no_cities_found">"\u201C%1$s\u201D \u0C15\u0C4B\u0C38\u0C02 \u0C28\u0C17\u0C30\u0C2C\u0C21\u0C32\u0C47\u0C26\u0C41"</string>
     <string name="today">ఈరోజు</string>
     <string name="hourly_forecast">గంటవారీ సూచన</string>
     <string name="seven_day_forecast">7-రోజుల సూచన</string>
     <string name="humidity">తేమ</string>
     <string name="wind">గాలి</string>
-    <string name="error_weather">వాతావరణ డేటాను పొందలేకపోయాము.</string>
+    <string name="error_weather">"%1$s \u0C35\u0C3E\u0C24\u0C3E\u0C35\u0C30\u0C23 \u0C21\u0C47\u0C1F\u0C3E\u0C28\u0C41 \u0C2A\u0C4A\u0C02\u0C26\u0C32\u0C47\u0C15\u0C2A\u0C4B\u0C2F\u0C3E\u0C2E\u0C41."</string>
     <string name="error_location">స్థానాన్ని పొందలేకపోయాము. అనుమతి మంజూరు చేసి GPSని ప్రారంభించండి.</string>
     <string name="error_search">శోధన విఫలమైంది.</string>
 </resources>

@@ -3,13 +3,13 @@
     <string name="weather">കാലാവസ്ഥ</string>
     <string name="search">തിരയുക</string>
     <string name="search_city">നഗരം തിരയുക…</string>
-    <string name="no_cities_found">നഗരങ്ങളൊന്നും കണ്ടെത്തിയില്ല</string>
+    <string name="no_cities_found">"\u201C%1$s\u201D \u0D0E\u0D28\u0D4D \u0D28\u0D17\u0D30\u0D19\u0D4D\u0D33\u0D33\u0D4B\u0D1E\u0D4D \u0D15\u0D23\u0D4D\u0D21\u0D4D\u0D1F\u0D4D\u0D35\u0D3F\u0D32\u0D3F\u0D32\u0D3D\u0D32\u0D3F\u0D32\u0D3D\u0D4D\u0D32"</string>
     <string name="today">ഇന്ന്</string>
     <string name="hourly_forecast">മണിക്കൂർ പ്രവചനം</string>
     <string name="seven_day_forecast">7-ദിവസ പ്രവചനം</string>
     <string name="humidity">ഈർപ്പം</string>
     <string name="wind">കാറ്റ്</string>
-    <string name="error_weather">കാലാവസ്ഥ ഡാറ്റ ലഭ്യമാക്കാനായില്ല.</string>
+    <string name="error_weather">"%1$s കാലാവസ്ഥ ഡാറ്റ ലഭ്യമാക്കാനായില്ല."</string>
     <string name="error_location">സ്ഥാനം ലഭ്യമാക്കാനായില്ല. അനുമതി നൽകുകയും GPS പ്രവർത്തനക്ഷമമാക്കുകയും ചെയ്യുക.</string>
     <string name="error_search">തിരയൽ പരാജയപ്പെട്ടു.</string>
 </resources>

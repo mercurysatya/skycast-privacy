@@ -846,8 +846,15 @@ private fun FavoriteCitiesStrip(
 // === Legend ===
 @Composable
 private fun RadarLegend(overlayType: OverlayType, modifier: Modifier = Modifier) {
-    Card(modifier = modifier, shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)), elevation = CardDefaults.cardElevation(3.dp)) {
-        Column(modifier = Modifier.padding(12.dp)) {
+    Card(
+        modifier = modifier,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(com.vayu.weather.ui.theme.SkyCastTokens.RadiusLg),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+        ),
+        elevation = CardDefaults.cardElevation(com.vayu.weather.ui.theme.SkyCastTokens.ElevationMedium)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Text(
                 text = when (overlayType) {
                     OverlayType.RADAR -> "Precipitation"
@@ -856,11 +863,11 @@ private fun RadarLegend(overlayType: OverlayType, modifier: Modifier = Modifier)
                     OverlayType.WIND -> "Wind Speed"
                     else -> ""
                 },
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             when (overlayType) {
                 OverlayType.RADAR -> {
                     Canvas(modifier = Modifier.width(140.dp).height(12.dp).clip(RoundedCornerShape(6.dp))) {
@@ -913,58 +920,175 @@ private fun RadarLegend(overlayType: OverlayType, modifier: Modifier = Modifier)
 // === Layer Selector ===
 @Composable
 private fun LayerSelectorPanel(selectedBaseMap: BaseMapStyle, overlayType: OverlayType, radarColorScheme: RadarColorScheme, radarOpacity: Float, cloudOpacity: Float, onBaseMapSelected: (BaseMapStyle) -> Unit, onOverlayTypeSelected: (OverlayType) -> Unit, onRadarColorSchemeSelected: (RadarColorScheme) -> Unit, onRadarOpacityChange: (Float) -> Unit, onCloudOpacityChange: (Float) -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
-    Card(modifier = modifier.heightIn(max = 480.dp), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)), elevation = CardDefaults.cardElevation(6.dp)) {
-        Column(modifier = Modifier.width(200.dp).verticalScroll(rememberScrollState()).padding(10.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            // Header with close button
+    // Re-skinned with SkyCast design system: SkyCastCard surface, 16dp radius,
+    // 8dp gap between rows, weight-aware selected state, accessible icons.
+    Card(
+        modifier = modifier.heightIn(max = 520.dp),
+        shape = com.vayu.weather.ui.theme.SkyCastTokens.RadiusLg.let { androidx.compose.foundation.shape.RoundedCornerShape(it) },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+        ),
+        elevation = CardDefaults.cardElevation(com.vayu.weather.ui.theme.SkyCastTokens.ElevationHigh)
+    ) {
+        Column(
+            modifier = Modifier
+                .width(280.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Header
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.map_layers), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Close", modifier = Modifier.size(16.dp))
+                Text(
+                    text = stringResource(R.string.map_layers),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
                 }
             }
 
             // OVERLAY TYPE
-            Text("Weather Overlay", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-            listOf(OverlayType.NONE, OverlayType.RADAR, OverlayType.CLOUDS).forEach { type ->
-                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onOverlayTypeSelected(type) }.background(if (overlayType == type) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent).padding(vertical = 8.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = when (type) { OverlayType.NONE -> Icons.Rounded.VisibilityOff; OverlayType.RADAR -> Icons.Rounded.Visibility; OverlayType.CLOUDS -> Icons.Rounded.CloudQueue; OverlayType.TEMPERATURE -> Icons.Rounded.Thermostat; OverlayType.WIND -> Icons.Rounded.Waves }, contentDescription = null, tint = if (overlayType == type) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(type.displayName, style = MaterialTheme.typography.bodyMedium, color = if (overlayType == type) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = if (overlayType == type) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f))
-                    if (overlayType == type) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                }
+            SectionLabel("Weather overlay")
+            listOf(OverlayType.NONE, OverlayType.RADAR, OverlayType.CLOUDS, OverlayType.TEMPERATURE, OverlayType.WIND).forEach { type ->
+                LayerRow(
+                    icon = when (type) {
+                        OverlayType.NONE -> Icons.Rounded.VisibilityOff
+                        OverlayType.RADAR -> Icons.Rounded.Visibility
+                        OverlayType.CLOUDS -> Icons.Rounded.CloudQueue
+                        OverlayType.TEMPERATURE -> Icons.Rounded.Thermostat
+                        OverlayType.WIND -> Icons.Rounded.Waves
+                    },
+                    label = type.displayName,
+                    isSelected = overlayType == type,
+                    onClick = { onOverlayTypeSelected(type) }
+                )
             }
 
             // OPACITY
             if (overlayType != OverlayType.NONE) {
-                Spacer(modifier = Modifier.height(4.dp)); HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)); Spacer(modifier = Modifier.height(4.dp))
-                Text("Opacity", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                Slider(value = if (overlayType == OverlayType.RADAR) radarOpacity else cloudOpacity, onValueChange = { if (overlayType == OverlayType.RADAR) onRadarOpacityChange(it) else onCloudOpacityChange(it) }, valueRange = 0.1f..1f, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary))
-                Text("${((if (overlayType == OverlayType.RADAR) radarOpacity else cloudOpacity) * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f), modifier = Modifier.align(Alignment.End))
+                SectionDivider()
+                SectionLabel("Opacity")
+                Slider(
+                    value = if (overlayType == OverlayType.RADAR) radarOpacity else cloudOpacity,
+                    onValueChange = { if (overlayType == OverlayType.RADAR) onRadarOpacityChange(it) else onCloudOpacityChange(it) },
+                    valueRange = 0.1f..1f,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                Text(
+                    text = "${((if (overlayType == OverlayType.RADAR) radarOpacity else cloudOpacity) * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.align(Alignment.End)
+                )
             }
 
             // COLOR SCHEME (radar only)
             if (overlayType == OverlayType.RADAR) {
-                Spacer(modifier = Modifier.height(4.dp)); HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)); Spacer(modifier = Modifier.height(4.dp))
-                Text("Color Scheme", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                SectionDivider()
+                SectionLabel("Color scheme")
                 RadarColorScheme.entries.forEach { scheme ->
-                    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onRadarColorSchemeSelected(scheme) }.background(if (radarColorScheme == scheme) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent).padding(vertical = 6.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(scheme.displayName, style = MaterialTheme.typography.bodySmall, color = if (radarColorScheme == scheme) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = if (radarColorScheme == scheme) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f))
-                        if (radarColorScheme == scheme) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                    }
+                    LayerRow(
+                        icon = Icons.Rounded.Layers,
+                        label = scheme.displayName,
+                        isSelected = radarColorScheme == scheme,
+                        onClick = { onRadarColorSchemeSelected(scheme) },
+                        compact = true
+                    )
                 }
             }
 
             // BASE MAP
-            Spacer(modifier = Modifier.height(8.dp)); HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)); Spacer(modifier = Modifier.height(4.dp))
-            Text(stringResource(R.string.map_base_map), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), modifier = Modifier.padding(bottom = 2.dp))
+            SectionDivider()
+            SectionLabel(stringResource(R.string.map_base_map))
             BaseMapStyle.entries.forEach { style ->
-                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onBaseMapSelected(style); onDismiss() }.background(if (selectedBaseMap == style) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent).padding(vertical = 8.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = when (style) { BaseMapStyle.STREET -> Icons.Rounded.Map; BaseMapStyle.VOYAGER -> Icons.Rounded.Terrain; BaseMapStyle.DARK -> Icons.Rounded.DarkMode; BaseMapStyle.SATELLITE -> Icons.Rounded.SatelliteAlt }, contentDescription = null, tint = if (selectedBaseMap == style) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(style.displayName, style = MaterialTheme.typography.bodyMedium, color = if (selectedBaseMap == style) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = if (selectedBaseMap == style) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f))
-                    if (selectedBaseMap == style) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                }
+                LayerRow(
+                    icon = when (style) {
+                        BaseMapStyle.STREET -> Icons.Rounded.Map
+                        BaseMapStyle.VOYAGER -> Icons.Rounded.Terrain
+                        BaseMapStyle.DARK -> Icons.Rounded.DarkMode
+                        BaseMapStyle.SATELLITE -> Icons.Rounded.SatelliteAlt
+                    },
+                    label = style.displayName,
+                    isSelected = selectedBaseMap == style,
+                    onClick = {
+                        onBaseMapSelected(style)
+                        onDismiss()
+                    }
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        fontWeight = FontWeight.Medium
+    )
+}
+
+@Composable
+private fun SectionDivider() {
+    Spacer(modifier = Modifier.height(4.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+    Spacer(modifier = Modifier.height(4.dp))
+}
+
+@Composable
+private fun LayerRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    compact: Boolean = false
+) {
+    val rowShape = androidx.compose.foundation.shape.RoundedCornerShape(com.vayu.weather.ui.theme.SkyCastTokens.RadiusMd)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(rowShape)
+            .clickable(onClick = onClick)
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                else Color.Transparent
+            )
+            .padding(vertical = if (compact) 6.dp else 10.dp, horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (isSelected) MaterialTheme.colorScheme.primary
+                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            modifier = Modifier.size(if (compact) 16.dp else 20.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = label,
+            style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+            color = if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.weight(1f)
+        )
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

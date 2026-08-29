@@ -138,6 +138,9 @@ import com.vayu.weather.presentation.components.generateStormAlerts
 import com.vayu.weather.presentation.components.SmartInsightsSection
 import com.vayu.weather.presentation.components.WeatherStreakCard
 import com.vayu.weather.presentation.components.WeatherFunFacts
+import com.vayu.weather.presentation.components.WeatherBackgroundV2
+import com.vayu.weather.presentation.components.StaggeredEntry
+import com.vayu.weather.presentation.components.FeelsLikeTimelineCard
 import java.time.format.DateTimeFormatter
 import kotlin.math.max
 import kotlin.math.min
@@ -257,6 +260,8 @@ fun WeatherDashboard(
     onOpenDetail: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onShare: () -> Unit = {},
+    onToggleTheme: () -> Unit = {},
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     onDismissRefreshError: () -> Unit = {},
     cityName: String? = null,
     latitude: Double = 0.0,
@@ -277,9 +282,10 @@ fun WeatherDashboard(
 
     Box(modifier = modifier.fillMaxSize()) {
         state.weatherInfo?.let { info ->
-            WeatherBackground(
+            WeatherBackgroundV2(
                 weatherCode = info.current.weatherCode,
-                isDay = info.current.isDay
+                isDay = info.current.isDay,
+                modifier = Modifier.fillMaxSize()
             )
 
             PullToRefreshBox(
@@ -299,6 +305,8 @@ fun WeatherDashboard(
                             onOpenAlerts = onOpenAlerts,
                             onOpenHistory = onOpenHistory,
                             onShare = onShare,
+                            onToggleTheme = onToggleTheme,
+                            themeMode = themeMode,
                             weatherCode = info.current.weatherCode,
                             isCelsius = isCelsius,
                             cityName = cityName,
@@ -593,6 +601,8 @@ private fun TopBar(
     onOpenAlerts: () -> Unit,
     onOpenHistory: () -> Unit,
     onShare: () -> Unit,
+    onToggleTheme: () -> Unit,
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     weatherCode: Int? = null,
     isCelsius: Boolean = true,
     cityName: String? = null,
@@ -654,6 +664,20 @@ private fun TopBar(
                     icon = Icons.Rounded.Share,
                     contentDescription = stringResource(R.string.share_weather),
                     onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onShare() }
+                )
+                // Theme toggle
+                SmallIconButton(
+                    icon = when (themeMode) {
+                        ThemeMode.DARK -> Icons.Rounded.WbSunny
+                        ThemeMode.LIGHT -> Icons.Rounded.NightsStay
+                        else -> Icons.Rounded.WbTwilight
+                    },
+                    contentDescription = when (themeMode) {
+                        ThemeMode.DARK -> stringResource(R.string.theme_toggle_light)
+                        ThemeMode.LIGHT -> stringResource(R.string.theme_toggle_dark)
+                        else -> stringResource(R.string.theme_toggle_system)
+                    },
+                    onClick = { haptic(HapticFeedbackConstants.VIRTUAL_KEY); onToggleTheme() }
                 )
                 SmallIconButton(
                     icon = Icons.Rounded.Settings,
@@ -1019,7 +1043,10 @@ private fun HourlyForecastSection(
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             HourlyDetailItem("Pressure", "${data.pressure?.roundToInt() ?: "--"} hPa")
-                            HourlyDetailItem("Visibility", data.visibility?.let { "${(it / 1000).roundToInt()} km" } ?: "--")
+                            HourlyDetailItem("Visibility", data.visibility?.let { v ->
+                                if (v < 1000) "${(v / 100.0).roundToInt() * 100}m"
+                                else "${(v / 1000.0).let { k -> if (k - k.toInt() >= 0.5) k.toInt() + 1 else k.toInt() }} km"
+                            } ?: "--")
                             HourlyDetailItem("Precip", data.precipitation?.let { "${String.format("%.1f", it)} mm" } ?: "--")
                         }
                     }
@@ -1574,7 +1601,10 @@ private fun WeatherDetailsSection(
                 ExpandableDetailCard(
                     icon = Icons.Rounded.Visibility,
                     label = stringResource(R.string.visibility),
-                    value = info.current.visibility?.let { "${(it / 1000).roundToInt()} km" } ?: "--",
+                    value = info.current.visibility?.let { v ->
+                        if (v < 1000) "${(v / 100.0).roundToInt() * 100}m"
+                        else "${(v / 1000.0).let { k -> if (k - k.toInt() >= 0.5) k.toInt() + 1 else k.toInt() }} km"
+                    } ?: "--",
                     extra = when {
                         (info.current.visibility ?: 0.0) < 1000 -> "Foggy"
                         (info.current.visibility ?: 0.0) < 5000 -> "Reduced"

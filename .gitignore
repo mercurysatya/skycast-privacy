@@ -11,6 +11,7 @@
 
 # Keystore secrets
 *.jks
+key.properties
 
 # OS files
 .DS_Store

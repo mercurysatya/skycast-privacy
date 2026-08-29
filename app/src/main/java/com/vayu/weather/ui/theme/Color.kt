@@ -53,3 +53,32 @@ val GlassSunny = Color(0x30FBBF24)
 val GlassRain = Color(0x3038BDF8)
 val GlassSnow = Color(0x50E2E8F0)
 val GlassStorm = Color(0x306366F1)
+
+// ── SkyCast premium design tokens (Phase 1) ──
+// Severity scale
+val SeverityInfo = Color(0xFF38BDF8)
+val SeverityAdvisory = Color(0xFF84CC16)
+val SeverityWatch = Color(0xFFFBBF24)
+val SeverityWarning = Color(0xFFF97316)
+val SeverityEmergency = Color(0xFFEF4444)
+
+// UV scale
+val UvLow = Color(0xFF22C55E)
+val UvModerate = Color(0xFFFBBF24)
+val UvHigh = Color(0xFFF97316)
+val UvVeryHigh = Color(0xFFEF4444)
+val UvExtreme = Color(0xFF9333EA)
+
+// AQI scale
+val AqiGood = Color(0xFF22C55E)
+val AqiFair = Color(0xFF84CC16)
+val AqiModerate = Color(0xFFFBBF24)
+val AqiPoor = Color(0xFFF97316)
+val AqiVeryPoor = Color(0xFFEF4444)
+val AqiSevere = Color(0xFFBE185D)
+
+// Compass / wind cardinal
+val CompassNorth = Color(0xFFEF4444)
+val CompassEast = Color(0xFFFBBF24)
+val CompassSouth = Color(0xFF38BDF8)
+val CompassWest = Color(0xFF22C55E)

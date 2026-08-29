@@ -82,6 +82,7 @@ class WeatherViewModel @Inject constructor(
                     currentLat = location.latitude
                     currentLon = location.longitude
                     loadAirQuality(location.latitude, location.longitude)
+                    loadPreviousDayTemp(location.latitude, location.longitude)
                     getWeatherUseCase(location.latitude, location.longitude)                    .onSuccess { weatherInfo ->
                         state = state.copy(
                             weatherInfo = weatherInfo,
@@ -102,6 +103,7 @@ class WeatherViewModel @Inject constructor(
                     // GPS unavailable — fall back to the last successfully loaded location
                     // so the dashboard keeps showing real data instead of an error screen
                     loadAirQuality(fallbackLat, fallbackLon)
+                    loadPreviousDayTemp(fallbackLat, fallbackLon)
                     getWeatherUseCase(fallbackLat, fallbackLon)
 .onSuccess { weatherInfo ->
                             state = state.copy(
@@ -146,6 +148,15 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
+    private suspend fun loadPreviousDayTemp(lat: Double, lon: Double) {
+        try {
+            val snapshot = repository.getYesterdaySnapshot(lat, lon)
+            state = state.copy(previousDayTempC = snapshot?.temperature)
+        } catch (_: Exception) {
+            // Non-fatal — the pill simply won't appear
+        }
+    }
+
     fun loadWeatherForCity(lat: Double, lon: Double, cityName: String? = null) {
         currentCityName = cityName
         currentLat = lat
@@ -160,6 +171,7 @@ class WeatherViewModel @Inject constructor(
             )
             try {
                 loadAirQuality(lat, lon)
+                loadPreviousDayTemp(lat, lon)
                 getWeatherUseCase(lat, lon)
                         .onSuccess { weatherInfo ->
                             state = state.copy(
@@ -228,6 +240,7 @@ class WeatherViewModel @Inject constructor(
 
     private suspend fun refreshWithCoords(lat: Double, lon: Double) {
         loadAirQuality(lat, lon)
+        loadPreviousDayTemp(lat, lon)
         getWeatherUseCase(lat, lon)
             .onSuccess { weatherInfo ->
                 state = state.copy(

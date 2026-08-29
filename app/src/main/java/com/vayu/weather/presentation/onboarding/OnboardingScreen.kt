@@ -64,12 +64,13 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.vayu.weather.R
 import kotlinx.coroutines.launch
+import com.vayu.weather.presentation.onboarding.OnboardingDemoCard
 
 @Composable
 fun OnboardingScreen(
     onComplete: () -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { 4 })
+    val pagerState = rememberPagerState(pageCount = { 5 })
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -105,7 +106,8 @@ fun OnboardingScreen(
             icon = Icons.Rounded.WbSunny,
             title = stringResource(R.string.onboarding_welcome_title),
             description = stringResource(R.string.onboarding_welcome_desc),
-            iconTint = Color(0xFFFBBF24)
+            iconTint = Color(0xFFFBBF24),
+            customContent = { OnboardingDemoCard() }
         ),
         OnboardingPage(
             icon = Icons.Rounded.Cloud,
@@ -143,6 +145,12 @@ fun OnboardingScreen(
                 }
             },
             actionEnabled = !notificationPermissionGranted
+        ),
+        OnboardingPage(
+            icon = Icons.Rounded.CheckCircle,
+            title = stringResource(R.string.onboarding_get_started),
+            description = "You're all set! Swipe up to see your weather.",
+            iconTint = Color(0xFF22C55E)
         )
     )
 
@@ -260,92 +268,98 @@ private fun OnboardingPageContent(page: OnboardingPage) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Icon
-        Card(
-            modifier = Modifier.size(100.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = page.iconTint.copy(alpha = 0.12f)
-            )
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = page.icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = page.iconTint
+        // Custom content (e.g., demo card) replaces the default icon+text layout
+        page.customContent?.invoke()
+
+        // Default layout when no custom content
+        if (page.customContent == null) {
+            // Icon
+            Card(
+                modifier = Modifier.size(100.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = page.iconTint.copy(alpha = 0.12f)
                 )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(36.dp))
-
-        // Title
-        Text(
-            text = page.title,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Description
-        Text(
-            text = page.description,
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.White.copy(alpha = 0.6f),
-            textAlign = TextAlign.Center,
-            lineHeight = 24.sp
-        )
-
-        // Action button (for permission pages)
-        if (page.actionLabel != null && page.onAction != null) {
-            Spacer(modifier = Modifier.height(28.dp))
-
-            if (page.actionEnabled) {
-                FilledTonalButton(
-                    onClick = page.onAction,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = page.iconTint.copy(alpha = 0.15f),
-                        contentColor = page.iconTint
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = page.icon,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = page.actionLabel,
-                        fontWeight = FontWeight.Medium
+                        modifier = Modifier.size(48.dp),
+                        tint = page.iconTint
                     )
                 }
-            } else {
-                // Permission already granted
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.CheckCircle,
-                        contentDescription = null,
-                        tint = Color(0xFF22C55E),
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = page.actionLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF22C55E),
-                        fontWeight = FontWeight.Medium
-                    )
+            }
+
+            Spacer(modifier = Modifier.height(36.dp))
+
+            // Title
+            Text(
+                text = page.title,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Description
+            Text(
+                text = page.description,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
+                lineHeight = 24.sp
+            )
+
+            // Action button (for permission pages)
+            if (page.actionLabel != null && page.onAction != null) {
+                Spacer(modifier = Modifier.height(28.dp))
+
+                if (page.actionEnabled) {
+                    FilledTonalButton(
+                        onClick = page.onAction,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = page.iconTint.copy(alpha = 0.15f),
+                            contentColor = page.iconTint
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = page.icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = page.actionLabel,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                } else {
+                    // Permission already granted
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF22C55E),
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = page.actionLabel,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF22C55E),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
@@ -359,5 +373,6 @@ private data class OnboardingPage(
     val iconTint: Color,
     val actionLabel: String? = null,
     val onAction: (() -> Unit)? = null,
-    val actionEnabled: Boolean = true
+    val actionEnabled: Boolean = true,
+    val customContent: (@Composable () -> Unit)? = null
 )

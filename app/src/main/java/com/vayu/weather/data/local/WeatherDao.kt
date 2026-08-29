@@ -121,4 +121,18 @@ interface WeatherDao {
     // On this day for specific location
     @Query("SELECT * FROM weather_history WHERE latitude = :lat AND longitude = :lon AND strftime('%m-%d', timestamp/1000, 'unixepoch') = :monthDay ORDER BY timestamp DESC")
     fun getWeatherHistoryForLocationAndMonthDay(lat: Double, lon: Double, monthDay: String): Flow<List<WeatherHistoryEntity>>
+
+    /**
+     * Returns the snapshot closest to the target timestamp for the given
+     * location, used to compute "vs yesterday" comparisons. Limited to a
+     * ±3-hour window so we never return a value from a different day.
+     */
+    @Query("""
+        SELECT * FROM weather_history
+        WHERE latitude = :lat AND longitude = :lon
+          AND timestamp BETWEEN :targetMinus AND :targetPlus
+        ORDER BY ABS(timestamp - :target) ASC
+        LIMIT 1
+    """)
+    suspend fun getSnapshotNearTimestamp(lat: Double, lon: Double, target: Long, targetMinus: Long, targetPlus: Long): WeatherHistoryEntity?
 }

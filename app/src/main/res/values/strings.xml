@@ -397,4 +397,99 @@ Try selecting a different severity level.</string>
 
     <string name="on_this_day">On This Day</string>
 
+    <!-- Quick Toggle / Theme -->
+    <string name="theme_toggle_dark">Switch to dark mode</string>
+    <string name="theme_toggle_light">Switch to light mode</string>
+    <string name="theme_toggle_system">Follow system theme</string>
+
+    <!-- Hero chip row -->
+    <string name="now_label">Now</string>
+    <string name="feels_label">Feels</string>
+    <string name="high_label">High</string>
+    <string name="low_label">Low</string>
+    <string name="compare_yesterday">%1$s° vs yesterday</string>
+    <string name="vs_yesterday_no_change">Same as yesterday</string>
+
+    <!-- Section headers -->
+    <string name="current_conditions">Current Conditions</string>
+    <string name="feels_like_timeline">24h Feels-Like Trend</string>
+    <string name="pollen">Pollen Levels</string>
+    <string name="pollen_tree">Tree</string>
+    <string name="pollen_grass">Grass</string>
+    <string name="pollen_weed">Weed</string>
+
+    <!-- Favorites empty state -->
+    <string name="browse_popular">Browse popular cities</string>
+    <string name="empty_favorites_headline">No favorite cities yet</string>
+    <string name="empty_favorites_body">Tap the heart on any city to save it here for quick access.</string>
+    <string name="add_first_city">Add your first city</string>
+
+    <!-- Onboarding demo card -->
+    <string name="onboarding_demo_city">Srikakulam</string>
+    <string name="onboarding_demo_country">Andhra Pradesh</string>
+
+    <!-- Quick settings tile -->
+    <string name="qs_tile_label">SkyCast</string>
+    <string name="qs_tile_subtitle">Tap to refresh weather</string>
+
+    <!-- Widget description -->
+    <string name="widget_description">Current weather with hourly forecast and metrics</string>
+
+    <!-- New accessibility -->
+    <string name="cd_refresh">Refresh weather</string>
+    <string name="cd_remove_favorite">Remove %1$s from favorites</string>
+    <string name="cd_add_favorite">Add %1$s to favorites</string>
+    <string name="cd_open_details">Open weather details</string>
+    <string name="cd_temperature_announce">Current temperature %1$d degrees %2$s, %3$s</string>
+    <string name="cd_pollen_level">%1$s pollen: %2$s</string>
+    <string name="cd_metric">%1$s: %2$s</string>
+    <string name="cd_dark_mode">Toggle dark mode</string>
+    <string name="cd_dashboard">Weather dashboard</string>
+
+    <!-- SkyCast premium screens -->
+    <string name="sky_compare_title">Compare locations</string>
+    <string name="sky_compare_empty">Add up to %1$d cities to compare side by side</string>
+    <string name="sky_compare_add">Add</string>
+    <string name="sky_compare_remove">Remove</string>
+    <string name="sky_travel_title">Travel forecast</string>
+    <string name="sky_travel_destination">Destination</string>
+    <string name="sky_travel_date">Travel date</string>
+    <string name="sky_travel_pick_destination">Tap to choose</string>
+    <string name="sky_travel_pick_date">Tap to choose</string>
+    <string name="sky_travel_loading">Loading forecast…</string>
+    <string name="sky_travel_empty">Pick a destination and travel date to see your forecast.</string>
+    <string name="sky_hourly">Hourly</string>
+    <string name="sky_daily">7-day forecast</string>
+    <string name="sky_air_quality">Air quality</string>
+    <string name="sky_uv">UV index</string>
+    <string name="sky_rain_forecast">Rain forecast</string>
+    <string name="sky_wind">Wind</string>
+    <string name="sky_sun_moon">Sun &amp; moon</string>
+    <string name="sky_alerts">Alerts</string>
+    <string name="sky_alerts_active">%1$d active</string>
+    <string name="sky_humidity">Humidity</string>
+    <string name="sky_pressure">Pressure</string>
+    <string name="sky_visibility">Visibility</string>
+    <string name="sky_dew_point">Dew point</string>
+    <string name="sky_wind_label">Wind</string>
+    <string name="sky_summary_section">Today\'s story</string>
+    <string name="sky_dashboard">Dashboard</string>
+    <string name="sky_detail_title">Weather details</string>
+    <string name="sky_detail_temperature">Temperature</string>
+    <string name="sky_detail_feels">Feels like</string>
+    <string name="sky_detail_humidity">Humidity</string>
+    <string name="sky_detail_dew">Dew point</string>
+    <string name="sky_detail_wind">Wind</string>
+    <string name="sky_detail_gusts">Wind gusts</string>
+    <string name="sky_detail_pressure">Pressure</string>
+    <string name="sky_detail_visibility">Visibility</string>
+    <string name="sky_detail_cloud">Cloud cover</string>
+    <string name="sky_detail_precipitation">Precipitation</string>
+    <string name="sky_detail_rain_prob">Rain probability</string>
+    <string name="sky_detail_uv">UV index</string>
+    <string name="sky_offline_banner">Offline — showing last known data</string>
+    <string name="sky_no_internet">No internet connection</string>
+    <string name="sky_loading_weather">Loading weather…</string>
+    <string name="sky_error_generic">Couldn\'t load weather. Tap to retry.</string>
+
 </resources>

@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -53,6 +54,7 @@ fun SearchScreen(
     onToggleFavorite: ((City) -> Unit)? = null,
     isFavorite: ((Long) -> Boolean)? = null,
     onClearRecentSearches: () -> Unit = {},
+    onOpenTravel: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -79,7 +81,23 @@ fun SearchScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        androidx.compose.material3.OutlinedButton(
+            onClick = onOpenTravel,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.CalendarToday,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Plan a trip — Travel forecast")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         TextField(
             value = state.searchQuery,

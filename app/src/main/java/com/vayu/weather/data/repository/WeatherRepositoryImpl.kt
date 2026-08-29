@@ -364,4 +364,13 @@ class WeatherRepositoryImpl @Inject constructor(
             entities.map { it.toSnapshot() }
         }
     }
+
+    override suspend fun getYesterdaySnapshot(lat: Double, lon: Double): com.vayu.weather.domain.model.WeatherHistorySnapshot? {
+        val now = System.currentTimeMillis()
+        val oneDay = 24L * 60L * 60L * 1000L
+        val window = 3L * 60L * 60L * 1000L
+        val target = now - oneDay
+        val entity = dao.getSnapshotNearTimestamp(lat, lon, target, target - window, target + window)
+        return entity?.toSnapshot()
+    }
 }

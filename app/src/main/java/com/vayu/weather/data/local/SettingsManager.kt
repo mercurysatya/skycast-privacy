@@ -243,6 +243,9 @@ private object Keys {
         dataStore.edit { it[Keys.WIDGET_SIZE] = value }
     }
 
+    // Last resolved city / region (used by the widget snapshot)
+    suspend fun getLastCityName(): String? = getLastCity()
+
     // Wind alert
     suspend fun getWindAlertThreshold(): Int =
         dataStore.data.first()[Keys.WIND_ALERT_THRESHOLD] ?: 60

@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import android.content.Intent
@@ -115,6 +116,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
 
@@ -127,77 +129,77 @@ fun SettingsScreen(
 
     val wrappedToggleUnit: () -> Unit = {
         snackbarMessage = if (state.temperatureUnit == TemperatureUnit.CELSIUS)
-            context.getString(R.string.switched_to_fahrenheit)
+            resources.getString(R.string.switched_to_fahrenheit)
         else
-            context.getString(R.string.switched_to_celsius)
+            resources.getString(R.string.switched_to_celsius)
         onToggleUnit()
     }
 
     val wrappedWindUnitChange: (WindUnit) -> Unit = { unit ->
         snackbarMessage = when (unit) {
-            WindUnit.KPH -> context.getString(R.string.wind_speed_kph)
-            WindUnit.MPH -> context.getString(R.string.wind_speed_mph)
-            WindUnit.MS -> context.getString(R.string.wind_speed_ms)
-            WindUnit.KNOTS -> context.getString(R.string.wind_speed_knots)
+            WindUnit.KPH -> resources.getString(R.string.wind_speed_kph)
+            WindUnit.MPH -> resources.getString(R.string.wind_speed_mph)
+            WindUnit.MS -> resources.getString(R.string.wind_speed_ms)
+            WindUnit.KNOTS -> resources.getString(R.string.wind_speed_knots)
         }
         onWindUnitChange(unit)
     }
 
     val wrappedThemeModeChange: (ThemeMode) -> Unit = { mode ->
         snackbarMessage = when (mode) {
-            ThemeMode.SYSTEM -> context.getString(R.string.dark_mode_system)
-            ThemeMode.LIGHT -> context.getString(R.string.dark_mode_off)
-            ThemeMode.DARK -> context.getString(R.string.dark_mode_on)
+            ThemeMode.SYSTEM -> resources.getString(R.string.dark_mode_system)
+            ThemeMode.LIGHT -> resources.getString(R.string.dark_mode_off)
+            ThemeMode.DARK -> resources.getString(R.string.dark_mode_on)
         }
         onThemeModeChange(mode)
     }
 
     val wrappedToggleDynamicColor: (Boolean) -> Unit = { value ->
-        snackbarMessage = if (value) context.getString(R.string.dynamic_colors_enabled)
-        else context.getString(R.string.dynamic_colors_disabled)
+        snackbarMessage = if (value) resources.getString(R.string.dynamic_colors_enabled)
+        else resources.getString(R.string.dynamic_colors_disabled)
         onToggleDynamicColor(value)
     }
 
     val wrappedToggleNotifications: (Boolean) -> Unit = { value ->
-        snackbarMessage = if (value) context.getString(R.string.notifications_enabled_toast)
-        else context.getString(R.string.notifications_disabled_toast)
+        snackbarMessage = if (value) resources.getString(R.string.notifications_enabled_toast)
+        else resources.getString(R.string.notifications_disabled_toast)
         onToggleNotifications(value)
     }
 
     val wrappedRainAlertThresholdChange: (Int) -> Unit = { value ->
-        snackbarMessage = context.getString(R.string.rain_threshold_toast, value)
+        snackbarMessage = resources.getString(R.string.rain_threshold_toast, value)
         onRainAlertThresholdChange(value)
     }
 
     val wrappedCheckIntervalChange: (Int) -> Unit = { value ->
         val label = when (value) {
-            1 -> context.getString(R.string.check_interval_1h)
-            2 -> context.getString(R.string.check_interval_2h)
-            6 -> context.getString(R.string.check_interval_6h)
-            12 -> context.getString(R.string.check_interval_12h)
-            else -> context.getString(R.string.check_interval_3h)
+            1 -> resources.getString(R.string.check_interval_1h)
+            2 -> resources.getString(R.string.check_interval_2h)
+            6 -> resources.getString(R.string.check_interval_6h)
+            12 -> resources.getString(R.string.check_interval_12h)
+            else -> resources.getString(R.string.check_interval_3h)
         }
-        snackbarMessage = context.getString(R.string.check_interval_toast, label)
+        snackbarMessage = resources.getString(R.string.check_interval_toast, label)
         onCheckIntervalChange(value)
     }
 
     val wrappedSeverityFilterChange: (AlertSeverity) -> Unit = { value ->
         val label = when (value) {
-            AlertSeverity.ALL -> context.getString(R.string.severity_all)
-            AlertSeverity.HIGH -> context.getString(R.string.severity_high_only)
-            AlertSeverity.HIGH_MEDIUM -> context.getString(R.string.severity_high_and_medium)
+            AlertSeverity.ALL -> resources.getString(R.string.severity_all)
+            AlertSeverity.HIGH -> resources.getString(R.string.severity_high_only)
+            AlertSeverity.HIGH_MEDIUM -> resources.getString(R.string.severity_high_and_medium)
         }
-        snackbarMessage = context.getString(R.string.severity_filter_toast, label)
+        snackbarMessage = resources.getString(R.string.severity_filter_toast, label)
         onSeverityFilterChange(value)
     }
 
     val wrappedWidgetSizeChange: (WidgetSize) -> Unit = { value ->
         val label = when (value) {
-            WidgetSize.SMALL -> context.getString(R.string.widget_size_small)
-            WidgetSize.MEDIUM -> context.getString(R.string.widget_size_medium)
-            WidgetSize.LARGE -> context.getString(R.string.widget_size_large)
+            WidgetSize.SMALL -> resources.getString(R.string.widget_size_small)
+            WidgetSize.MEDIUM -> resources.getString(R.string.widget_size_medium)
+            WidgetSize.LARGE -> resources.getString(R.string.widget_size_large)
         }
-        snackbarMessage = context.getString(R.string.widget_size_toast, label)
+        snackbarMessage = resources.getString(R.string.widget_size_toast, label)
         onWidgetSizeChange(value)
     }
 
@@ -402,7 +404,7 @@ fun SettingsScreen(
                         // Rain alert threshold
                         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                             Text(
-                                text = context.getString(R.string.rain_threshold_toast, state.rainAlertThreshold),
+                                text = resources.getString(R.string.rain_threshold_toast, state.rainAlertThreshold),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1083,7 +1085,7 @@ fun SettingsScreen(
                                     DropdownMenuItem(
                                         text = { Text(text = label, fontWeight = if (unit == state.pressureUnit) FontWeight.Bold else FontWeight.Normal) },
                                         onClick = {
-                                            snackbarMessage = context.getString(R.string.pressure_unit_toast, label)
+                                            snackbarMessage = resources.getString(R.string.pressure_unit_toast, label)
                                             onPressureUnitChange(unit)
                                             expanded = false
                                         }
@@ -1115,7 +1117,7 @@ fun SettingsScreen(
                                     DropdownMenuItem(
                                         text = { Text(text = label, fontWeight = if (unit == state.precipitationUnit) FontWeight.Bold else FontWeight.Normal) },
                                         onClick = {
-                                            snackbarMessage = context.getString(R.string.precipitation_unit_toast, label)
+                                            snackbarMessage = resources.getString(R.string.precipitation_unit_toast, label)
                                             onPrecipitationUnitChange(unit)
                                             expanded = false
                                         }
@@ -1265,7 +1267,7 @@ fun SettingsScreen(
                             TextButton(onClick = {
                                 (context as? android.app.Activity)?.let { activity ->
                                     com.vayu.weather.presentation.ConsentManager.showPrivacyOptionsForm(activity) {
-                                        snackbarMessage = context.getString(R.string.privacy_options_updated)
+                                        snackbarMessage = resources.getString(R.string.privacy_options_updated)
                                     }
                                 }
                             }) {

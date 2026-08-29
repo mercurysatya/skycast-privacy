@@ -6,20 +6,31 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.vayu.weather.data.local.SettingsManager
 import com.vayu.weather.domain.location.LocationTracker
+import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.domain.use_case.GetWeatherUseCase
+import com.vayu.weather.presentation.weather.TemperatureUnit
+import com.vayu.weather.presentation.weather.WindUnit
+import com.vayu.weather.presentation.widget.WidgetSnapshot
 import com.vayu.weather.presentation.widget.WeatherWidget
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
+/**
+ * Fetches the latest weather for the user's current location and writes a
+ * single [WidgetSnapshot] blob to SharedPreferences for the Glance widget
+ * to render.
+ *
+ * Uses the existing [GetWeatherUseCase] so the widget reuses the same
+ * cache + repository pipeline as the in-app dashboard.
+ */
 @HiltWorker
 class WeatherWidgetWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val getWeatherUseCase: GetWeatherUseCase,
     private val locationTracker: LocationTracker,
-    private val settingsManager: SettingsManager
+    private val settingsManager: com.vayu.weather.data.local.SettingsManager
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -36,59 +47,70 @@ class WeatherWidgetWorker @AssistedInject constructor(
             return Result.retry()
         }
 
+        val cityName = settingsManager.getLastCity()
+        val isCelsius = settingsManager.getTemperatureUnit() == TemperatureUnit.CELSIUS
+        val windUnit = settingsManager.getWindUnit()
+
         return getWeatherUseCase(location.latitude, location.longitude).fold(
             onSuccess = { weatherInfo ->
-                Log.d(TAG, "Weather data received, updating preferences")
-                val prefs = applicationContext.getSharedPreferences("weather_widget_prefs", Context.MODE_PRIVATE)
-                val editor = prefs.edit()
-                editor.putFloat("temperature", weatherInfo.current.temperature.toFloat())
-                editor.putInt("weather_code", weatherInfo.current.weatherCode)
-                editor.putBoolean("is_day", weatherInfo.current.isDay)
-                editor.putFloat("wind_speed", weatherInfo.current.windSpeed?.toFloat() ?: 0f)
-                editor.putFloat("humidity", weatherInfo.current.humidity?.toFloat() ?: 0f)
-                editor.putBoolean("is_fahrenheit", settingsManager.getTemperatureUnit() == com.vayu.weather.presentation.weather.TemperatureUnit.FAHRENHEIT)
-                editor.putString("wind_unit", settingsManager.getWindUnit().name)
-                editor.putLong("last_updated", System.currentTimeMillis())
-                editor.putBoolean("has_data", true)
-
-                // Store 3-day forecast
-                val daily = weatherInfo.daily.take(3)
-                Log.d(TAG, "Storing ${daily.size} forecast days")
-                daily.forEachIndexed { index, day ->
-                    editor.putString("day_${index}_date", day.date)
-                    editor.putFloat("day_${index}_min_temp", day.minTemp.toFloat())
-                    editor.putFloat("day_${index}_max_temp", day.maxTemp.toFloat())
-                    editor.putInt("day_${index}_weather_code", day.weatherCode)
-                    editor.putInt("day_${index}_precipitation", day.precipitationProbability ?: 0)
-                    Log.d(TAG, "Day $index: ${day.date} ${day.minTemp}/${day.maxTemp} code=${day.weatherCode}")
-                }
-                editor.putInt("forecast_days", daily.size)
-
-                editor.apply()
-
-                // Force widget to refresh by calling update on all widget instances
-                try {
-                    val manager = GlanceAppWidgetManager(applicationContext)
-                    val glanceIds = manager.getGlanceIds(WeatherWidget::class.java)
-                    Log.d(TAG, "Found ${glanceIds.size} widget instances, updating")
-                    glanceIds.forEach { glanceId ->
-                        WeatherWidget().update(applicationContext, glanceId)
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to update widget", e)
-                }
-
+                Log.d(TAG, "Weather data received, writing widget snapshot")
+                writeSnapshot(weatherInfo, cityName, isCelsius, windUnit)
                 Result.success()
             },
             onFailure = { e ->
                 Log.e(TAG, "Failed to fetch weather", e)
+                // Even on failure, keep the existing snapshot in place so the
+                // widget can still show the last-known state.
                 Result.retry()
             }
         )
     }
 
+    private suspend fun writeSnapshot(
+        info: WeatherInfo,
+        cityName: String?,
+        isCelsius: Boolean,
+        windUnit: WindUnit
+    ) {
+        val snapshot = WidgetSnapshot(
+            info = info,
+            cityName = cityName?.takeIf { it.isNotBlank() } ?: "",
+            region = null,
+            isCelsius = isCelsius,
+            windUnitLabel = windUnitLabel(windUnit),
+            lastUpdatedMillis = System.currentTimeMillis()
+        )
+        val prefs = applicationContext.getSharedPreferences("weather_widget_prefs", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(KEY_SNAPSHOT, WidgetSnapshot.encode(snapshot))
+            .putBoolean(KEY_HAS_DATA, true)
+            .putLong(KEY_LAST_UPDATED, snapshot.lastUpdatedMillis)
+            .apply()
+
+        try {
+            val manager = GlanceAppWidgetManager(applicationContext)
+            val glanceIds = manager.getGlanceIds(WeatherWidget::class.java)
+            Log.d(TAG, "Found ${glanceIds.size} widget instances, updating")
+            glanceIds.forEach { glanceId ->
+                WeatherWidget().update(applicationContext, glanceId)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update widget", e)
+        }
+    }
+
+    private fun windUnitLabel(unit: WindUnit): String = when (unit) {
+        WindUnit.KPH -> "km/h"
+        WindUnit.MPH -> "mph"
+        WindUnit.MS -> "m/s"
+        WindUnit.KNOTS -> "kn"
+    }
+
     companion object {
         private const val TAG = "WeatherWidgetWorker"
         const val WORK_NAME = "WeatherWidgetUpdate"
+        const val KEY_SNAPSHOT = "snapshot"
+        const val KEY_HAS_DATA = "has_data"
+        const val KEY_LAST_UPDATED = "last_updated"
     }
 }

@@ -2,6 +2,8 @@ package com.vayu.weather.presentation.alerts
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,8 +29,8 @@ class AlertsViewModel @Inject constructor(
     var state by mutableStateOf(AlertsState())
         private set
 
-    private val snoozeDuration = mutableStateOf(3600000L)
-    private val pushFrequencyHours = mutableStateOf(24)
+    private val snoozeDuration = mutableLongStateOf(3600000L)
+    private val pushFrequencyHours = mutableIntStateOf(24)
 
     init {
         viewModelScope.launch {

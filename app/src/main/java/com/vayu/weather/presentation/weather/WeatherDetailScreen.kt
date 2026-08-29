@@ -262,7 +262,10 @@ private fun CurrentConditionsExpanded(
                             DetailInfoItem(
                                 icon = Icons.Rounded.Visibility,
                                 label = stringResource(R.string.visibility),
-                                value = info.current.visibility?.let { "${(it / 1000).roundToInt()} km" } ?: "--"
+                                value = info.current.visibility?.let { v ->
+                                    if (v < 1000) "${(v / 100.0).roundToInt() * 100}m"
+                                    else "${(v / 1000.0).let { k -> if (k - k.toInt() >= 0.5) k.toInt() + 1 else k.toInt() }} km"
+                                } ?: "--"
                             )
                             DetailInfoItem(
                                 icon = Icons.Rounded.WbSunny,

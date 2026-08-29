@@ -1,5 +1,6 @@
 package com.vayu.weather.presentation.weather
 
+import com.vayu.weather.data.local.WeatherAlertEntity
 import com.vayu.weather.domain.model.AirQuality
 import com.vayu.weather.domain.model.WeatherInfo
 
@@ -10,7 +11,13 @@ data class WeatherState(
     val isRefreshing: Boolean = false,
     val error: String? = null,
     val refreshError: String? = null,
-    val lastUpdatedTime: String? = null
+    val lastUpdatedTime: String? = null,
+    /** Temperature from a snapshot ~24h ago, used for the "vs yesterday" pill. */
+    val previousDayTempC: Double? = null,
+    /** Region/state name (e.g. "Andhra Pradesh") for richer location display. */
+    val regionName: String? = null,
+    /** Currently active severe-weather alerts for this location. */
+    val alerts: List<WeatherAlertEntity> = emptyList()
 )
 
 enum class TemperatureUnit { CELSIUS, FAHRENHEIT }

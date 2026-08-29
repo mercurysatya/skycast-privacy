@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.vayu.weather.R
 import com.vayu.weather.domain.model.City
+import com.vayu.weather.presentation.favorites.FavoritesEmptyStateV2
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -41,6 +42,8 @@ fun FavoritesScreen(
     onCitySelected: (City) -> Unit,
     onRemoveFavorite: (City) -> Unit,
     onReorder: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
+    onBrowseCities: () -> Unit = {},
+    onOpenCompare: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -55,12 +58,29 @@ fun FavoritesScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = stringResource(R.string.favorites),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.favorites),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f)
+            )
+            if (state.favorites.size >= 2) {
+                androidx.compose.material3.TextButton(onClick = onOpenCompare) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Rounded.Compare,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Compare")
+                }
+            }
+        }
 
         if (state.favorites.isNotEmpty()) {
             Spacer(modifier = Modifier.height(4.dp))
@@ -74,34 +94,9 @@ fun FavoritesScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (state.favorites.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Rounded.FavoriteBorder,
-                        contentDescription = stringResource(R.string.no_favorites),
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Text(
-                        text = stringResource(R.string.no_favorites),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.no_favorites_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 32.dp)
-                    )
-                }
-            }
+            FavoritesEmptyStateV2(
+                onBrowseClick = onBrowseCities
+            )
         } else {
             DraggableFavoritesList(
                 favorites = state.favorites,

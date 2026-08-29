@@ -66,7 +66,9 @@ data class HourlyWeatherDto(
     @Json(name = "wind_direction_10m")
     val windDirections: List<Double?>? = null,
     @Json(name = "precipitation")
-    val precipitations: List<Double?>? = null
+    val precipitations: List<Double?>? = null,
+    @Json(name = "apparent_temperature")
+    val apparentTemperatures: List<Double?>? = null
 )
 
 @JsonClass(generateAdapter = true)

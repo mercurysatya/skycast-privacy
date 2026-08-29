@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.vayu.weather.presentation.ads.AdManager
 import com.vayu.weather.R
@@ -30,7 +31,7 @@ import com.vayu.weather.presentation.settings.SettingsScreen
 import com.vayu.weather.presentation.settings.SettingsViewModel
 import com.vayu.weather.presentation.weather.ThemeMode
 import com.vayu.weather.presentation.weather.TemperatureUnit
-import com.vayu.weather.presentation.weather.WeatherDashboard
+import com.vayu.weather.presentation.weather.SkyCastHomeScreen
 import com.vayu.weather.presentation.weather.WeatherDetailScreen
 import com.vayu.weather.presentation.onboarding.OnboardingScreen
 import com.vayu.weather.ui.theme.SkyBlue
@@ -48,6 +49,7 @@ import androidx.compose.material3.BadgedBox
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun VayuApp() {
@@ -67,14 +69,18 @@ fun VayuApp() {
     val weatherViewModel: WeatherViewModel = hiltViewModel()
     val searchViewModel: SearchViewModel = hiltViewModel()
     val favoritesViewModel: FavoritesViewModel = hiltViewModel()
+    val favoritesWithWeatherViewModel: com.vayu.weather.presentation.favorites.FavoritesWithWeatherViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
     val alertsViewModel: AlertsViewModel = hiltViewModel()
     val historyViewModel: WeatherHistoryViewModel = hiltViewModel()
+    val compareViewModel: com.vayu.weather.presentation.compare.CompareViewModel = hiltViewModel()
+    val travelViewModel: com.vayu.weather.presentation.travel.TravelViewModel = hiltViewModel()
     val context = LocalContext.current
     val activity = context as? Activity
 
     val settingsState by settingsViewModel.state.collectAsState()
-    var showOnboarding by remember { mutableStateOf(true) } // Will be set to false after check
+    val nav = com.vayu.weather.presentation.navigation.rememberSkyCastNavController()
+    var showOnboarding by remember { mutableStateOf(true) }
     var onboardingChecked by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showAlerts by remember { mutableStateOf(false) }
@@ -84,36 +90,29 @@ fun VayuApp() {
     var privacyPolicyAnchor by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
-    var currentRoute by remember { mutableStateOf("Weather") }
+    val currentRoute = nav.currentRoute
 
-    BackHandler(enabled = showPrivacyPolicy) {
-        showPrivacyPolicy = false
-        privacyPolicyAnchor = null
-    }
+    // Share-text strings captured at composition time so the share coroutine
+    // never reaches back into LocalContext (which would race with config changes).
+    val shareDefaultCity = stringResource(R.string.default_city_name)
+    val shareSubject = stringResource(R.string.share_subject)
+    val shareChooserTitle = stringResource(R.string.share_weather_title)
 
-    BackHandler(enabled = showDetail && !showAlerts && !showSettings && !showHistory && !showPrivacyPolicy) {
-        showDetail = false
-    }
-
-    BackHandler(enabled = showHistory && !showAlerts && !showSettings && !showPrivacyPolicy) {
-        showHistory = false
-    }
-
-    BackHandler(enabled = showAlerts && !showSettings && !showHistory && !showPrivacyPolicy) {
-        showAlerts = false
-    }
-
-    BackHandler(enabled = showSettings && !showHistory && !showPrivacyPolicy) {
-        showSettings = false
+    // Single, well-ordered back-handler. Modal screens above the primary
+    // route are popped in reverse order.
+    BackHandler(enabled = nav.stack.isNotEmpty() || showPrivacyPolicy) {
+        if (showPrivacyPolicy) {
+            showPrivacyPolicy = false
+            privacyPolicyAnchor = null
+        } else if (!nav.popBackStack()) {
+            // Stack empty — nothing to do; system will exit the app.
+        }
     }
 
     LaunchedEffect(Unit) {
         Log.d("VayuApp", "LaunchedEffect: Loading weather and ad")
-        // First frame is ready — let the splash screen go. The dashboard is the
-        // default tab, so there is no extra navigation to do on cold start.
         SplashGate.isReady = true
         weatherViewModel.loadWeatherInfo()
-        // Gather UMP consent first; initialize/load ads only when allowed
         val act = activity
         if (act != null) {
             ConsentManager.gatherConsent(act) {
@@ -124,9 +123,25 @@ fun VayuApp() {
                 }
             }
         }
-        // Check if onboarding is complete
         onboardingChecked = true
         showOnboarding = !settingsViewModel.isOnboardingComplete()
+    }
+
+    // Reload ads when app returns to foreground
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(activity) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                val act = activity
+                if (act != null && ConsentManager.canRequestAds(act)) {
+                    AdManager.preloadNext(act)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     val isDarkTheme = when (settingsState.themeMode) {
@@ -201,13 +216,11 @@ fun VayuApp() {
                     onPressureUnitChange = settingsViewModel::setPressureUnit,
                     onPrecipitationUnitChange = settingsViewModel::setPrecipitationUnit,
                     onSectionVisibilityChange = { section, visible -> settingsViewModel.setSectionVisibility(section, visible) },
-                    // Quiet hours
                     onQuietHoursEnabledChange = settingsViewModel::setQuietHoursEnabled,
                     onQuietHoursStartHourChange = settingsViewModel::setQuietHoursStartHour,
                     onQuietHoursStartMinuteChange = settingsViewModel::setQuietHoursStartMinute,
                     onQuietHoursEndHourChange = settingsViewModel::setQuietHoursEndHour,
                     onQuietHoursEndMinuteChange = settingsViewModel::setQuietHoursEndMinute,
-                    // Per-day notification times
                     onNotificationTime1EnabledChange = settingsViewModel::setNotificationTime1Enabled,
                     onNotificationTime1HourChange = settingsViewModel::setNotificationTime1Hour,
                     onNotificationTime1MinuteChange = settingsViewModel::setNotificationTime1Minute,
@@ -229,56 +242,107 @@ fun VayuApp() {
             } else {
                 Scaffold(
                     bottomBar = {
-                        NavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                            tonalElevation = 3.dp
-                        ) {
-                            NavigationBarItem(
-                                selected = currentRoute == "Weather",
-                                onClick = { currentRoute = "Weather" },
-                                icon = {
-                                    if (alertsViewModel.state.alerts.isNotEmpty()) {
-                                        BadgedBox(
-                                            badge = {
-                                                Badge { Text(alertsViewModel.state.alerts.size.toString()) }
+                        // Only show the bottom bar on primary destinations
+                        if (nav.stack.isEmpty()) {
+                            NavigationBar(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                tonalElevation = 3.dp
+                            ) {
+                                val primary = nav.primaryRoute
+                                NavigationBarItem(
+                                    selected = primary == com.vayu.weather.presentation.navigation.Routes.Weather,
+                                    onClick = { nav.navigate(com.vayu.weather.presentation.navigation.Routes.Weather) },
+                                    icon = {
+                                        val filteredAlerts = remember(alertsViewModel.state.alerts) {
+                                            val now = System.currentTimeMillis()
+                                            alertsViewModel.state.alerts.filter { now - it.timestamp <= 24 * 60 * 60 * 1000L }
+                                        }
+                                        if (filteredAlerts.isNotEmpty()) {
+                                            BadgedBox(
+                                                badge = {
+                                                    Badge { Text(filteredAlerts.size.toString()) }
+                                                }
+                                            ) {
+                                                Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
                                             }
-                                        ) {
+                                        } else {
                                             Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
                                         }
-                                    } else {
-                                        Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
-                                    }
-                                },
-                                label = { Text("Weather") },
-                                colors = navColors
-                            )
-                            NavigationBarItem(
-                                selected = currentRoute == "Search",
-                                onClick = { currentRoute = "Search" },
-                                icon = { Icon(Icons.Rounded.Search, "Search", Modifier.size(24.dp)) },
-                                label = { Text("Search") },
-                                colors = navColors
-                            )
-                            NavigationBarItem(
-                                selected = currentRoute == "Favorites",
-                                onClick = { currentRoute = "Favorites" },
-                                icon = { Icon(Icons.Rounded.Favorite, "Favorites", Modifier.size(24.dp)) },
-                                label = { Text("Favorites") },
-                                colors = navColors
-                            )
-                            NavigationBarItem(
-                                selected = currentRoute == "Map",
-                                onClick = { currentRoute = "Map" },
-                                icon = { Icon(Icons.Rounded.Map, "Map", Modifier.size(24.dp)) },
-                                label = { Text("Map") },
-                                colors = navColors
-                            )
+                                    },
+                                    label = {
+                                        Text(
+                                            "Weather",
+                                            fontWeight = if (primary == com.vayu.weather.presentation.navigation.Routes.Weather) FontWeight.SemiBold else FontWeight.Medium
+                                        )
+                                    },
+                                    colors = navColors
+                                )
+                                NavigationBarItem(
+                                    selected = primary == com.vayu.weather.presentation.navigation.Routes.Search,
+                                    onClick = { nav.navigate(com.vayu.weather.presentation.navigation.Routes.Search) },
+                                    icon = { Icon(Icons.Rounded.Search, "Search", Modifier.size(24.dp)) },
+                                    label = {
+                                        Text(
+                                            "Search",
+                                            fontWeight = if (primary == com.vayu.weather.presentation.navigation.Routes.Search) FontWeight.SemiBold else FontWeight.Medium
+                                        )
+                                    },
+                                    colors = navColors
+                                )
+                                NavigationBarItem(
+                                    selected = primary == com.vayu.weather.presentation.navigation.Routes.Favorites,
+                                    onClick = { nav.navigate(com.vayu.weather.presentation.navigation.Routes.Favorites) },
+                                    icon = { Icon(Icons.Rounded.Favorite, "Favorites", Modifier.size(24.dp)) },
+                                    label = {
+                                        Text(
+                                            "Favorites",
+                                            fontWeight = if (primary == com.vayu.weather.presentation.navigation.Routes.Favorites) FontWeight.SemiBold else FontWeight.Medium
+                                        )
+                                    },
+                                    colors = navColors
+                                )
+                                NavigationBarItem(
+                                    selected = primary == com.vayu.weather.presentation.navigation.Routes.Map,
+                                    onClick = { nav.navigate(com.vayu.weather.presentation.navigation.Routes.Map) },
+                                    icon = { Icon(Icons.Rounded.Map, "Map", Modifier.size(24.dp)) },
+                                    label = {
+                                        Text(
+                                            "Map",
+                                            fontWeight = if (primary == com.vayu.weather.presentation.navigation.Routes.Map) FontWeight.SemiBold else FontWeight.Medium
+                                        )
+                                    },
+                                    colors = navColors
+                                )
+                            }
                         }
                     }
                 ) { padding ->
                     Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-                        when (currentRoute) {
-                            "Search" -> {
+                        when {
+                            nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Compare -> {
+                                com.vayu.weather.presentation.compare.SkyCastCompareScreen(
+                                    selected = compareViewModel.selected,
+                                    maxCities = com.vayu.weather.presentation.compare.CompareViewModel.MAX_CITIES,
+                                    onAddCity = { nav.replacePrimary(com.vayu.weather.presentation.navigation.Routes.Search) },
+                                    onRemoveCity = compareViewModel::remove,
+                                    onCityTapped = { city ->
+                                        weatherViewModel.loadWeatherForCity(city.latitude, city.longitude, city.name)
+                                    },
+                                    onBack = { nav.popBackStack() },
+                                    isCelsius = settingsState.temperatureUnit == com.vayu.weather.presentation.weather.TemperatureUnit.CELSIUS
+                                )
+                            }
+                            nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Travel -> {
+                                com.vayu.weather.presentation.travel.SkyCastTravelScreen(
+                                    state = travelViewModel.state,
+                                    onSetDate = travelViewModel::setDate,
+                                    onPickDestination = { nav.popBackStack() },
+                                    onRefresh = travelViewModel::refresh,
+                                    isCelsius = settingsState.temperatureUnit == com.vayu.weather.presentation.weather.TemperatureUnit.CELSIUS,
+                                    onBack = { nav.popBackStack() }
+                                )
+                            }
+                            nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Search -> {
                                 SearchScreen(
                                     state = searchViewModel.state,
                                     onQueryChange = searchViewModel::onQueryChange,
@@ -287,7 +351,7 @@ fun VayuApp() {
                                         weatherViewModel.loadWeatherForCity(
                                             city.latitude, city.longitude, city.name
                                         )
-                                        currentRoute = "Weather"
+                                        nav.replacePrimary(com.vayu.weather.presentation.navigation.Routes.Weather)
                                     },
                                     onToggleFavorite = { city ->
                                         favoritesViewModel.toggleFavorite(city)
@@ -295,46 +359,58 @@ fun VayuApp() {
                                     isFavorite = { cityId ->
                                         favoritesViewModel.state.favorites.any { it.id == cityId }
                                     },
-                                    onClearRecentSearches = searchViewModel::clearRecentSearches
+                                    onClearRecentSearches = searchViewModel::clearRecentSearches,
+                                    onOpenTravel = {
+                                        val act = activity
+                                        if (act != null) {
+                                            com.vayu.weather.presentation.ads.AdManager.showInterstitial(act) {
+                                                nav.navigate(com.vayu.weather.presentation.navigation.Routes.Travel)
+                                            }
+                                        } else {
+                                            nav.navigate(com.vayu.weather.presentation.navigation.Routes.Travel)
+                                        }
+                                    }
                                 )
                             }
-                            "Favorites" -> {
-                                FavoritesScreen(
-                                    state = favoritesViewModel.state,
+                            nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Favorites -> {
+                                com.vayu.weather.presentation.favorites.SkyCastFavoritesScreen(
+                                    favorites = favoritesWithWeatherViewModel.favorites,
                                     onCitySelected = { city ->
                                         weatherViewModel.loadWeatherForCity(
                                             city.latitude, city.longitude, city.name
                                         )
-                                        currentRoute = "Weather"
+                                        nav.replacePrimary(com.vayu.weather.presentation.navigation.Routes.Weather)
                                     },
-                                    onRemoveFavorite = favoritesViewModel::removeFavorite,
-                                    onReorder = favoritesViewModel::reorderFavorites
+                                    onRemoveFavorite = favoritesWithWeatherViewModel::removeFavorite,
+                                    onBrowseCities = { nav.navigate(com.vayu.weather.presentation.navigation.Routes.Search) },
+                                    onCompare = {
+                                        val act = activity
+                                        if (act != null) {
+                                            com.vayu.weather.presentation.ads.AdManager.showInterstitial(act) {
+                                                nav.navigate(com.vayu.weather.presentation.navigation.Routes.Compare)
+                                            }
+                                        } else {
+                                            nav.navigate(com.vayu.weather.presentation.navigation.Routes.Compare)
+                                        }
+                                    },
+                                    isCelsius = settingsState.temperatureUnit == com.vayu.weather.presentation.weather.TemperatureUnit.CELSIUS
                                 )
                             }
-                            "Map" -> {
+                            nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Map -> {
                                 WeatherMapScreen(
                                     locationTracker = weatherViewModel.locationTracker
                                 )
                             }
                             else -> {
-                                WeatherDashboard(
+                                var openMetric by remember { mutableStateOf<String?>(null) }
+                                var isDetailedForecastUnlocked by remember { mutableStateOf(false) }
+                                com.vayu.weather.presentation.weather.SkyCastHomeScreen(
                                     state = weatherViewModel.state,
                                     settings = settingsState,
-                                    onRetry = { weatherViewModel.loadWeatherInfo() },
-                                    onRefresh = { weatherViewModel.refreshWeatherInfo() },
-                                    onToggleUnit = settingsViewModel::toggleTemperatureUnit,
+                                    cityName = weatherViewModel.currentCityName,
+                                    regionName = weatherViewModel.state.regionName,
                                     onOpenSettings = { showSettings = true },
                                     onOpenAlerts = { showAlerts = true },
-                                    onOpenDetail = {
-                                        val act = activity
-                                        if (act != null) {
-                                            com.vayu.weather.presentation.ads.AdManager.showInterstitial(act) {
-                                                showDetail = true
-                                            }
-                                        } else {
-                                            showDetail = true
-                                        }
-                                    },
                                     onOpenHistory = { showHistory = true },
                                     onShare = {
                                         val weatherInfo = weatherViewModel.state.weatherInfo
@@ -351,7 +427,7 @@ fun VayuApp() {
                                                     try {
                                                         bitmap = WeatherCardRenderer.generateWeatherCardBitmap(
                                                             context = context,
-                                                            cityName = weatherViewModel.currentCityName ?: context.getString(R.string.default_city_name),
+                                                            cityName = weatherViewModel.currentCityName ?: shareDefaultCity,
                                                             weatherInfo = weatherInfo,
                                                             isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS
                                                         )
@@ -377,10 +453,10 @@ fun VayuApp() {
                                                             type = "image/png"
                                                             putExtra(Intent.EXTRA_STREAM, imageUri)
                                                             putExtra(Intent.EXTRA_TEXT, shareText)
-                                                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                                                            putExtra(Intent.EXTRA_SUBJECT, shareSubject)
                                                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                                         }
-                                                        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
+                                                        context.startActivity(Intent.createChooser(shareIntent, shareChooserTitle))
                                                     } else {
                                                         throw IllegalStateException("No share image")
                                                     }
@@ -388,18 +464,55 @@ fun VayuApp() {
                                                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                                         type = "text/plain"
                                                         putExtra(Intent.EXTRA_TEXT, shareText)
-                                                        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                                                        putExtra(Intent.EXTRA_SUBJECT, shareSubject)
                                                     }
-                                                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_weather_title)))
+                                                    context.startActivity(Intent.createChooser(shareIntent, shareChooserTitle))
                                                 }
                                             }
                                         }
                                     },
-                                    onDismissRefreshError = { weatherViewModel.clearRefreshError() },
-                                    cityName = weatherViewModel.currentCityName,
-                                    latitude = weatherViewModel.currentLat ?: 0.0,
-                                    longitude = weatherViewModel.currentLon ?: 0.0
+                                    onRefresh = { weatherViewModel.refreshWeatherInfo() },
+                                    onOpenDetail = {
+                                        val act = activity
+                                        if (act != null) {
+                                            com.vayu.weather.presentation.ads.AdManager.showInterstitial(act) {
+                                                showDetail = true
+                                            }
+                                        } else {
+                                            showDetail = true
+                                        }
+                                    },
+                                    onToggleUnit = settingsViewModel::toggleTemperatureUnit,
+                                    onToggleTheme = {
+                                        val currentMode = settingsState.themeMode
+                                        val nextMode = when (currentMode) {
+                                            ThemeMode.SYSTEM -> ThemeMode.LIGHT
+                                            ThemeMode.LIGHT -> ThemeMode.DARK
+                                            else -> ThemeMode.SYSTEM
+                                        }
+                                        settingsViewModel.setThemeMode(nextMode)
+                                    },
+                                    themeMode = settingsState.themeMode,
+                                    onOpenMetricDetail = { key -> openMetric = key },
+                                    isDetailedForecastUnlocked = isDetailedForecastUnlocked,
+                                    onWatchAdForDetails = {
+                                        val act = activity
+                                        if (act != null) {
+                                            com.vayu.weather.presentation.ads.AdManager.showRewardedAd(act, onRewardGranted = {
+                                                isDetailedForecastUnlocked = true
+                                            }, onAdDismissed = {})
+                                        }
+                                    }
                                 )
+
+                                if (openMetric != null && weatherViewModel.state.weatherInfo != null) {
+                                    com.vayu.weather.presentation.components.skycast.SkyCastMetricDetailSheet(
+                                        metric = openMetric,
+                                        info = weatherViewModel.state.weatherInfo!!,
+                                        isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS,
+                                        onDismiss = { openMetric = null }
+                                    )
+                                }
                             }
                         }
                     }
