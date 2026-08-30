@@ -204,40 +204,59 @@ fun SkyCastSunMoonCard(
                         val r = size.width / 2.2f
                         val illum = phase.illuminationPct / 100.0
 
+                        // Calculate phase angle from illumination fraction
+                        // illum = (1 - cos(2πφ)) / 2, so φ = acos(1 - 2*illum) / (2π)
+                        val phaseAngle = if (illum >= 0 && illum <= 1) {
+                            Math.acos(1.0 - 2.0 * illum) / (2.0 * Math.PI)
+                        } else {
+                            0.0
+                        }
+
+                        // Determine waxing vs waning
+                        val isWaxing = phaseAngle < 0.5
+
                         if (illum < 0.01) {
+                            // New Moon — fully dark
                             drawCircle(
                                 color = Color(0xFF1A1A2E),
                                 radius = r,
                                 center = Offset(cx, cy)
                             )
                         } else if (illum > 0.99) {
+                            // Full Moon — no shadow
                             drawCircle(
                                 color = Color(0xFFF5F5DC),
                                 radius = r,
                                 center = Offset(cx, cy)
                             )
                         } else {
-                            val sweep = 360f * illum.toFloat()
-                            val path = android.graphics.Path().apply {
-                                addCircle(cx, cy, r, android.graphics.Path.Direction.CW)
-                                addOval(
-                                    android.graphics.RectF(cx - r, cy - r, cx + r, cy + r),
-                                    android.graphics.Path.Direction.CW
-                                )
-                            }
+                            // Terminator geometry — curved line separating lit and dark portions
+                            // The terminator width varies: 0 at full/new moon, full radius at quarters
+                            val terminatorWidth = (1.0 - Math.abs(2.0 * phaseAngle - 1.0)) * r
+
+                            // Draw the illuminated portion as a full circle
                             drawCircle(
                                 color = Color(0xFFF5F5DC),
                                 radius = r,
                                 center = Offset(cx, cy)
                             )
-                            val shadowSweep = 360f * (1f - illum.toFloat())
-                            drawArc(
+                            // Draw the terminator curve
+                            // For waxing (φ < 0.5): dark on right, curve from left edge
+                            // For waning (φ ≥ 0.5): dark on left, curve from right edge
+                            val startX = if (isWaxing) cx - r else cx + r
+                            val endX = if (isWaxing) cx + r else cx - r
+                            val controlX = cx // control point at center for symmetric curve
+
+                            val shadowPath = androidx.compose.ui.graphics.Path().apply {
+                                // Move to start point on the edge
+                                moveTo(startX, cy)
+                                // Quadratic curve to the other edge, passing through center
+                                quadTo(controlX, cy, endX, cy)
+                            }
+                            drawPath(
+                                path = shadowPath,
                                 color = Color(0xFF1A1A2E),
-                                startAngle = 270f - sweep / 2f,
-                                sweepAngle = shadowSweep,
-                                useCenter = true,
-                                topLeft = Offset(cx - r, cy - r),
-                                size = androidx.compose.ui.geometry.Size(r * 2, r * 2)
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = r / 4f)
                             )
                         }
                     }

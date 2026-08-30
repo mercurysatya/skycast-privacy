@@ -1,9 +1,13 @@
 package com.vayu.weather.presentation
 
 import android.app.Activity
+import android.content.Context
+import android.content.pm.PackageManager
+import android.Manifest
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.unit.dp
@@ -12,7 +16,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -107,17 +111,6 @@ fun VayuApp() {
     LaunchedEffect(Unit) {
         Log.d("VayuApp", "LaunchedEffect: Loading weather and ad")
         SplashGate.isReady = true
-        weatherViewModel.loadWeatherInfo()
-        val act = activity
-        if (act != null) {
-            ConsentManager.gatherConsent(act) {
-                if (ConsentManager.canRequestAds(act)) {
-                    AdManager.initializeMobileAds(act)
-                    AdManager.loadInterstitial(act)
-                    AdManager.loadRewardedAd(act)
-                }
-            }
-        }
         onboardingChecked = true
         showOnboarding = !settingsViewModel.isOnboardingComplete()
     }
