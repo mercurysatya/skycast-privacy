@@ -1,5 +1,9 @@
 package com.vayu.weather.presentation.weather
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -48,11 +52,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.vayu.weather.domain.model.AirQuality
 import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.presentation.components.skycast.SkyCastAqiCard
@@ -123,13 +129,34 @@ fun SkyCastHomeScreen(
 ) {
     val info = state.weatherInfo
     val isCelsius = settings.temperatureUnit == TemperatureUnit.CELSIUS
+    val context = LocalContext.current
+    val isLocationError = state.error?.contains("Location", ignoreCase = true) == true
+    val missingPermission = isLocationError && ContextCompat.checkSelfPermission(
+        context, Manifest.permission.ACCESS_FINE_LOCATION
+    ) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+        context, Manifest.permission.ACCESS_COARSE_LOCATION
+    ) != PackageManager.PERMISSION_GRANTED
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions.values.any { it }) {
+            onRefresh()
+        }
+    }
 
     when {
         state.isLoading && info == null -> SkyCastLoadingState(modifier)
         info == null -> SkyCastErrorState(
             message = state.error ?: "Unable to update weather. Tap to retry.",
             onRetry = onRefresh,
-            modifier = modifier
+            modifier = modifier,
+            showGrantPermission = missingPermission,
+            onGrantPermission = {
+                permissionLauncher.launch(arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ))
+            }
         )
         else -> SkyCastHomeContent(
             state = state,
