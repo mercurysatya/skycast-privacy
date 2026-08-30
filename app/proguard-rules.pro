@@ -86,6 +86,14 @@
 -keep class org.maplibre.compose.** { *; }
 -dontwarn org.maplibre.android.**
 
+# JavaCPP (MapLibre transitive dependency) — references Maven plugin classes
+# that are only available in a full Maven build, not in Android.
+-dontwarn org.bytedeco.javacpp.**
+-dontwarn org.apache.maven.plugin.AbstractMojo
+-dontwarn org.apache.maven.plugin.logging.Log
+-dontwarn org.apache.maven.plugins.annotations.Mojo
+-dontwarn org.apache.maven.**
+
 # Coroutines
 -keepclassmembers class kotlinx.coroutines.** { *; }
 -dontwarn kotlinx.coroutines.flow.**

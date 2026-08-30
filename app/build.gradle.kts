@@ -8,18 +8,25 @@ plugins {
     id("com.google.firebase.crashlytics")
 }
 
-// AdMob IDs come from gradle.properties so release builds can use real production IDs.
-// The default is Google's official test app ID (`ca-app-pub-3940256099942544`) which
-// is allowed in debug builds but must be overridden for release. If a release build
-// runs with the test ID, Gradle will fail with a clear configuration error.
-val admobAppId = (project.findProperty("ADMOB_APP_ID") as? String)
-    ?: "ca-app-pub-3940256099942544~3347511713"
-val admobBannerId = (project.findProperty("ADMOB_BANNER_ID") as? String)
-    ?: "ca-app-pub-3940256099942544/6300978111"
-val admobInterstitialId = (project.findProperty("ADMOB_INTERSTITIAL_ID") as? String)
-    ?: "ca-app-pub-3940256099942544/1033173712"
-val admobRewardedId = (project.findProperty("ADMOB_REWARDED_ID") as? String)
-    ?: "ca-app-pub-3940256099942544/5224354917"
+// AdMob IDs are resolved in order: gradle.properties → local.properties → Google test defaults.
+// Release builds must have production IDs in either file; Gradle will fail with a clear
+// error if a test ID is used in a release build.
+val localProps = rootProject.file("local.properties").let { f ->
+    if (f.exists()) f.readLines().associate { line ->
+        val idx = line.indexOf('=')
+        if (idx > 0) line.substring(0, idx).trim() to line.substring(idx + 1).trim()
+        else "" to ""
+    } else emptyMap()
+}
+fun resolveAdMob(key: String, testDefault: String): String =
+    (project.findProperty(key) as? String)
+        ?: localProps[key]
+        ?: testDefault
+
+val admobAppId = resolveAdMob("ADMOB_APP_ID", "ca-app-pub-3940256099942544~3347511713")
+val admobBannerId = resolveAdMob("ADMOB_BANNER_ID", "ca-app-pub-3940256099942544/6300978111")
+val admobInterstitialId = resolveAdMob("ADMOB_INTERSTITIAL_ID", "ca-app-pub-3940256099942544/1033173712")
+val admobRewardedId = resolveAdMob("ADMOB_REWARDED_ID", "ca-app-pub-3940256099942544/5224354917")
 
 val isTestAdmobId = admobAppId.startsWith("ca-app-pub-3940256099942544")
 
