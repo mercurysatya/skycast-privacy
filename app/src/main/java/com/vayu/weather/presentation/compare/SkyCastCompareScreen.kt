@@ -180,7 +180,7 @@ fun SkyCastCompareScreen(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 rows.forEach { (label, fn) ->
-                    item(key = "row_$label") {
+                    item(key = "row_$label", contentType = "compareRow") {
                         CompareRow(label = label, selected = selected, fn = fn)
                     }
                 }

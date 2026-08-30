@@ -132,7 +132,7 @@ fun SearchScreen(
             }
         } else if (state.searchQuery.isNotBlank() && state.searchResults.isNotEmpty()) {
             LazyColumn(modifier = Modifier.weight(1f)) {
-                items(state.searchResults) { city ->
+                items(state.searchResults, key = { it.id }, contentType = { "searchResult" }) { city ->
                     CityItem(
                         city = city,
                         onClick = { onCitySelected(city) },

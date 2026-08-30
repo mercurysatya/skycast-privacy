@@ -5,12 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.vayu.weather.data.local.SettingsManager
 import com.vayu.weather.domain.use_case.ClearWeatherCacheUseCase
 import com.vayu.weather.domain.use_case.DeleteAllLocalDataUseCase
-import com.vayu.weather.presentation.weather.AlertSeverity
 import com.vayu.weather.presentation.weather.SettingsState
 import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.ThemeMode
 import com.vayu.weather.presentation.weather.WidgetSize
 import com.vayu.weather.presentation.weather.WindUnit
+import com.vayu.weather.presentation.weather.AlertSeverity
 import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -40,53 +40,7 @@ class SettingsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val severity = try {
-                AlertSeverity.valueOf(settingsManager.getSeverityFilter().uppercase())
-            } catch (_: Exception) { AlertSeverity.ALL }
-            val widgetSz = try {
-                WidgetSize.valueOf(settingsManager.getWidgetSize().uppercase())
-            } catch (_: Exception) { WidgetSize.MEDIUM }
-
-            _state.value = SettingsState(
-                temperatureUnit = settingsManager.getTemperatureUnit(),
-                windUnit = settingsManager.getWindUnit(),
-                themeMode = settingsManager.getThemeMode(),
-                useDynamicColor = settingsManager.getUseDynamicColor(),
-                notificationsEnabled = settingsManager.getNotificationsEnabled(),
-                rainAlertThreshold = settingsManager.getRainAlertThreshold(),
-                checkIntervalHours = settingsManager.getCheckIntervalHours(),
-                severityFilter = severity,
-                widgetSize = widgetSz,
-                windAlertThreshold = settingsManager.getWindAlertThreshold(),
-                enableWindAlerts = settingsManager.getEnableWindAlerts(),
-                uvAlertThreshold = settingsManager.getUvAlertThreshold(),
-                enableUvAlerts = settingsManager.getEnableUvAlerts(),
-                heatAlertThreshold = settingsManager.getHeatAlertThreshold(),
-                enableHeatAlerts = settingsManager.getEnableHeatAlerts(),
-                coldAlertThreshold = settingsManager.getColdAlertThreshold(),
-                enableColdAlerts = settingsManager.getEnableColdAlerts(),
-                use24hClock = settingsManager.getUse24hClock(),
-                pressureUnit = settingsManager.getPressureUnit(),
-                precipitationUnit = settingsManager.getPrecipitationUnit(),
-                showHourlyForecast = settingsManager.getShowHourlyForecast(),
-                showSunMoon = settingsManager.getShowSunMoon(),
-                showAirQuality = settingsManager.getShowAirQuality(),
-                showWeatherDetails = settingsManager.getShowWeatherDetails(),
-                quietHoursEnabled = settingsManager.getQuietHoursEnabled(),
-                quietHoursStartHour = settingsManager.getQuietHoursStartHour(),
-                quietHoursStartMinute = settingsManager.getQuietHoursStartMinute(),
-                quietHoursEndHour = settingsManager.getQuietHoursEndHour(),
-                quietHoursEndMinute = settingsManager.getQuietHoursEndMinute(),
-                notificationTime1Enabled = settingsManager.getNotificationTime1Enabled(),
-                notificationTime1Hour = settingsManager.getNotificationTime1Hour(),
-                notificationTime1Minute = settingsManager.getNotificationTime1Minute(),
-                notificationTime2Enabled = settingsManager.getNotificationTime2Enabled(),
-                notificationTime2Hour = settingsManager.getNotificationTime2Hour(),
-                notificationTime2Minute = settingsManager.getNotificationTime2Minute(),
-                notificationTime3Enabled = settingsManager.getNotificationTime3Enabled(),
-                notificationTime3Hour = settingsManager.getNotificationTime3Hour(),
-                notificationTime3Minute = settingsManager.getNotificationTime3Minute()
-            )
+            _state.value = settingsManager.loadAllPreferences()
         }
     }
 

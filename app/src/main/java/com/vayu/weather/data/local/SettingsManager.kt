@@ -9,8 +9,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.vayu.weather.presentation.weather.AlertSeverity
+import com.vayu.weather.presentation.weather.SettingsState
 import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.ThemeMode
+import com.vayu.weather.presentation.weather.WidgetSize
 import com.vayu.weather.presentation.weather.WindUnit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +29,51 @@ class SettingsManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val dataStore = context.dataStore
+
+    /** Single-shot load of all preferences — reads DataStore once instead of 37 separate .first() calls. */
+    suspend fun loadAllPreferences(): SettingsState {
+        val prefs = dataStore.data.first()
+        return SettingsState(
+            temperatureUnit = if (prefs[Keys.IS_FAHRENHEIT] == true) TemperatureUnit.FAHRENHEIT else TemperatureUnit.CELSIUS,
+            windUnit = try { WindUnit.valueOf(prefs[Keys.WIND_UNIT] ?: WindUnit.KPH.name) } catch (_: Exception) { WindUnit.KPH },
+            themeMode = try { ThemeMode.valueOf(prefs[Keys.THEME_MODE] ?: ThemeMode.SYSTEM.name) } catch (_: Exception) { ThemeMode.SYSTEM },
+            useDynamicColor = prefs[Keys.USE_DYNAMIC_COLOR] ?: true,
+            notificationsEnabled = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true,
+            rainAlertThreshold = prefs[Keys.RAIN_ALERT_THRESHOLD] ?: 50,
+            checkIntervalHours = prefs[Keys.CHECK_INTERVAL_HOURS] ?: 3,
+            severityFilter = try { AlertSeverity.valueOf((prefs[Keys.SEVERITY_FILTER] ?: "all").uppercase()) } catch (_: Exception) { AlertSeverity.ALL },
+            widgetSize = try { WidgetSize.valueOf((prefs[Keys.WIDGET_SIZE] ?: "MEDIUM").uppercase()) } catch (_: Exception) { WidgetSize.MEDIUM },
+            windAlertThreshold = prefs[Keys.WIND_ALERT_THRESHOLD] ?: 60,
+            enableWindAlerts = prefs[Keys.ENABLE_WIND_ALERTS] ?: true,
+            uvAlertThreshold = prefs[Keys.UV_ALERT_THRESHOLD] ?: 8,
+            enableUvAlerts = prefs[Keys.ENABLE_UV_ALERTS] ?: true,
+            heatAlertThreshold = prefs[Keys.HEAT_ALERT_THRESHOLD] ?: 40,
+            enableHeatAlerts = prefs[Keys.ENABLE_HEAT_ALERTS] ?: true,
+            coldAlertThreshold = prefs[Keys.COLD_ALERT_THRESHOLD] ?: 0,
+            enableColdAlerts = prefs[Keys.ENABLE_COLD_ALERTS] ?: true,
+            use24hClock = prefs[Keys.USE_24H_CLOCK] ?: true,
+            pressureUnit = prefs[Keys.PRESSURE_UNIT] ?: "hPa",
+            precipitationUnit = prefs[Keys.PRECIPITATION_UNIT] ?: "mm",
+            showHourlyForecast = prefs[Keys.SHOW_HOURLY_FORECAST] ?: true,
+            showSunMoon = prefs[Keys.SHOW_SUN_MOON] ?: true,
+            showAirQuality = prefs[Keys.SHOW_AIR_QUALITY] ?: true,
+            showWeatherDetails = prefs[Keys.SHOW_WEATHER_DETAILS] ?: true,
+            quietHoursEnabled = prefs[Keys.QUIET_HOURS_ENABLED] ?: false,
+            quietHoursStartHour = prefs[Keys.QUIET_HOURS_START_HOUR] ?: 22,
+            quietHoursStartMinute = prefs[Keys.QUIET_HOURS_START_MINUTE] ?: 0,
+            quietHoursEndHour = prefs[Keys.QUIET_HOURS_END_HOUR] ?: 7,
+            quietHoursEndMinute = prefs[Keys.QUIET_HOURS_END_MINUTE] ?: 0,
+            notificationTime1Enabled = prefs[Keys.NOTIFICATION_TIME_1_ENABLED] ?: true,
+            notificationTime1Hour = prefs[Keys.NOTIFICATION_TIME_1_HOUR] ?: 7,
+            notificationTime1Minute = prefs[Keys.NOTIFICATION_TIME_1_MINUTE] ?: 0,
+            notificationTime2Enabled = prefs[Keys.NOTIFICATION_TIME_2_ENABLED] ?: true,
+            notificationTime2Hour = prefs[Keys.NOTIFICATION_TIME_2_HOUR] ?: 12,
+            notificationTime2Minute = prefs[Keys.NOTIFICATION_TIME_2_MINUTE] ?: 0,
+            notificationTime3Enabled = prefs[Keys.NOTIFICATION_TIME_3_ENABLED] ?: true,
+            notificationTime3Hour = prefs[Keys.NOTIFICATION_TIME_3_HOUR] ?: 18,
+            notificationTime3Minute = prefs[Keys.NOTIFICATION_TIME_3_MINUTE] ?: 0
+        )
+    }
 
 private object Keys {
     val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 /**
  * Wraps content with a staggered fade + slide-up entrance animation.
@@ -46,7 +47,7 @@ fun StaggeredEntry(
     LaunchedEffect(delayIndex) {
         if (!reduceMotion) {
             // Small delay so the first frame renders
-            try { Thread.sleep(16) } catch (_: InterruptedException) {}
+            delay(16)
         }
         visible = true
     }

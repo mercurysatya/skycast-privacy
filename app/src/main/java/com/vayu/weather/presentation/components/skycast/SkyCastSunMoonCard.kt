@@ -42,6 +42,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SkyCastSunMoonCard(
     daily: DailyWeather?,
+    currentTimeInLocation: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (daily == null || daily.sunrise == null || daily.sunset == null) {
@@ -53,7 +54,14 @@ fun SkyCastSunMoonCard(
 
     val sunrise = parseTime(daily.sunrise)
     val sunset = parseTime(daily.sunset)
-    val now = LocalTime.now()
+    // Use the API's current-time string (in the weather location's timezone)
+    // instead of LocalTime.now() (device timezone) to avoid incorrect sun
+    // position when the user is viewing a city in a different timezone.
+    val now = if (currentTimeInLocation != null) {
+        parseTime(currentTimeInLocation)
+    } else {
+        LocalTime.now()
+    }
     val dayMinutes = ((sunset.toSecondOfDay() - sunrise.toSecondOfDay()) / 60).coerceAtLeast(1)
     val elapsed = ((now.toSecondOfDay() - sunrise.toSecondOfDay()) / 60).coerceAtLeast(0)
     val progress = (elapsed.toFloat() / dayMinutes).coerceIn(0f, 1f)
@@ -137,13 +145,18 @@ fun SkyCastSunMoonCard(
                     )
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    val elapsedMin = (dayMinutes - remainingMin).coerceAtLeast(0)
                     Text(
-                        text = if (progress < 0.5f) "Until sunset" else "After sunrise",
+                        text = if (progress < 0.5f) "Until sunset" else "Since sunrise",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White.copy(alpha = 0.5f)
                     )
                     Text(
-                        text = "${remainingMin / 60}h ${remainingMin % 60}m",
+                        text = if (progress < 0.5f) {
+                            "${remainingMin / 60}h ${remainingMin % 60}m"
+                        } else {
+                            "${elapsedMin / 60}h ${elapsedMin % 60}m"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold
@@ -270,21 +283,15 @@ private data class MoonInfo(
 )
 
 private fun moonPhase(date: LocalDate): MoonInfo {
-    // Conway/Schaefer algorithm — light fraction 0..1
-    val year = date.year
-    val month = date.monthValue
-    val day = date.dayOfMonth
-    val r = year % 100
-    val adjusted = when {
-        month < 3 -> { val y = year - 1; val m = month + 12; r to m }
-        else -> r to month
-    }
-    val (y, m) = adjusted
-    val c = 365.25 * y
-    val e = 30.6 * m
-    val jd = c + e + day - 694039.09
-    val normalized = (jd / 29.5305882)
-    val phase = normalized - kotlin.math.floor(normalized)
+    // Known new-moon reference: Jan 6 2000 18:14 UTC
+    // Synodic month: 29.5305882 days
+    val refNewMoon = LocalDate.of(2000, 1, 6)
+    val daysSinceRef = java.time.temporal.ChronoUnit.DAYS.between(refNewMoon, date).toDouble()
+    val age = ((daysSinceRef % 29.5305882) + 29.5305882) % 29.5305882
+    val phase = age / 29.5305882
+
+    val illum = (1.0 - kotlin.math.cos(2 * Math.PI * phase)) / 2.0 * 100.0
+
     val (name, offset) = when {
         phase < 0.0625 -> "New moon" to 0.0f
         phase < 0.1875 -> "Waxing crescent" to 0.75f
@@ -296,6 +303,5 @@ private fun moonPhase(date: LocalDate): MoonInfo {
         phase < 0.9375 -> "Waning crescent" to 0.75f
         else -> "New moon" to 0.0f
     }
-    val illum = (1 - kotlin.math.cos(2 * Math.PI * phase)) / 2 * 100
     return MoonInfo(name, illum, offset)
 }

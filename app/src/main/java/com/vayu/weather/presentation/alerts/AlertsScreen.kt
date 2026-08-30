@@ -272,7 +272,7 @@ fun AlertsScreen(
                         )
                     }
 
-                    items(alerts, key = { it.id }) { alert ->
+                    items(alerts, key = { it.id }, contentType = { "alertCard" }) { alert ->
                         AlertCard(
                             alert = alert,
                             isExpanded = state.expandedAlertId == alert.id,

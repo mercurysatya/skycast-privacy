@@ -30,7 +30,15 @@ object WeatherSummaryEngine {
         val sentences = mutableListOf<Sentence>()
         val current = info.current
         val today = info.daily.firstOrNull()
-        val now = LocalDateTime.now()
+        // Use the API's current time (in the weather location's timezone)
+        // instead of LocalDateTime.now() (device timezone) so time-of-day
+        // descriptions match the weather location.
+        val locationTime = try {
+            LocalDateTime.parse(current.time, DateTimeFormatter.ISO_DATE_TIME)
+        } catch (_: Exception) {
+            LocalDateTime.now()
+        }
+        val now = locationTime
         // Use the data's isDay flag when available so the summary matches the
         // conditions, not the device wall clock (which is important for
         // backfill / cache scenarios and for predictability in tests).
@@ -87,7 +95,7 @@ object WeatherSummaryEngine {
         }
 
         // Next 6-hour rain outlook.
-        val nextRainy = findNextRainyHour(info.hourly)
+        val nextRainy = findNextRainyHour(info.hourly, now)
         if (nextRainy != null && !isRainy) {
             val label = relativeMinutesLabel(nextRainy.minutesFromNow)
             sentences += Sentence(
@@ -138,8 +146,15 @@ object WeatherSummaryEngine {
         val isThunder = code in 95..99
         val isSnow = code in 71..86
 
+        // Use the API's current time (in the weather location's timezone)
+        val locationNow = try {
+            LocalDateTime.parse(current.time, DateTimeFormatter.ISO_DATE_TIME)
+        } catch (_: Exception) {
+            LocalDateTime.now()
+        }
+
         // Find next significant rain window (>= 40% probability)
-        val nextRain = findNextRainyHour(info.hourly)
+        val nextRain = findNextRainyHour(info.hourly, locationNow)
         val rainIn = nextRain?.let { relativeMinutesLabel(it.minutesFromNow) }
 
         val condition = localizedCondition(code, isDay)
@@ -154,7 +169,7 @@ object WeatherSummaryEngine {
             isThunder -> "Thunderstorms ongoing — stay indoors if you can."
             isRainy -> "Wet weather expected to continue."
             isSnow -> "Snow expected to continue."
-            rainIn != null -> "A $rainIn, expect rain (${nextRain!!.probability}% chance)."
+            rainIn != null && nextRain != null -> "A $rainIn, expect rain (${nextRain.probability}% chance)."
             else -> null
         }
         rainMention?.let { parts += it }
@@ -216,8 +231,7 @@ object WeatherSummaryEngine {
         val probability: Int
     )
 
-    private fun findNextRainyHour(hourly: List<HourlyWeather>): NextRain? {
-        val now = LocalDateTime.now()
+    private fun findNextRainyHour(hourly: List<HourlyWeather>, now: LocalDateTime = LocalDateTime.now()): NextRain? {
         hourly.sortedBy { it.time }.forEach { h ->
             val time = parseHourly(h.time) ?: return@forEach
             if (time.isBefore(now)) return@forEach

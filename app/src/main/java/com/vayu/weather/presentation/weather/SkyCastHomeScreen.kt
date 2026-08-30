@@ -134,6 +134,7 @@ fun SkyCastHomeScreen(
         else -> SkyCastHomeContent(
             state = state,
             isCelsius = isCelsius,
+            windUnit = settings.windUnit,
             cityName = cityName,
             regionName = regionName,
             onOpenSettings = onOpenSettings,
@@ -157,6 +158,7 @@ fun SkyCastHomeScreen(
 private fun SkyCastHomeContent(
     state: WeatherState,
     isCelsius: Boolean,
+    windUnit: com.vayu.weather.presentation.weather.WindUnit,
     cityName: String?,
     regionName: String?,
     onOpenSettings: () -> Unit,
@@ -335,13 +337,17 @@ private fun SkyCastHomeContent(
                 SkyCastWindCompass(
                     speedKph = info.current.windSpeed,
                     directionDeg = info.current.windDirection,
-                    gustsKph = info.current.windGusts
+                    gustsKph = info.current.windGusts,
+                    windUnit = windUnit
                 )
             }
 
             // ── Sun & moon ──
             item(key = "sun_moon") {
-                SkyCastSunMoonCard(daily = info.daily.firstOrNull())
+                SkyCastSunMoonCard(
+                    daily = info.daily.firstOrNull(),
+                    currentTimeInLocation = info.current.time
+                )
             }
         }
     }

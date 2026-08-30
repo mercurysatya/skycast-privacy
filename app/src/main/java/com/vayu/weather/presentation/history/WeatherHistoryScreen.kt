@@ -187,7 +187,7 @@ fun WeatherHistoryScreen(
                         )
                     }
 
-                    items(state.dailyData.reversed()) { day ->
+                    items(state.dailyData.reversed(), contentType = { "historyDay" }) { day ->
                         DailyHistoryRow(day)
                     }
 

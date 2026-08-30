@@ -107,9 +107,12 @@ fun SkyCastDailyForecast(
                         enter = expandVertically() + fadeIn(),
                         exit = shrinkVertically() + fadeOut()
                     ) {
+                        val filteredHourly = remember(day.date, hourly.size) {
+                            hourly.filter { it.time.startsWith(day.date) }
+                        }
                         DailyDetails(
                             day = day,
-                            hourly = hourly.filter { it.time.startsWith(day.date) },
+                            hourly = filteredHourly,
                             isCelsius = isCelsius
                         )
                     }

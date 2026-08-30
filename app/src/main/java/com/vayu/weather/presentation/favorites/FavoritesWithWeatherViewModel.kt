@@ -13,6 +13,7 @@ import com.vayu.weather.domain.use_case.RemoveFavoriteUseCase
 import com.vayu.weather.domain.use_case.ToggleFavoriteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -44,7 +45,7 @@ class FavoritesWithWeatherViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            getFavoritesUseCase().collectLatest { cities ->
+            getFavoritesUseCase().debounce(300L).collectLatest { cities ->
                 val snapshot = favorites.associateBy { it.city.id }
                 favorites = cities.map { city ->
                     snapshot[city.id]?.copy(city = city) ?: FavoriteWithWeather(city, null, isLoading = true)

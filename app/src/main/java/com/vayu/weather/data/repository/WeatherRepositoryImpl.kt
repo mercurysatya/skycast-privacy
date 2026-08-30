@@ -48,6 +48,9 @@ class WeatherRepositoryImpl @Inject constructor(
 
     companion object {
         private const val CACHE_TTL_MS = 30 * 60 * 1000L
+
+        /** In-memory cache for air quality: key = "lat,long", value = Pair(timestamp, AirQuality). */
+        private val aqiCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, AirQuality>>()
     }
 
     override suspend fun getWeatherData(lat: Double, long: Double): Result<WeatherInfo> {
@@ -106,12 +109,18 @@ class WeatherRepositoryImpl @Inject constructor(
 
     override suspend fun getAirQuality(lat: Double, long: Double): Result<AirQuality> {
         return try {
+            val cacheKey = "%.2f,%.2f".format(lat, long)
+            val cached = aqiCache[cacheKey]
+            if (cached != null && System.currentTimeMillis() - cached.first < CACHE_TTL_MS) {
+                return Result.success(cached.second)
+            }
             if (!isNetworkAvailable()) {
                 return Result.failure(Exception("No internet connection"))
             }
             val response = airQualityApi.getAirQuality(lat, long)
             val airQuality = response.current?.toAirQuality()
                 ?: return Result.failure(Exception("No air quality data available"))
+            aqiCache[cacheKey] = System.currentTimeMillis() to airQuality
             Result.success(airQuality)
         } catch (e: Exception) {
             if (e is CancellationException) throw e

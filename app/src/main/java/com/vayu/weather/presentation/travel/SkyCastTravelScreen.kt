@@ -131,11 +131,14 @@ fun SkyCastTravelScreen(
                 }
             }
             if (state.destination != null && state.travelDate != null && state.dailyForDate != null) {
+                val dest = state.destination!!
+                val date = state.travelDate!!
+                val day = state.dailyForDate!!
                 item {
                     TravelSummaryCard(
-                        destination = state.destination!!,
-                        date = state.travelDate!!,
-                        day = state.dailyForDate!!,
+                        destination = dest,
+                        date = date,
+                        day = day,
                         aqi = state.aqi,
                         isCelsius = isCelsius
                     )

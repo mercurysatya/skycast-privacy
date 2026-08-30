@@ -9,13 +9,17 @@ import com.vayu.weather.domain.model.City
 import com.vayu.weather.domain.use_case.GetFavoritesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -333,6 +337,8 @@ class MapViewModel @Inject constructor(
                     isDay = (current?.isDay ?: 1) == 1,
                     isLoading = false
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to fetch weather for tap", e)
                 _tappedWeather.value = MapWeatherInfo(lat, lon, 0.0, 0, null, null, null, true, error = "Weather unavailable")
@@ -346,7 +352,7 @@ class MapViewModel @Inject constructor(
 
     private fun loadFavoritePins() {
         viewModelScope.launch {
-            getFavoritesUseCase().first().forEach { city ->
+            getFavoritesUseCase().first().take(10).forEach { city ->
                 fetchPinWeather(city)
             }
         }
@@ -359,6 +365,8 @@ class MapViewModel @Inject constructor(
                 val current = weather.current
                 val pin = MapFavoritePin(city, current?.temperature, current?.weatherCode, (current?.isDay ?: 1) == 1)
                 _favoritePins.update { existing -> existing.filter { it.city.id != city.id } + pin }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to fetch pin weather for ${city.name}", e)
                 _favoritePins.update { existing -> existing.filter { it.city.id != city.id } + MapFavoritePin(city, null, null) }
@@ -407,26 +415,34 @@ class MapViewModel @Inject constructor(
         gridJob?.cancel()
         gridJob = viewModelScope.launch {
             try {
-                val lats = (-4..4).map { centerLat + it * (spanLat / 4) }
-                val lons = (-4..4).map { centerLon + it * (spanLon / 4) }
+                val lats = (-2..2).map { centerLat + it * (spanLat / 2) }
+                val lons = (-2..2).map { centerLon + it * (spanLon / 2) }
 
                 val tempPointsList = mutableListOf<TempGridPoint>()
                 val windPointsList = mutableListOf<WindPoint>()
 
-                for (lat in lats) {
-                    for (lon in lons) {
-                        try {
-                            val weather = openMeteoApi.getWeather(lat, lon)
-                            val current = weather.current
-                            if (current != null) {
-                                tempPointsList.add(TempGridPoint(lat, lon, current.temperature))
-                                windPointsList.add(WindPoint(
-                                    lat, lon,
-                                    current.windSpeed ?: 0.0,
-                                    current.windDirection ?: 0.0
-                                ))
+                coroutineScope {
+                    val jobs = lats.flatMap { lat ->
+                        lons.map { lon ->
+                            async(Dispatchers.IO) {
+                                try {
+                                    val weather = openMeteoApi.getWeather(lat, lon)
+                                    val current = weather.current
+                                    if (current != null) {
+                                        Pair(
+                                            TempGridPoint(lat, lon, current.temperature),
+                                            WindPoint(lat, lon, current.windSpeed ?: 0.0, current.windDirection ?: 0.0)
+                                        )
+                                    } else null
+                                } catch (_: Exception) { null }
                             }
-                        } catch (_: Exception) { }
+                        }
+                    }
+                    jobs.forEach { job ->
+                        job.await()?.let { (temp, wind) ->
+                            tempPointsList.add(temp)
+                            windPointsList.add(wind)
+                        }
                     }
                 }
 

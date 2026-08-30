@@ -130,7 +130,6 @@ import org.maplibre.compose.map.GestureOptions
 import org.maplibre.compose.map.MapOptions
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.util.ClickResult
-import org.maplibre.compose.map.OrnamentOptions
 import org.maplibre.compose.map.RenderOptions
 import org.maplibre.compose.sources.TileSetOptions
 import org.maplibre.compose.sources.rememberRasterSource
@@ -1204,16 +1203,16 @@ private suspend fun shareMapScreenshot(
 
             // Wait a frame for rendering to complete
             kotlinx.coroutines.delay(100)
-            // Create bitmap from root view
-            var bitmap: android.graphics.Bitmap? = null
-            try {
-                bitmap = android.graphics.Bitmap.createBitmap(
-                    rootView.width.coerceAtLeast(1),
-                    rootView.height.coerceAtLeast(1),
-                    android.graphics.Bitmap.Config.ARGB_8888
-                )
-                val canvas = android.graphics.Canvas(bitmap)
-                rootView.draw(canvas)
+                // Create bitmap from root view
+                var bitmap: android.graphics.Bitmap? = null
+                try {
+                    bitmap = android.graphics.Bitmap.createBitmap(
+                        rootView.width.coerceAtLeast(1),
+                        rootView.height.coerceAtLeast(1),
+                        android.graphics.Bitmap.Config.ARGB_8888
+                    )
+                    val canvas = android.graphics.Canvas(bitmap)
+                    withContext(Dispatchers.Main) { rootView.draw(canvas) }
 
                 // Add weather watermark overlay at bottom
                 val paint = android.graphics.Paint().apply {

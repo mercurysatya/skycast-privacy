@@ -21,7 +21,6 @@ import com.vayu.weather.presentation.ads.AdManager
 import com.vayu.weather.R
 import com.vayu.weather.presentation.alerts.AlertsScreen
 import com.vayu.weather.presentation.alerts.AlertsViewModel
-import com.vayu.weather.presentation.favorites.FavoritesScreen
 import com.vayu.weather.presentation.favorites.FavoritesViewModel
 import com.vayu.weather.presentation.map.WeatherMapScreen
 import com.vayu.weather.presentation.search.SearchScreen
@@ -69,12 +68,8 @@ fun VayuApp() {
     val weatherViewModel: WeatherViewModel = hiltViewModel()
     val searchViewModel: SearchViewModel = hiltViewModel()
     val favoritesViewModel: FavoritesViewModel = hiltViewModel()
-    val favoritesWithWeatherViewModel: com.vayu.weather.presentation.favorites.FavoritesWithWeatherViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
     val alertsViewModel: AlertsViewModel = hiltViewModel()
-    val historyViewModel: WeatherHistoryViewModel = hiltViewModel()
-    val compareViewModel: com.vayu.weather.presentation.compare.CompareViewModel = hiltViewModel()
-    val travelViewModel: com.vayu.weather.presentation.travel.TravelViewModel = hiltViewModel()
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -177,6 +172,7 @@ fun VayuApp() {
                     onBack = { showDetail = false }
                 )
             } else if (showHistory) {
+                val historyViewModel: WeatherHistoryViewModel = hiltViewModel()
                 WeatherHistoryScreen(
                     viewModel = historyViewModel,
                     onBack = { showHistory = false }
@@ -320,6 +316,7 @@ fun VayuApp() {
                     Box(modifier = Modifier.padding(padding).fillMaxSize()) {
                         when {
                             nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Compare -> {
+                                val compareViewModel: com.vayu.weather.presentation.compare.CompareViewModel = hiltViewModel()
                                 com.vayu.weather.presentation.compare.SkyCastCompareScreen(
                                     selected = compareViewModel.selected,
                                     maxCities = com.vayu.weather.presentation.compare.CompareViewModel.MAX_CITIES,
@@ -333,6 +330,7 @@ fun VayuApp() {
                                 )
                             }
                             nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Travel -> {
+                                val travelViewModel: com.vayu.weather.presentation.travel.TravelViewModel = hiltViewModel()
                                 com.vayu.weather.presentation.travel.SkyCastTravelScreen(
                                     state = travelViewModel.state,
                                     onSetDate = travelViewModel::setDate,
@@ -373,6 +371,7 @@ fun VayuApp() {
                                 )
                             }
                             nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Favorites -> {
+                                val favoritesWithWeatherViewModel: com.vayu.weather.presentation.favorites.FavoritesWithWeatherViewModel = hiltViewModel()
                                 com.vayu.weather.presentation.favorites.SkyCastFavoritesScreen(
                                     favorites = favoritesWithWeatherViewModel.favorites,
                                     onCitySelected = { city ->
@@ -506,9 +505,10 @@ fun VayuApp() {
                                 )
 
                                 if (openMetric != null && weatherViewModel.state.weatherInfo != null) {
+                                    val info = weatherViewModel.state.weatherInfo!!
                                     com.vayu.weather.presentation.components.skycast.SkyCastMetricDetailSheet(
                                         metric = openMetric,
-                                        info = weatherViewModel.state.weatherInfo!!,
+                                        info = info,
                                         isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS,
                                         onDismiss = { openMetric = null }
                                     )

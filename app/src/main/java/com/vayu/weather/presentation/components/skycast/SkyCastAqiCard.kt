@@ -47,9 +47,9 @@ fun SkyCastAqiCard(
     airQuality: AirQuality?,
     modifier: Modifier = Modifier
 ) {
-    val aqi = airQuality?.usAqi ?: airQuality?.europeanAqi
-    val a11ySummary = if (airQuality != null && aqi != null) {
-        "Air quality ${airQuality.aqiLabel}, $aqi"
+    val aqiValue = airQuality?.usAqi ?: airQuality?.europeanAqi
+    val a11ySummary = if (airQuality != null && aqiValue != null) {
+        "Air quality ${airQuality.aqiLabel}, $aqiValue"
     } else null
 
     SkyCastCard(contentPadding = PaddingValues(16.dp)) {

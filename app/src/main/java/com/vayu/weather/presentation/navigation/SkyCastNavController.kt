@@ -82,8 +82,7 @@ class SkyCastNavController(
                 ) + it.snapshotStack().map { route -> route.route }
             },
             restore = { raw ->
-                @Suppress("UNCHECKED_CAST")
-                val list = raw as List<String>
+                val list = raw as? List<String> ?: emptyList()
                 val controller = SkyCastNavController(
                     initial = Routes.fromRouteString(list.firstOrNull()) ?: Routes.default
                 )

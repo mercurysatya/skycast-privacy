@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.vayu.weather.data.converter.WindConverter
+import com.vayu.weather.presentation.weather.WindUnit
 import com.vayu.weather.ui.theme.CompassEast
 import com.vayu.weather.ui.theme.CompassNorth
 import com.vayu.weather.ui.theme.CompassSouth
@@ -40,13 +42,36 @@ fun SkyCastWindCompass(
     speedKph: Double?,
     directionDeg: Double?,
     gustsKph: Double?,
+    windUnit: WindUnit = WindUnit.KPH,
     modifier: Modifier = Modifier
 ) {
     val direction = directionDeg ?: 0.0
-    val speed = speedKph ?: 0.0
-    val color = SkyCastColors.forWindKph(speed)
-    val beaufort = beaufortLevel(speed)
+    val speedKmh = speedKph ?: 0.0
+    val color = SkyCastColors.forWindKph(speedKmh)
+    val beaufort = beaufortLevel(speedKmh)
     val cardinal = cardinalDirection(direction)
+
+    // Convert display values based on user preference
+    val displaySpeed = when (windUnit) {
+        WindUnit.KPH -> speedKmh.roundToInt()
+        WindUnit.MPH -> WindConverter.kmhToMph(speedKmh).roundToInt()
+        WindUnit.MS -> WindConverter.kmhToMs(speedKmh).roundToInt()
+        WindUnit.KNOTS -> WindConverter.kmhToKnots(speedKmh).roundToInt()
+    }
+    val displayUnit = when (windUnit) {
+        WindUnit.KPH -> "km/h"
+        WindUnit.MPH -> "mph"
+        WindUnit.MS -> "m/s"
+        WindUnit.KNOTS -> "knots"
+    }
+    val displayGust = gustsKph?.let { gust ->
+        when (windUnit) {
+            WindUnit.KPH -> gust.roundToInt()
+            WindUnit.MPH -> WindConverter.kmhToMph(gust).roundToInt()
+            WindUnit.MS -> WindConverter.kmhToMs(gust).roundToInt()
+            WindUnit.KNOTS -> WindConverter.kmhToKnots(gust).roundToInt()
+        }
+    }
 
     SkyCastCard(contentPadding = PaddingValues(16.dp)) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -113,13 +138,13 @@ fun SkyCastWindCompass(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "${speed.roundToInt()}",
+                        text = "$displaySpeed",
                         style = MaterialTheme.typography.displaySmall,
                         color = color,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "km/h",
+                        text = displayUnit,
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White.copy(alpha = 0.6f)
                     )
@@ -129,9 +154,9 @@ fun SkyCastWindCompass(
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.7f)
                     )
-                    if (gustsKph != null) {
+                    if (displayGust != null) {
                         Text(
-                            text = "Gusts ${gustsKph.roundToInt()} km/h",
+                            text = "Gusts $displayGust $displayUnit",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.White.copy(alpha = 0.5f)
                         )

@@ -90,7 +90,7 @@ fun SkyCastFavoritesScreen(
                 contentPadding = PaddingValues(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                items(favorites, key = { it.city.id }) { f ->
+                items(favorites, key = { it.city.id }, contentType = { "favoriteCard" }) { f ->
                     SkyCastFavoriteCard(
                         cityName = f.city.name,
                         region = f.city.admin1,

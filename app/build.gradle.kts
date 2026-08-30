@@ -51,7 +51,7 @@ android {
     defaultConfig {
         applicationId = "com.vayu.weather"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 5
         versionName = "1.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -132,13 +132,19 @@ android {
         }
     }
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     lint {
         // Disable noise-only checks. Translating all 700+ strings to 5
         // regional languages is a separate ongoing workstream — the app
         // already ships with values-hi/kn/ml/ta/te baselines.
         disable += setOf(
             "MissingTranslation", "ExtraTranslation",
-            "LogNotTimber", "DefaultLocale",
+            "DefaultLocale",
             "GradleDependency", "NewerVersionAvailable", "OldTargetApi",
             "ModifierParameter", "AndroidGradlePluginVersion",
             "PluralsCandidate", "UnusedResources",
@@ -182,6 +188,7 @@ dependencies {
 
     implementation(libs.mpAndroidChart)
     implementation(libs.mapLibreCompose)
+    runtimeOnly("org.maplibre.compose:maplibre-compose-runtime-opengl-android:0.15.0")
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
     implementation(libs.play.services.ads)
@@ -192,7 +199,7 @@ dependencies {
     implementation("com.google.firebase:firebase-config")
     implementation("com.google.firebase:firebase-appcheck")
 
-    implementation("com.google.android.ump:user-messaging-platform:2.2.0")
+    implementation("com.google.android.ump:user-messaging-platform:4.0.0")
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
@@ -215,11 +222,11 @@ dependencies {
     testImplementation(libs.androidx.junit)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
     testImplementation("org.junit.vintage:junit-vintage-engine:5.10.2")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
-    testImplementation("org.mockito:mockito-core:5.8.0")
+    testImplementation("org.mockito:mockito-core:5.23.0")
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
