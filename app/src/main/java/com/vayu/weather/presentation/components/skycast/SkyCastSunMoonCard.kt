@@ -248,10 +248,8 @@ fun SkyCastSunMoonCard(
                             val controlX = cx // control point at center for symmetric curve
 
                             val shadowPath = androidx.compose.ui.graphics.Path().apply {
-                                // Move to start point on the edge
                                 moveTo(startX, cy)
-                                // Quadratic curve to the other edge, passing through center
-                                quadTo(controlX, cy, endX, cy)
+                                quadraticBezierTo(controlX, cy, endX, cy)
                             }
                             drawPath(
                                 path = shadowPath,
