@@ -112,7 +112,11 @@ fun VayuApp() {
         Log.d("VayuApp", "LaunchedEffect: Loading weather and ad")
         SplashGate.isReady = true
         onboardingChecked = true
-        showOnboarding = !settingsViewModel.isOnboardingComplete()
+        val onboardingComplete = settingsViewModel.isOnboardingComplete()
+        showOnboarding = !onboardingComplete
+        if (onboardingComplete) {
+            weatherViewModel.loadWeatherInfo()
+        }
     }
 
     // Reload ads when app returns to foreground
