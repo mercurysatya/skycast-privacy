@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -179,7 +180,23 @@ fun SkyCastSunMoonCard(
 
             // Moon row
             Spacer(modifier = Modifier.height(16.dp))
-            val phase = moonPhase(LocalDate.now())
+            // Use the daily forecast date (parsed from the API date string) so
+            // the moon phase shown matches the date the user is viewing, not
+            // the device's current date. Falls back to today if the API date
+            // is missing or unparseable.
+            val moonDate = remember(daily.date) {
+                runCatching { LocalDate.parse(daily.date) }
+                    .getOrElse { LocalDate.now() }
+            }
+            val moonPhase = remember(moonDate) {
+                com.vayu.weather.domain.astronomy.MoonPhaseCalculator
+                    .computeForDate(moonDate)
+            }
+            val illumPct = com.vayu.weather.domain.astronomy.MoonPhaseCalculator
+                .illuminationPercent(moonPhase)
+            val terminatorOffset = com.vayu.weather.domain.astronomy.MoonPhaseCalculator
+                .terminatorOffset(moonPhase)
+            val isWaxing = moonPhase.phaseName.isWaxing
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -202,72 +219,83 @@ fun SkyCastSunMoonCard(
                         val cx = size.width / 2f
                         val cy = size.height / 2f
                         val r = size.width / 2.2f
-                        val illum = phase.illuminationPct / 100.0
+                        val illum = moonPhase.illuminationFraction
 
-                        // Calculate phase angle from illumination fraction
-                        // illum = (1 - cos(2πφ)) / 2, so φ = acos(1 - 2*illum) / (2π)
-                        val phaseAngle = if (illum >= 0 && illum <= 1) {
-                            Math.acos(1.0 - 2.0 * illum) / (2.0 * Math.PI)
-                        } else {
-                            0.0
-                        }
-
-                        // Determine waxing vs waning
-                        val isWaxing = phaseAngle < 0.5
-
-                        if (illum < 0.01) {
-                            // New Moon — fully dark
-                            drawCircle(
-                                color = Color(0xFF1A1A2E),
-                                radius = r,
-                                center = Offset(cx, cy)
-                            )
-                        } else if (illum > 0.99) {
-                            // Full Moon — no shadow
-                            drawCircle(
-                                color = Color(0xFFF5F5DC),
-                                radius = r,
-                                center = Offset(cx, cy)
-                            )
-                        } else {
-                            // Terminator geometry — curved line separating lit and dark portions
-                            // The terminator width varies: 0 at full/new moon, full radius at quarters
-                            val terminatorWidth = (1.0 - Math.abs(2.0 * phaseAngle - 1.0)) * r
-
-                            // Draw the illuminated portion as a full circle
-                            drawCircle(
-                                color = Color(0xFFF5F5DC),
-                                radius = r,
-                                center = Offset(cx, cy)
-                            )
-                            // Draw the terminator curve
-                            // For waxing (φ < 0.5): dark on right, curve from left edge
-                            // For waning (φ ≥ 0.5): dark on left, curve from right edge
-                            val startX = if (isWaxing) cx - r else cx + r
-                            val endX = if (isWaxing) cx + r else cx - r
-                            val controlX = cx // control point at center for symmetric curve
-
-                            val shadowPath = androidx.compose.ui.graphics.Path().apply {
-                                moveTo(startX, cy)
-                                quadraticBezierTo(controlX, cy, endX, cy)
+                        when {
+                            illum < 0.01 -> {
+                                // New Moon — fully dark
+                                drawCircle(
+                                    color = Color(0xFF1A1A2E),
+                                    radius = r,
+                                    center = Offset(cx, cy)
+                                )
                             }
-                            drawPath(
-                                path = shadowPath,
-                                color = Color(0xFF1A1A2E),
-                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = r / 4f)
-                            )
+                            illum > 0.99 -> {
+                                // Full Moon — no shadow
+                                drawCircle(
+                                    color = Color(0xFFF5F5DC),
+                                    radius = r,
+                                    center = Offset(cx, cy)
+                                )
+                            }
+                            else -> {
+                                // Terminator geometry: build a half-disc that
+                                // represents either the lit (waxing) or dark
+                                // (waning) side, then overlay the opposite half
+                                // trimmed by an elliptical terminator.
+                                //
+                                // For a waxing moon, the RIGHT side is dark.
+                                // For a waning moon, the LEFT side is dark.
+                                val terminatorX = cx + (terminatorOffset * r).toFloat()
+                                if (isWaxing) {
+                                    // Lit half-disc (left side) + dark half-disc (right side trimmed by ellipse)
+                                    drawCircle(
+                                        color = Color(0xFFF5F5DC),
+                                        radius = r,
+                                        center = Offset(cx, cy)
+                                    )
+                                    drawCircle(
+                                        color = Color(0xFF1A1A2E),
+                                        radius = r,
+                                        center = Offset(cx, cy)
+                                    )
+                                    // Carve the lit portion back using an ellipse
+                                    drawCircle(
+                                        color = Color(0xFFF5F5DC),
+                                        radius = r,
+                                        center = Offset(terminatorX, cy)
+                                    )
+                                } else {
+                                    // Waning: left side dark, right side lit
+                                    drawCircle(
+                                        color = Color(0xFFF5F5DC),
+                                        radius = r,
+                                        center = Offset(cx, cy)
+                                    )
+                                    drawCircle(
+                                        color = Color(0xFF1A1A2E),
+                                        radius = r,
+                                        center = Offset(cx, cy)
+                                    )
+                                    drawCircle(
+                                        color = Color(0xFFF5F5DC),
+                                        radius = r,
+                                        center = Offset(terminatorX, cy)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
                 Column {
                     Text(
-                        text = phase.name,
+                        text = moonPhase.phaseName.displayName,
                         style = MaterialTheme.typography.titleSmall,
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "Illumination: ${phase.illuminationPct.roundToInt()}%",
+                        text = "Illumination: $illumPct%",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.6f)
                     )
@@ -291,34 +319,4 @@ private fun formatDayLength(minutes: Int): String {
     val h = minutes / 60
     val m = minutes % 60
     return "Day length: ${h}h ${m}m"
-}
-
-private data class MoonInfo(
-    val name: String,
-    val illuminationPct: Double,
-    val shadowOffset: Float
-)
-
-private fun moonPhase(date: LocalDate): MoonInfo {
-    // Known new-moon reference: Jan 6 2000 18:14 UTC
-    // Synodic month: 29.5305882 days
-    val refNewMoon = LocalDate.of(2000, 1, 6)
-    val daysSinceRef = java.time.temporal.ChronoUnit.DAYS.between(refNewMoon, date).toDouble()
-    val age = ((daysSinceRef % 29.5305882) + 29.5305882) % 29.5305882
-    val phase = age / 29.5305882
-
-    val illum = (1.0 - kotlin.math.cos(2 * Math.PI * phase)) / 2.0 * 100.0
-
-    val (name, offset) = when {
-        phase < 0.0625 -> "New moon" to 0.0f
-        phase < 0.1875 -> "Waxing crescent" to 0.75f
-        phase < 0.3125 -> "First quarter" to 1.0f
-        phase < 0.4375 -> "Waxing gibbous" to 1.25f
-        phase < 0.5625 -> "Full moon" to 1.5f
-        phase < 0.6875 -> "Waning gibbous" to 1.25f
-        phase < 0.8125 -> "Last quarter" to 1.0f
-        phase < 0.9375 -> "Waning crescent" to 0.75f
-        else -> "New moon" to 0.0f
-    }
-    return MoonInfo(name, illum, offset)
 }
