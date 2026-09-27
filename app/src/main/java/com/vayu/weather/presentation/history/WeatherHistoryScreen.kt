@@ -79,16 +79,31 @@ private val ChartRed = Color(0xFFEF4444)
 private val ChartBlue = Color(0xFF38BDF8)
 private val Green = Color(0xFF22C55E)
 
+/** History values are stored in Celsius; render them in the user's unit. */
+private fun displayTemp(celsius: Double, isCelsius: Boolean): Int =
+    if (isCelsius) celsius.roundToInt() else (celsius * 9.0 / 5.0 + 32).roundToInt()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeatherHistoryScreen(
     viewModel: WeatherHistoryViewModel,
+    isCelsius: Boolean,
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     var showClearDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        // This screen's text/charts are authored against a dark backdrop
+        // (white labels, translucent-white cards). Paint it explicitly so the
+        // screen stays legible when the app theme background is light.
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFF0F172A), Color(0xFF1E1B4B))
+                )
+            ),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.weather_history_title)) },
@@ -161,13 +176,13 @@ fun WeatherHistoryScreen(
                     // Stats cards
                     state.stats?.let { stats ->
                         item {
-                            StatsRow(stats)
+                            StatsRow(stats, isCelsius)
                         }
                     }
 
                     // Temperature trend chart
                     item {
-                        TemperatureChart(state.dailyData)
+                        TemperatureChart(state.dailyData, isCelsius)
                     }
 
                     // Humidity trend chart
@@ -188,7 +203,7 @@ fun WeatherHistoryScreen(
                     }
 
                     items(state.dailyData.reversed(), contentType = { "historyDay" }) { day ->
-                        DailyHistoryRow(day)
+                        DailyHistoryRow(day, isCelsius)
                     }
 
                     // Ad banner at bottom
@@ -244,25 +259,25 @@ private fun RangeChipRow(
 // ============================================================
 
 @Composable
-private fun StatsRow(stats: HistoryStats) {
+private fun StatsRow(stats: HistoryStats, isCelsius: Boolean) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {        StatCard(
             label = stringResource(R.string.avg_temp),
-            value = "${stats.avgTemp.roundToInt()}°",
+            value = "${displayTemp(stats.avgTemp, isCelsius)}°",
             color = AccentBlue,
             modifier = Modifier.weight(1f)
         )
         StatCard(
             label = stringResource(R.string.high),
-            value = "${stats.maxTemp.roundToInt()}°",
+            value = "${displayTemp(stats.maxTemp, isCelsius)}°",
             color = ChartRed,
             modifier = Modifier.weight(1f)
         )
         StatCard(
             label = stringResource(R.string.low),
-            value = "${stats.minTemp.roundToInt()}°",
+            value = "${displayTemp(stats.minTemp, isCelsius)}°",
             color = ChartBlue,
             modifier = Modifier.weight(1f)
         )
@@ -315,7 +330,7 @@ private fun StatCard(
 // ============================================================
 
 @Composable
-private fun TemperatureChart(dailyData: List<WeatherHistoryDay>) {
+private fun TemperatureChart(dailyData: List<WeatherHistoryDay>, isCelsius: Boolean) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -332,6 +347,7 @@ private fun TemperatureChart(dailyData: List<WeatherHistoryDay>) {
             )
 
             val allTemps = dailyData.flatMap { listOf(it.minTemp, it.maxTemp) }
+                .map { displayTemp(it, isCelsius).toDouble() }
             val minVal = (allTemps.min() - 3).toFloat()
             val maxVal = (allTemps.max() + 3).toFloat()
 
@@ -351,11 +367,12 @@ private fun TemperatureChart(dailyData: List<WeatherHistoryDay>) {
                     drawLine(gridColor, Offset(0f, y), Offset(chartWidth, y), strokeWidth = 1f)
                 }
 
-                // Helper to map temp to Y
-                fun tempToY(temp: Double): Float {
+                // Helper to map temp to Y (raw values are Celsius)
+                fun tempToY(rawTemp: Double): Float {
+                    val temp = displayTemp(rawTemp, isCelsius).toFloat()
                     val range = maxVal - minVal
                     if (range == 0f) return chartHeight / 2f
-                    return chartHeight - ((temp.toFloat() - minVal) / range) * chartHeight
+                    return chartHeight - ((temp - minVal) / range) * chartHeight
                 }
 
                 // Draw max temp area fill
@@ -557,7 +574,7 @@ private fun HumidityChart(dailyData: List<WeatherHistoryDay>) {
 // ============================================================
 
 @Composable
-private fun DailyHistoryRow(day: WeatherHistoryDay) {
+private fun DailyHistoryRow(day: WeatherHistoryDay, isCelsius: Boolean) {
     val displayDate = remember(day.date) {
         try {
             val ld = LocalDate.parse(day.date)
@@ -618,9 +635,9 @@ private fun DailyHistoryRow(day: WeatherHistoryDay) {
             )
         }
 
-        // Temp range
+        // Temp range (values are stored in Celsius)
         Text(
-            text = "${day.minTemp.roundToInt()}°",
+            text = "${displayTemp(day.minTemp, isCelsius)}°",
             style = MaterialTheme.typography.bodyMedium,
             color = ChartBlue
         )
@@ -655,7 +672,7 @@ private fun DailyHistoryRow(day: WeatherHistoryDay) {
         Spacer(modifier = Modifier.width(4.dp))
 
         Text(
-            text = "${day.maxTemp.roundToInt()}°",
+            text = "${displayTemp(day.maxTemp, isCelsius)}°",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             color = Color.White

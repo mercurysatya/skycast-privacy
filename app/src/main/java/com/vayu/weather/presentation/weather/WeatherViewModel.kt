@@ -46,15 +46,40 @@ class WeatherViewModel @Inject constructor(
     private var refreshJob: Job? = null
     private var loadJob: Job? = null
 
+    /** Every alert ever stored; filtered down to the visible location on use. */
+    private var allAlerts: List<com.vayu.weather.domain.repository.WeatherAlert> = emptyList()
+
     init {
         Log.d("WeatherViewModel", "ViewModel Initialized")
         // Collect alerts so the home screen can display them without a
         // separate ViewModel — the alerts screen has its own AlertsViewModel.
         viewModelScope.launch {
             repository.getWeatherAlerts().collect { alerts ->
-                state = state.copy(alerts = alerts)
+                allAlerts = alerts
+                publishAlerts()
             }
         }
+    }
+
+    /**
+     * An alert belongs to the location it was generated for. Without this,
+     * a UV alert raised for Bangalore would show up on London's dashboard.
+     */
+    private fun publishAlerts() {
+        val lat = currentLat
+        val lon = currentLon
+        val visible = if (lat == null || lon == null) {
+            allAlerts
+        } else {
+            allAlerts.filter { alert ->
+                val aLat = alert.latitude
+                val aLon = alert.longitude
+                aLat != null && aLon != null &&
+                    Math.abs(aLat - lat) <= 1.0 &&
+                    Math.abs(aLon - lon) <= 1.0
+            }
+        }
+        state = state.copy(alerts = visible)
     }
 
     private fun friendlyError(e: Throwable): String {
@@ -73,6 +98,37 @@ class WeatherViewModel @Inject constructor(
         currentCityName = name
     }
 
+    /**
+     * Drops data that belongs to a different location so it can never be shown
+     * under the location currently being loaded, and clears the auxiliary
+     * values (AQI / vs-yesterday) that are re-fetched with every load.
+     */
+    private fun dropStaleData(switchingLocation: Boolean) {
+        if (switchingLocation) {
+            state = state.copy(
+                weatherInfo = null,
+                airQuality = null,
+                previousDayTempC = null
+            )
+        } else if (state.weatherInfo == null) {
+            state = state.copy(airQuality = null, previousDayTempC = null)
+        }
+    }
+
+    /**
+     * A failed load must not blank data that is already valid on screen: keep
+     * it and surface the failure as a refresh error (offline banner) instead.
+     * Only an empty dashboard falls back to the full-screen error state.
+     */
+    private fun handleLoadFailure(e: Throwable) {
+        val message = friendlyError(e)
+        state = if (state.weatherInfo != null) {
+            state.copy(isLoading = false, refreshError = message)
+        } else {
+            state.copy(weatherInfo = null, isLoading = false, error = message)
+        }
+    }
+
     fun loadWeatherInfo() {
         if (loadJob?.isActive == true) return
         loadJob = viewModelScope.launch {
@@ -86,33 +142,40 @@ class WeatherViewModel @Inject constructor(
                 val fallbackLat = currentLat ?: settingsManager.getLastLat()
                 val fallbackLon = currentLon ?: settingsManager.getLastLon()
                 if (location != null) {
+                    val switching = state.weatherInfo != null &&
+                        (currentLat != location.latitude || currentLon != location.longitude)
+                    // A GPS fix is the device's own location, not a picked city.
+                    currentCityName = null
                     currentLat = location.latitude
                     currentLon = location.longitude
+                    publishAlerts()
+                    dropStaleData(switching)
                     loadAirQuality(location.latitude, location.longitude)
                     loadPreviousDayTemp(location.latitude, location.longitude)
-                    getWeatherUseCase(location.latitude, location.longitude)                    .onSuccess { weatherInfo ->
-                        state = state.copy(
-                            weatherInfo = weatherInfo,
-                            isLoading = false,
-                            error = null,
-                            lastUpdatedTime = currentTimeString()
-                        )
-                        saveWeatherSnapshot(weatherInfo, location.latitude, location.longitude)
-                    }
-                    .onFailure { e ->
-                        state = state.copy(
-                            weatherInfo = null,
-                            isLoading = false,
-                            error = friendlyError(e)
-                        )
-                    }
+                    getWeatherUseCase(location.latitude, location.longitude)
+                        .onSuccess { weatherInfo ->
+                            state = state.copy(
+                                weatherInfo = weatherInfo,
+                                isLoading = false,
+                                error = null,
+                                lastUpdatedTime = currentTimeString()
+                            )
+                            saveWeatherSnapshot(weatherInfo, location.latitude, location.longitude)
+                        }
+                        .onFailure { e -> handleLoadFailure(e) }
                 } else if (fallbackLat != null && fallbackLon != null) {
                     // GPS unavailable — fall back to the last successfully loaded location
                     // so the dashboard keeps showing real data instead of an error screen
+                    val hadNoLocation = currentLat == null
+                    if (hadNoLocation) currentCityName = settingsManager.getLastCity()
+                    currentLat = fallbackLat
+                    currentLon = fallbackLon
+                    publishAlerts()
+                    dropStaleData(state.weatherInfo != null && hadNoLocation)
                     loadAirQuality(fallbackLat, fallbackLon)
                     loadPreviousDayTemp(fallbackLat, fallbackLon)
                     getWeatherUseCase(fallbackLat, fallbackLon)
-.onSuccess { weatherInfo ->
+                        .onSuccess { weatherInfo ->
                             state = state.copy(
                                 weatherInfo = weatherInfo,
                                 isLoading = false,
@@ -125,13 +188,7 @@ class WeatherViewModel @Inject constructor(
                                 fallbackLat, fallbackLon, currentCityName
                             ) }
                         }
-                        .onFailure { e ->
-                            state = state.copy(
-                                weatherInfo = null,
-                                isLoading = false,
-                                error = friendlyError(e)
-                            )
-                        }
+                        .onFailure { e -> handleLoadFailure(e) }
                 } else {
                     state = state.copy(
                         isLoading = false,
@@ -141,10 +198,7 @@ class WeatherViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                state = state.copy(
-                    isLoading = false,
-                    error = friendlyError(e)
-                )
+                handleLoadFailure(e)
             }
         }
     }
@@ -165,9 +219,13 @@ class WeatherViewModel @Inject constructor(
     }
 
     fun loadWeatherForCity(lat: Double, lon: Double, cityName: String? = null) {
+        // Only treat this as a location switch when the coordinates actually
+        // change — re-selecting the same city should keep its data on screen.
+        val switching = state.weatherInfo != null && (currentLat != lat || currentLon != lon)
         currentCityName = cityName
         currentLat = lat
         currentLon = lon
+        publishAlerts()
         loadJob?.cancel()
         refreshJob?.cancel()
         loadJob = viewModelScope.launch {
@@ -176,47 +234,46 @@ class WeatherViewModel @Inject constructor(
                 error = null,
                 refreshError = null
             )
+            dropStaleData(switching)
             try {
                 loadAirQuality(lat, lon)
                 loadPreviousDayTemp(lat, lon)
                 getWeatherUseCase(lat, lon)
-                        .onSuccess { weatherInfo ->
-                            state = state.copy(
-                                weatherInfo = weatherInfo,
-                                isLoading = false,
-                                error = null,
-                                lastUpdatedTime = currentTimeString()
-                            )
-                            saveWeatherSnapshot(weatherInfo, lat, lon)
-                            // Persist successful location so future refreshes can fall back to it
-                            viewModelScope.launch { settingsManager.setLastLocation(
-                                lat, lon, currentCityName
-                            ) }
-                        }
-                    .onFailure { e ->
+                    .onSuccess { weatherInfo ->
                         state = state.copy(
-                            weatherInfo = null,
+                            weatherInfo = weatherInfo,
                             isLoading = false,
-                            error = friendlyError(e)
+                            error = null,
+                            lastUpdatedTime = currentTimeString()
                         )
+                        saveWeatherSnapshot(weatherInfo, lat, lon)
+                        // Persist successful location so future refreshes can fall back to it
+                        viewModelScope.launch { settingsManager.setLastLocation(
+                            lat, lon, currentCityName
+                        ) }
                     }
+                    .onFailure { e -> handleLoadFailure(e) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                state = state.copy(
-                    isLoading = false,
-                    error = friendlyError(e)
-                )
+                handleLoadFailure(e)
             }
         }
     }
 
     fun refreshWeatherInfo() {
-        // The error screen surfaces `state.error`, which only `loadWeatherInfo`
-        // ever writes. A plain refresh would leave that screen stuck, so route
-        // empty-state retries through a full load instead.
+        // The error screen surfaces `state.error`, which only full loads write.
+        // A plain refresh would leave that screen stuck, so route empty-state
+        // retries through a full load of the location the user is actually
+        // looking at — a picked city must retry that city, not fall back to GPS.
         if (state.weatherInfo == null) {
-            loadWeatherInfo()
+            val lat = currentLat
+            val lon = currentLon
+            if (lat != null && lon != null) {
+                loadWeatherForCity(lat, lon, currentCityName)
+            } else {
+                loadWeatherInfo()
+            }
             return
         }
         if (refreshJob?.isActive == true) return

@@ -188,6 +188,7 @@ fun VayuApp() {
                 val historyViewModel: WeatherHistoryViewModel = hiltViewModel()
                 WeatherHistoryScreen(
                     viewModel = historyViewModel,
+                    isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS,
                     onBack = { showHistory = false }
                 )
             } else if (showAlerts) {

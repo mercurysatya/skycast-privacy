@@ -169,7 +169,7 @@ object WeatherSummaryEngine {
             isThunder -> "Thunderstorms ongoing — stay indoors if you can."
             isRainy -> "Wet weather expected to continue."
             isSnow -> "Snow expected to continue."
-            rainIn != null && nextRain != null -> "A $rainIn, expect rain (${nextRain.probability}% chance)."
+            rainIn != null && nextRain != null -> "Rain expected $rainIn (${nextRain.probability}% chance)."
             else -> null
         }
         rainMention?.let { parts += it }

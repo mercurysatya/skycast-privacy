@@ -466,28 +466,33 @@ class MapViewModel @Inject constructor(
                 val maxTemps = weather.daily?.maxTemperatures.orEmpty()
                 val precipProbs = weather.daily?.precipitationProbabilities.orEmpty()
 
+                // A map marker implies "here and now". Only the next two days
+                // are actionable; anything further out reads as a false alarm
+                // (e.g. an 83% chance five days out shown while it is dry).
                 dailyCodes.forEachIndexed { i, code ->
+                    if (i > 1) return@forEachIndexed
                     val codeVal = code ?: return@forEachIndexed
+                    val whenLabel = if (i == 0) "" else " (tomorrow)"
                     when {
                         codeVal >= 95 -> {
                             alertsList.add(MapWeatherAlert(centerLat, centerLon, "Thunderstorm Warning",
-                                "Severe thunderstorm expected", "high", codeVal))
+                                "Severe thunderstorm expected$whenLabel", "high", codeVal))
                         }
                         codeVal in 65..67 -> {
                             alertsList.add(MapWeatherAlert(centerLat, centerLon, "Heavy Rain Alert",
-                                "Heavy rainfall expected", "medium", codeVal))
+                                "Heavy rainfall expected$whenLabel", "medium", codeVal))
                         }
                         codeVal in 71..77 -> {
                             alertsList.add(MapWeatherAlert(centerLat, centerLon, "Snow Warning",
-                                "Snow expected in the area", "medium", codeVal))
+                                "Snow expected in the area$whenLabel", "medium", codeVal))
                         }
                         i < precipProbs.size && (precipProbs[i] ?: 0) > 80 -> {
                             alertsList.add(MapWeatherAlert(centerLat, centerLon, "High Precipitation",
-                                "${precipProbs[i]}% chance of precipitation", "low", codeVal))
+                                "${precipProbs[i]}% chance of precipitation$whenLabel", "low", codeVal))
                         }
                         i < maxTemps.size && (maxTemps[i] ?: 0.0) > 40 -> {
                             alertsList.add(MapWeatherAlert(centerLat, centerLon, "Extreme Heat",
-                                "Temperature expected to reach ${maxTemps[i]?.toInt()}°C", "high", codeVal))
+                                "Temperature expected to reach ${maxTemps[i]?.toInt()}°C$whenLabel", "high", codeVal))
                         }
                     }
                 }

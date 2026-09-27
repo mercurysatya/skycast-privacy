@@ -276,7 +276,8 @@ private fun SkyCastHomeContent(
                 SkyCastHero(
                     info = info,
                     isCelsius = isCelsius,
-                    previousDayTempC = state.previousDayTempC
+                    previousDayTempC = state.previousDayTempC,
+                    onClick = onOpenDetail
                 )
             }
 

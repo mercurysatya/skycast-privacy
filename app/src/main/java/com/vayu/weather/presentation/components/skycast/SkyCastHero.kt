@@ -1,6 +1,7 @@
 package com.vayu.weather.presentation.components.skycast
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +56,7 @@ fun SkyCastHero(
     info: WeatherInfo,
     isCelsius: Boolean,
     previousDayTempC: Double?,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val condition = localizedWeatherDescription(info.current.weatherCode, info.current.isDay)
@@ -72,6 +76,7 @@ fun SkyCastHero(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(horizontal = SkyCastTokens.Space20)
             .semantics(mergeDescendants = true) { contentDescription = a11y },
         horizontalAlignment = Alignment.CenterHorizontally
@@ -158,6 +163,30 @@ fun SkyCastHero(
                     fontWeight = FontWeight.SemiBold
                 )
             }
+        }
+
+        // Entry point to the full Weather Detail screen
+        Spacer(modifier = Modifier.height(SkyCastTokens.Space8))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.10f))
+                .clickable(onClick = onClick)
+                .padding(horizontal = SkyCastTokens.Space12, vertical = SkyCastTokens.Space4)
+        ) {
+            Text(
+                text = "Full forecast",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = 0.75f),
+                fontWeight = FontWeight.Medium
+            )
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.55f),
+                modifier = Modifier.size(16.dp)
+            )
         }
 
         Spacer(modifier = Modifier.height(SkyCastTokens.Space8))

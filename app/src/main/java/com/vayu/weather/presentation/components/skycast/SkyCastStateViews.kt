@@ -128,6 +128,11 @@ fun SkyCastErrorState(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFF0F172A), Color(0xFF1E1B4B))
+                )
+            )
             .padding(32.dp),
         contentAlignment = Alignment.Center
     ) {
