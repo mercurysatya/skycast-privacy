@@ -86,6 +86,7 @@ fun VayuApp() {
     var showDetail by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
     var showPrivacyPolicy by remember { mutableStateOf(false) }
+    var showPremium by remember { mutableStateOf(false) }
     var privacyPolicyAnchor by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
@@ -99,10 +100,12 @@ fun VayuApp() {
 
     // Single, well-ordered back-handler. Modal screens above the primary
     // route are popped in reverse order.
-    BackHandler(enabled = nav.stack.isNotEmpty() || showPrivacyPolicy) {
+    BackHandler(enabled = nav.stack.isNotEmpty() || showPrivacyPolicy || showPremium) {
         if (showPrivacyPolicy) {
             showPrivacyPolicy = false
             privacyPolicyAnchor = null
+        } else if (showPremium) {
+            showPremium = false
         } else if (!nav.popBackStack()) {
             // Stack empty — nothing to do; system will exit the app.
         }
@@ -116,6 +119,19 @@ fun VayuApp() {
         showOnboarding = !onboardingComplete
         if (onboardingComplete) {
             weatherViewModel.loadWeatherInfo()
+        }
+    }
+
+    // GDPR/EEA consent must be gathered before any ad request is made.
+    // The UMP form is shown only when required; then the ad SDK is
+    // initialized and interstitial/rewarded ads are preloaded.
+    LaunchedEffect(activity) {
+        val act = activity ?: return@LaunchedEffect
+        ConsentManager.gatherConsent(act) {
+            if (ConsentManager.canRequestAds(act)) {
+                AdManager.initializeMobileAds(act)
+                AdManager.preloadNext(act)
+            }
         }
     }
 
@@ -183,7 +199,8 @@ fun VayuApp() {
                     onWeatherTypeFilterChange = alertsViewModel::setWeatherTypeFilter,
                     onToggleExpand = alertsViewModel::toggleExpandAlert,
                     onSnoozeAlert = { alert, duration -> alertsViewModel.snoozeAlert(alert, duration) },
-                    onSnoozeDurationChange = alertsViewModel::updateSnoozeDuration
+                    onSnoozeDurationChange = alertsViewModel::updateSnoozeDuration,
+                    onBack = { showAlerts = false }
                 )
             } else if (showSettings) {
                 SettingsScreen(
@@ -230,7 +247,14 @@ fun VayuApp() {
                     },
                     onDeleteAllData = { settingsViewModel.deleteAllData() },
                     onClearCache = { settingsViewModel.clearWeatherCache() },
-                    onOpenAlerts = { showAlerts = true }
+                    onOpenAlerts = { showAlerts = true },
+                    onOpenPremium = { showPremium = true }
+                )
+            } else if (showPremium) {
+                com.vayu.weather.presentation.premium.PremiumScreen(
+                    isPremium = settingsState.isPremium,
+                    onBack = { showPremium = false },
+                    onPurchase = { settingsViewModel.setPremium(true) }
                 )
             } else {
                 Scaffold(
@@ -400,6 +424,10 @@ fun VayuApp() {
                             else -> {
                                 var openMetric by remember { mutableStateOf<String?>(null) }
                                 var isDetailedForecastUnlocked by remember { mutableStateOf(false) }
+                                // Premium unlocks the extended outlook permanently; the
+                                // rewarded-ad path remains for free users.
+                                val detailedForecastUnlocked =
+                                    isDetailedForecastUnlocked || settingsState.isPremium
                                 com.vayu.weather.presentation.weather.SkyCastHomeScreen(
                                     state = weatherViewModel.state,
                                     settings = settingsState,
@@ -490,7 +518,9 @@ fun VayuApp() {
                                     },
                                     themeMode = settingsState.themeMode,
                                     onOpenMetricDetail = { key -> openMetric = key },
-                                    isDetailedForecastUnlocked = isDetailedForecastUnlocked,
+                                    isDetailedForecastUnlocked = detailedForecastUnlocked,
+                                    isPremium = settingsState.isPremium,
+                                    onOpenPremium = { showPremium = true },
                                     onWatchAdForDetails = {
                                         val act = activity
                                         if (act != null) {

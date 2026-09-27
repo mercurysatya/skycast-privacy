@@ -48,6 +48,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -113,6 +116,7 @@ fun SettingsScreen(
     onNotificationTime3EnabledChange: (Boolean) -> Unit = {},
     onNotificationTime3HourChange: (Int) -> Unit = {},
     onNotificationTime3MinuteChange: (Int) -> Unit = {},
+    onOpenPremium: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -248,6 +252,54 @@ fun SettingsScreen(
                     .padding(horizontal = 20.dp)
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // === SKYCAST PREMIUM ===
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFF1D4ED8), Color(0xFF0EA5E9))
+                            )
+                        )
+                        .clickable(onClick = onOpenPremium)
+                        .padding(16.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Rounded.WorkspacePremium,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "SkyCast Premium",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = if (state.isPremium) {
+                                    "Active — thank you for supporting SkyCast"
+                                } else {
+                                    "Remove ads · unlock the extended forecast"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.85f)
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Rounded.ChevronRight,
+                            contentDescription = "Open SkyCast Premium",
+                            tint = Color.White
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // === UNITS ===
                 SettingsGroup(title = stringResource(R.string.units)) {

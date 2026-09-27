@@ -48,6 +48,13 @@ class WeatherViewModel @Inject constructor(
 
     init {
         Log.d("WeatherViewModel", "ViewModel Initialized")
+        // Collect alerts so the home screen can display them without a
+        // separate ViewModel — the alerts screen has its own AlertsViewModel.
+        viewModelScope.launch {
+            repository.getWeatherAlerts().collect { alerts ->
+                state = state.copy(alerts = alerts)
+            }
+        }
     }
 
     private fun friendlyError(e: Throwable): String {
@@ -205,6 +212,13 @@ class WeatherViewModel @Inject constructor(
     }
 
     fun refreshWeatherInfo() {
+        // The error screen surfaces `state.error`, which only `loadWeatherInfo`
+        // ever writes. A plain refresh would leave that screen stuck, so route
+        // empty-state retries through a full load instead.
+        if (state.weatherInfo == null) {
+            loadWeatherInfo()
+            return
+        }
         if (refreshJob?.isActive == true) return
         refreshJob = viewModelScope.launch {
             state = state.copy(

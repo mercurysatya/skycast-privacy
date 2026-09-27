@@ -1,8 +1,8 @@
 package com.vayu.weather.presentation.weather
 
-import com.vayu.weather.data.local.WeatherAlertEntity
 import com.vayu.weather.domain.model.AirQuality
 import com.vayu.weather.domain.model.WeatherInfo
+import com.vayu.weather.domain.repository.WeatherAlert
 
 data class WeatherState(
     val weatherInfo: WeatherInfo? = null,
@@ -17,7 +17,7 @@ data class WeatherState(
     /** Region/state name (e.g. "Andhra Pradesh") for richer location display. */
     val regionName: String? = null,
     /** Currently active severe-weather alerts for this location. */
-    val alerts: List<WeatherAlertEntity> = emptyList()
+    val alerts: List<WeatherAlert> = emptyList()
 )
 
 enum class TemperatureUnit { CELSIUS, FAHRENHEIT }
@@ -67,5 +67,7 @@ data class SettingsState(
     val notificationTime2Minute: Int = 0,
     val notificationTime3Enabled: Boolean = true,
     val notificationTime3Hour: Int = 18,
-    val notificationTime3Minute: Int = 0
+    val notificationTime3Minute: Int = 0,
+    /** SkyCast Premium entitlement (removes ads, unlocks premium content). */
+    val isPremium: Boolean = false
 )

@@ -33,6 +33,8 @@ class SettingsManager @Inject constructor(
     /** Single-shot load of all preferences — reads DataStore once instead of 37 separate .first() calls. */
     suspend fun loadAllPreferences(): SettingsState {
         val prefs = dataStore.data.first()
+        val premium = prefs[Keys.IS_PREMIUM] ?: false
+        com.vayu.weather.presentation.premium.PremiumManager.sync(premium)
         return SettingsState(
             temperatureUnit = if (prefs[Keys.IS_FAHRENHEIT] == true) TemperatureUnit.FAHRENHEIT else TemperatureUnit.CELSIUS,
             windUnit = try { WindUnit.valueOf(prefs[Keys.WIND_UNIT] ?: WindUnit.KPH.name) } catch (_: Exception) { WindUnit.KPH },
@@ -71,7 +73,8 @@ class SettingsManager @Inject constructor(
             notificationTime2Minute = prefs[Keys.NOTIFICATION_TIME_2_MINUTE] ?: 0,
             notificationTime3Enabled = prefs[Keys.NOTIFICATION_TIME_3_ENABLED] ?: true,
             notificationTime3Hour = prefs[Keys.NOTIFICATION_TIME_3_HOUR] ?: 18,
-            notificationTime3Minute = prefs[Keys.NOTIFICATION_TIME_3_MINUTE] ?: 0
+            notificationTime3Minute = prefs[Keys.NOTIFICATION_TIME_3_MINUTE] ?: 0,
+            isPremium = premium
         )
     }
 
@@ -132,6 +135,8 @@ private object Keys {
     val NOTIFICATION_TIME_1_ENABLED = booleanPreferencesKey("notification_time_1_enabled")
     val NOTIFICATION_TIME_2_ENABLED = booleanPreferencesKey("notification_time_2_enabled")
     val NOTIFICATION_TIME_3_ENABLED = booleanPreferencesKey("notification_time_3_enabled")
+    // SkyCast Premium entitlement
+    val IS_PREMIUM = booleanPreferencesKey("premium_entitlement")
 }
 
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -359,6 +364,15 @@ private object Keys {
 
     suspend fun setOnboardingComplete(value: Boolean) {
         dataStore.edit { it[Keys.ONBOARDING_COMPLETE] = value }
+    }
+
+    // === SkyCast Premium ===
+    suspend fun isPremium(): Boolean =
+        dataStore.data.first()[Keys.IS_PREMIUM] ?: false
+
+    suspend fun setPremium(value: Boolean) {
+        dataStore.edit { it[Keys.IS_PREMIUM] = value }
+        com.vayu.weather.presentation.premium.PremiumManager.sync(value)
     }
 
     // === Clock Format ===

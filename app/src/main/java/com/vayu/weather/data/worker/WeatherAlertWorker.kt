@@ -131,6 +131,13 @@ class WeatherAlertWorker @AssistedInject constructor(
         latitude: Double,
         longitude: Double
     ) {
+        // Dedup: skip if an identical alert (same title + severity) was
+        // already stored within the last 3 hours to prevent repeated
+        // notifications for the same condition.
+        val threeHoursAgo = System.currentTimeMillis() - 3 * 60 * 60 * 1000L
+        val existing = weatherRepository.findRecentWeatherAlert(title, severity, threeHoursAgo)
+        if (existing != null) return
+
         weatherRepository.addWeatherAlert(
             WeatherAlert(
                 title = title,

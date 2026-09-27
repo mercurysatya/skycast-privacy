@@ -34,13 +34,19 @@ import kotlin.math.*
 @Composable
 fun SunArcAnimation(
     dailyData: List<DailyWeather>,
+    currentTimeInLocation: String? = null,
     modifier: Modifier = Modifier
 ) {
     val today = dailyData.firstOrNull() ?: return
     val sunrise = today.sunrise?.let { parseTime(it) } ?: return
     val sunset = today.sunset?.let { parseTime(it) } ?: return
 
-    val now = LocalTime.now()
+    val now = if (currentTimeInLocation != null) {
+        try {
+            val timeStr = currentTimeInLocation.substringAfter("T")
+            java.time.LocalTime.parse(timeStr)
+        } catch (_: Exception) { LocalTime.now() }
+    } else LocalTime.now()
     val sunriseMin = sunrise.hour * 60 + sunrise.minute
     val sunsetMin = sunset.hour * 60 + sunset.minute
     val totalDaylightMin = (sunsetMin - sunriseMin).coerceAtLeast(1)

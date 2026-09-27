@@ -62,6 +62,8 @@ fun SkyCastHourlyTimeline(
     isCelsius: Boolean,
     selectedIndex: Int? = null,
     onSelectHour: (Int, HourlyWeather) -> Unit = { _, _ -> },
+    windUnit: com.vayu.weather.presentation.weather.WindUnit = com.vayu.weather.presentation.weather.WindUnit.KPH,
+    currentTimeInLocation: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (hourly.isEmpty()) return
@@ -110,9 +112,15 @@ fun SkyCastHourlyTimeline(
                 hoursToShow.forEachIndexed { i, h ->
                     val isSelected = i == clamped
                     val time = parseHourlyTime(h.time)
-                    val now = LocalDateTime.now()
-                    val isNow = time != null &&
-                        time.hour == now.hour && time.dayOfYear == now.dayOfYear
+                    // Use the API's location time when available, falling back
+                    // to device time only if the API string is missing/malformed.
+                    val locationNow = if (currentTimeInLocation != null) {
+                        parseHourlyTime(currentTimeInLocation)
+                    } else {
+                        LocalDateTime.now()
+                    }
+                    val isNow = time != null && locationNow != null &&
+                        time.hour == locationNow.hour && time.dayOfYear == locationNow.dayOfYear
                     val isDayHour = try {
                         val hour = java.time.LocalTime.parse(h.time.substringAfter("T")).hour
                         hour in 6..18
@@ -239,7 +247,7 @@ fun SkyCastHourlyTimeline(
                         HourlyDetailCol("Temp", "${convertTemp(sel.temperature, isCelsius)}°")
                         HourlyDetailCol("Feels", "${convertTemp(sel.apparentTemperature ?: sel.temperature, isCelsius)}°")
                         HourlyDetailCol("Rain", "${sel.precipitationProbability ?: 0}%")
-                        HourlyDetailCol("Wind", sel.windSpeed?.let { "${it.roundToInt()} km/h" } ?: "—")
+                        HourlyDetailCol("Wind", sel.windSpeed?.let { "${it.roundToInt()} ${windUnitLabel(windUnit)}" } ?: "—")
                         HourlyDetailCol("Humidity", sel.humidity?.let { "${it.roundToInt()}%" } ?: "—")
                     }
                 }
@@ -407,3 +415,10 @@ private fun parseHourlyTime(time: String): LocalDateTime? = try {
 
 private fun convertTemp(c: Double, isCelsius: Boolean): Int =
     if (isCelsius) c.roundToInt() else (c * 9.0 / 5.0 + 32).roundToInt()
+
+private fun windUnitLabel(unit: com.vayu.weather.presentation.weather.WindUnit): String = when (unit) {
+    com.vayu.weather.presentation.weather.WindUnit.KPH -> "km/h"
+    com.vayu.weather.presentation.weather.WindUnit.MPH -> "mph"
+    com.vayu.weather.presentation.weather.WindUnit.MS -> "m/s"
+    com.vayu.weather.presentation.weather.WindUnit.KNOTS -> "kn"
+}

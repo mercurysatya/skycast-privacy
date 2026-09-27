@@ -14,7 +14,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.SemanticsNodeInteraction
-import com.vayu.weather.data.local.WeatherAlertEntity
+import com.vayu.weather.domain.repository.WeatherAlert
 import com.vayu.weather.domain.model.CurrentWeather
 import com.vayu.weather.domain.model.DailyWeather
 import com.vayu.weather.domain.model.HourlyWeather
@@ -150,7 +150,7 @@ class WeatherDashboardTest {
     @Test
     fun severe_alert_is_above_hourly() {
         val alerts = listOf(
-            WeatherAlertEntity(
+            WeatherAlert(
                 id = 1L,
                 title = "Thunderstorm warning",
                 message = "Severe thunderstorm expected",

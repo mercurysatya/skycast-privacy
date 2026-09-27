@@ -12,7 +12,8 @@ object WeatherShareFormatter {
         context: Context,
         cityName: String?,
         weatherInfo: WeatherInfo,
-        isCelsius: Boolean
+        isCelsius: Boolean,
+        windUnit: WindUnit = WindUnit.KPH
     ): String {
         val res = context.resources
         val temp = if (isCelsius) {
@@ -24,7 +25,7 @@ object WeatherShareFormatter {
         val description = WeatherDescription.getWeatherDescription(weatherInfo.current.weatherCode, weatherInfo.current.isDay)
 
         val humidity = weatherInfo.current.humidity?.let { "${it.roundToInt()}%" } ?: "--"
-        val windSpeed = weatherInfo.current.windSpeed?.let { "${it.roundToInt()} km/h" } ?: "--"
+        val windSpeed = weatherInfo.current.windSpeed?.let { "${com.vayu.weather.data.converter.WindConverter.getWindDisplay(it, windUnit)}" } ?: "--"
 
         val location = cityName ?: res.getString(R.string.share_current_location)
 

@@ -67,13 +67,15 @@ import kotlin.math.roundToInt
 fun FeelsLikeTimelineCard(
     hourlyData: List<HourlyWeather>,
     isCelsius: Boolean,
+    currentTimeInLocation: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (hourlyData.isEmpty()) return
 
-    val sorted = remember(hourlyData) {
-        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
-        val start = hourlyData.indexOfFirst { it.time >= now }
+    val sorted = remember(hourlyData, currentTimeInLocation) {
+        val nowStr = currentTimeInLocation?.take(13)?.let { "${it}:00" }
+            ?: LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
+        val start = hourlyData.indexOfFirst { it.time >= nowStr }
         val data = if (start >= 0) hourlyData.drop(start).take(24) else hourlyData.take(24)
         data.sortedBy { it.time }
     }

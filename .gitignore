@@ -22,7 +22,7 @@ Thumbs.db
 /.mimocode/
 
 # Temporary files
-build.log
+*.log
 *.hprof
 screenshots/
 store-listing/

@@ -27,18 +27,25 @@ class WeatherNotificationWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val weatherDao: WeatherDao,
-    private val openMeteoApi: OpenMeteoApi
+    private val openMeteoApi: OpenMeteoApi,
+    private val settingsManager: com.vayu.weather.data.local.SettingsManager
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         return try {
             val type = inputData.getString(KEY_NOTIFICATION_TYPE) ?: TYPE_CURRENT
 
-            // Get user's favorite city or default location
+            // Check notifications enabled
+            if (!settingsManager.getNotificationsEnabled()) return Result.success()
+
+            // Check quiet hours
+            if (isQuietHours()) return Result.success()
+
+            // Get user's location — prefer favorites, then last known, never hard-code
             val favorites = weatherDao.getFavoriteCities().first()
-            val lat = favorites.firstOrNull()?.latitude ?: 16.5062 // default: Srikakulam
-            val lon = favorites.firstOrNull()?.longitude ?: 80.6480
-            val cityName = favorites.firstOrNull()?.name ?: "Your Location"
+            val lat = favorites.firstOrNull()?.latitude ?: settingsManager.getLastLat() ?: return Result.success()
+            val lon = favorites.firstOrNull()?.longitude ?: settingsManager.getLastLon() ?: return Result.success()
+            val cityName = favorites.firstOrNull()?.name ?: settingsManager.getLastCity() ?: "Your Location"
 
             val weather = openMeteoApi.getWeatherData(
                 lat = lat,
@@ -61,22 +68,34 @@ class WeatherNotificationWorker @AssistedInject constructor(
         }
     }
 
-    private fun sendCurrentWeatherNotification(
+    private suspend fun sendCurrentWeatherNotification(
         manager: NotificationManager,
         cityName: String,
         weather: com.vayu.weather.data.remote.dto.WeatherDto
     ) {
-        val temp = weather.current?.temperature?.roundToInt() ?: return
+        val tempCelsius = weather.current?.temperature ?: return
+        val isCelsius = settingsManager.getTemperatureUnit() == com.vayu.weather.presentation.weather.TemperatureUnit.CELSIUS
+        val temp = if (isCelsius) tempCelsius.roundToInt() else ((tempCelsius * 9 / 5) + 32).roundToInt()
+        val tempUnit = if (isCelsius) "°C" else "°F"
         val code = weather.current?.weatherCode ?: 0
         val condition = getConditionText(code)
         val humidity = weather.current?.humidity?.roundToInt()
-        val wind = weather.current?.windSpeed?.roundToInt()
+        val windKmh = weather.current?.windSpeed
+        val windUnit = settingsManager.getWindUnit()
+        val windDisplay = windKmh?.let {
+            when (windUnit) {
+                com.vayu.weather.presentation.weather.WindUnit.KPH -> "${it.roundToInt()} km/h"
+                com.vayu.weather.presentation.weather.WindUnit.MPH -> "${(it * 0.621371).toInt()} mph"
+                com.vayu.weather.presentation.weather.WindUnit.MS -> "${(it / 3.6).toInt()} m/s"
+                com.vayu.weather.presentation.weather.WindUnit.KNOTS -> "${(it * 0.539957).toInt()} kn"
+            }
+        }
 
-        val title = "$temp° — $condition"
+        val title = "$temp$tempUnit — $condition"
         val text = buildString {
             append("$cityName • $condition")
             humidity?.let { append(" • ${it}% humidity") }
-            wind?.let { append(" • ${it} km/h wind") }
+            windDisplay?.let { append(" • $it wind") }
         }
 
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
@@ -101,18 +120,23 @@ class WeatherNotificationWorker @AssistedInject constructor(
         manager.notify(NOTIFICATION_ID_CURRENT, notification)
     }
 
-    private fun sendMorningForecastNotification(
+    private suspend fun sendMorningForecastNotification(
         manager: NotificationManager,
         cityName: String,
         weather: com.vayu.weather.data.remote.dto.WeatherDto
     ) {
-        val currentTemp = weather.current?.temperature?.roundToInt() ?: return
+        val tempCelsius = weather.current?.temperature ?: return
+        val isCelsius = settingsManager.getTemperatureUnit() == com.vayu.weather.presentation.weather.TemperatureUnit.CELSIUS
+        val currentTemp = if (isCelsius) tempCelsius.roundToInt() else ((tempCelsius * 9 / 5) + 32).roundToInt()
+        val tempUnit = if (isCelsius) "°C" else "°F"
         val code = weather.current?.weatherCode ?: 0
         val condition = getConditionText(code)
 
         val daily = weather.daily
-        val high = daily?.maxTemperatures?.firstOrNull()?.roundToInt()
-        val low = daily?.minTemperatures?.firstOrNull()?.roundToInt()
+        val highC = daily?.maxTemperatures?.firstOrNull()
+        val lowC = daily?.minTemperatures?.firstOrNull()
+        val high = highC?.let { if (isCelsius) it.roundToInt() else ((it * 9 / 5) + 32).roundToInt() }
+        val low = lowC?.let { if (isCelsius) it.roundToInt() else ((it * 9 / 5) + 32).roundToInt() }
         val precip = daily?.precipitationProbabilities?.firstOrNull()
 
         val greeting = when {
@@ -121,10 +145,10 @@ class WeatherNotificationWorker @AssistedInject constructor(
             else -> "Good evening"
         }
 
-        val title = "$greeting. $condition and ${currentTemp}°"
+        val title = "$greeting. $condition and ${currentTemp}$tempUnit"
         val text = buildString {
             append("Today in $cityName: ")
-            if (high != null && low != null) append("High ${high}°, Low ${low}°. ")
+            if (high != null && low != null) append("High ${high}$tempUnit, Low ${low}$tempUnit. ")
             append(condition)
             precip?.let { if (it > 0) append(". ${it}% chance of rain") }
             append(".")
@@ -172,6 +196,23 @@ class WeatherNotificationWorker @AssistedInject constructor(
                     description = "Daily morning weather summary"
                 }
             )
+        }
+    }
+
+    private suspend fun isQuietHours(): Boolean {
+        if (!settingsManager.getQuietHoursEnabled()) return false
+        val now = java.time.LocalTime.now()
+        val startHour = settingsManager.getQuietHoursStartHour()
+        val startMin = settingsManager.getQuietHoursStartMinute()
+        val endHour = settingsManager.getQuietHoursEndHour()
+        val endMin = settingsManager.getQuietHoursEndMinute()
+        val start = java.time.LocalTime.of(startHour, startMin)
+        val end = java.time.LocalTime.of(endHour, endMin)
+        return if (start.isBefore(end) || start == end) {
+            !now.isBefore(start) && !now.isAfter(end)
+        } else {
+            // Overnight quiet hours (e.g. 22:00 → 07:00)
+            !now.isBefore(start) || !now.isAfter(end)
         }
     }
 

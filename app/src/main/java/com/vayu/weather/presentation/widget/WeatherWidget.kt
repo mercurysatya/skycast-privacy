@@ -246,13 +246,15 @@ object WidgetLayouts {
                         }
                     }
                 }
-                // Short hourly strip
-                val strip = info.hourly.sortedBy { it.time }.take(4)
+                // Short hourly strip — anchored to the current hour, not midnight
+                val sorted = info.hourly.sortedBy { it.time }
+                val startIdx = findCurrentHourIndex(sorted, info.current.time)
+                val strip = sorted.drop(startIdx).take(4)
                 if (strip.isNotEmpty()) {
                     Spacer(GlanceModifier.height(10.dp))
                     Row(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
                         strip.forEachIndexed { idx, h ->
-                            val label2 = hourLabel(h.time, isFirst = idx == 0)
+                            val label2 = hourLabel(h.time, isNow = idx == 0 && startIdx >= 0)
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(text = label2, style = TextStyle(color = skyTextTertiary, fontSize = 10.sp))
                                 Spacer(GlanceModifier.height(2.dp))
@@ -339,12 +341,14 @@ object WidgetLayouts {
                     )
                 }
                 Spacer(GlanceModifier.height(8.dp))
-                // Hourly + rain prob strip
-                val strip = info.hourly.sortedBy { it.time }.take(5)
+                // Hourly + rain prob strip — anchored to the current hour, not midnight
+                val sortedDetailed = info.hourly.sortedBy { it.time }
+                val startIdxDetailed = findCurrentHourIndex(sortedDetailed, info.current.time)
+                val strip = sortedDetailed.drop(startIdxDetailed).take(5)
                 if (strip.isNotEmpty()) {
                     Row(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
                         strip.forEachIndexed { idx, h ->
-                            val label2 = hourLabel(h.time, isFirst = idx == 0)
+                            val label2 = hourLabel(h.time, isNow = idx == 0 && startIdxDetailed >= 0)
                             val t = if (isC) h.temperature.roundToInt() else (h.temperature * 9.0 / 5.0 + 32).roundToInt()
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(text = label2, style = TextStyle(color = skyTextTertiary, fontSize = 9.sp))
@@ -454,8 +458,8 @@ private fun weatherLabel(code: Int, isDay: Boolean): String = when (code) {
     else -> "Cloudy"
 }
 
-private fun hourLabel(time: String, isFirst: Boolean): String {
-    if (isFirst) return "Now"
+private fun hourLabel(time: String, isNow: Boolean): String {
+    if (isNow) return "Now"
     val hour = try {
         java.time.LocalDateTime.parse(time).hour
     } catch (e: Exception) { return time.takeLast(5) }
@@ -465,4 +469,16 @@ private fun hourLabel(time: String, isFirst: Boolean): String {
         12 -> "12p"
         else -> "${hour - 12}p"
     }
+}
+
+/**
+ * Find the index in the sorted hourly list whose hour matches the API
+ * current-time hour. Returns 0 if no match is found (fallback to first entry).
+ */
+private fun findCurrentHourIndex(sorted: List<com.vayu.weather.domain.model.HourlyWeather>, currentTime: String?): Int {
+    if (currentTime == null || sorted.isEmpty()) return 0
+    val currentHour = try { java.time.LocalDateTime.parse(currentTime).hour } catch (_: Exception) { return 0 }
+    return sorted.indexOfFirst {
+        try { java.time.LocalDateTime.parse(it.time).hour == currentHour } catch (_: Exception) { false }
+    }.coerceAtLeast(0)
 }

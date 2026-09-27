@@ -44,13 +44,16 @@ enum class TrendType(val label: String, val icon: androidx.compose.ui.graphics.v
 fun WeatherTrends(
     hourlyData: List<HourlyWeather>,
     isCelsius: Boolean = true,
+    windUnit: com.vayu.weather.presentation.weather.WindUnit = com.vayu.weather.presentation.weather.WindUnit.KPH,
+    currentTimeInLocation: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (hourlyData.isEmpty()) return
 
-    val sorted = remember(hourlyData) {
-        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
-        val start = hourlyData.indexOfFirst { it.time >= now }
+    val sorted = remember(hourlyData, currentTimeInLocation) {
+        val nowStr = currentTimeInLocation?.take(13)?.let { "${it}:00" }
+            ?: LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
+        val start = hourlyData.indexOfFirst { it.time >= nowStr }
         val data = if (start >= 0) hourlyData.drop(start).take(24) else hourlyData.take(24)
         data.sortedBy { it.time }
     }
@@ -61,21 +64,34 @@ fun WeatherTrends(
     val trendType = TrendType.entries[selectedTab]
 
     // Compute chart values based on selected tab
-    val chartValues = remember(sorted, trendType, isCelsius) {
+    val chartValues = remember(sorted, trendType, isCelsius, windUnit) {
         sorted.map { hour ->
             when (trendType) {
                 TrendType.TEMPERATURE -> {
                     if (isCelsius) hour.temperature.toFloat()
                     else ((hour.temperature * 9.0 / 5.0) + 32.0).toFloat()
                 }
-                TrendType.WIND -> hour.windSpeed?.toFloat() ?: 0f
+                TrendType.WIND -> {
+                    val kmh = hour.windSpeed ?: 0.0
+                    when (windUnit) {
+                        com.vayu.weather.presentation.weather.WindUnit.KPH -> kmh.toFloat()
+                        com.vayu.weather.presentation.weather.WindUnit.MPH -> (kmh * 0.621371).toFloat()
+                        com.vayu.weather.presentation.weather.WindUnit.MS -> (kmh / 3.6).toFloat()
+                        com.vayu.weather.presentation.weather.WindUnit.KNOTS -> (kmh * 0.539957).toFloat()
+                    }
+                }
                 TrendType.PRECIPITATION -> (hour.precipitationProbability ?: 0).toFloat()
             }
         }
     }
     val unit = when (trendType) {
         TrendType.TEMPERATURE -> if (isCelsius) "°C" else "°F"
-        TrendType.WIND -> "km/h"
+        TrendType.WIND -> when (windUnit) {
+            com.vayu.weather.presentation.weather.WindUnit.KPH -> "km/h"
+            com.vayu.weather.presentation.weather.WindUnit.MPH -> "mph"
+            com.vayu.weather.presentation.weather.WindUnit.MS -> "m/s"
+            com.vayu.weather.presentation.weather.WindUnit.KNOTS -> "kn"
+        }
         TrendType.PRECIPITATION -> "%"
     }
     val minVal = chartValues.min()

@@ -208,7 +208,7 @@ class ProductionAuditTest {
         assertEquals("10 km/h", WindConverter.getWindDisplay(10.0, WindUnit.KPH))
         assertEquals("6 mph", WindConverter.getWindDisplay(10.0, WindUnit.MPH))
         assertEquals("2 m/s", WindConverter.getWindDisplay(10.0, WindUnit.MS))
-        assertEquals("5 knots", WindConverter.getWindDisplay(10.0, WindUnit.KNOTS))
+        assertEquals("5 kn", WindConverter.getWindDisplay(10.0, WindUnit.KNOTS))
     }
 
     @Test

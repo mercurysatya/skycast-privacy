@@ -28,7 +28,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vayu.weather.data.local.WeatherAlertEntity
+import com.vayu.weather.domain.repository.WeatherAlert
 import com.vayu.weather.ui.theme.SkyAlertSeverity
 import com.vayu.weather.ui.theme.SkyCastTokens
 import java.time.format.DateTimeFormatter
@@ -54,7 +54,7 @@ fun SkyAlertSeverity.rank(): Int = when (this) {
 const val ALERT_MAX_AGE_MS: Long = 24L * 60L * 60L * 1000L
 
 /** Filter and sort alerts: remove expired (24h old), then sort by severity descending. */
-fun filterAndSortAlerts(alerts: List<WeatherAlertEntity>): List<WeatherAlertEntity> {
+fun filterAndSortAlerts(alerts: List<WeatherAlert>): List<WeatherAlert> {
     val now = System.currentTimeMillis()
     return alerts
         .filter { now - it.timestamp <= ALERT_MAX_AGE_MS }
@@ -62,7 +62,7 @@ fun filterAndSortAlerts(alerts: List<WeatherAlertEntity>): List<WeatherAlertEnti
 }
 @Composable
 fun SkyCastAlertCard(
-    alert: WeatherAlertEntity,
+    alert: WeatherAlert,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -141,8 +141,8 @@ fun SkyCastAlertCard(
 
 @Composable
 fun SkyCastAlertList(
-    alerts: List<WeatherAlertEntity>,
-    onAlertClick: (WeatherAlertEntity) -> Unit = {},
+    alerts: List<WeatherAlert>,
+    onAlertClick: (WeatherAlert) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (alerts.isEmpty()) return

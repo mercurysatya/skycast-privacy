@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -48,6 +49,7 @@ fun AlertsScreen(
     onSnoozeAlert: (WeatherAlert, Long) -> Unit,
     onSnoozeDurationChange: (Int) -> Unit,
     onToggleExpand: (Long) -> Unit,
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showClearDialog by remember { mutableStateOf(false) }
@@ -86,6 +88,14 @@ fun AlertsScreen(
                 .padding(bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    imageVector = Icons.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+            Spacer(modifier = Modifier.width(4.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.weather_alerts),
@@ -95,7 +105,11 @@ fun AlertsScreen(
                 )
                 if (state.alerts.isNotEmpty()) {
                     Text(
-                        text = stringResource(R.string.alert_count, state.alerts.size),
+                        text = if (state.alerts.size == 1) {
+                            stringResource(R.string.alert_count_one, state.alerts.size)
+                        } else {
+                            stringResource(R.string.alert_count, state.alerts.size)
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
                     )

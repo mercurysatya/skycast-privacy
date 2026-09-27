@@ -42,7 +42,11 @@ data class CurrentWeatherDto(
     @Json(name = "wind_gusts_10m")
     val windGusts: Double? = null,
     @Json(name = "dew_point_2m")
-    val dewPoint: Double? = null
+    val dewPoint: Double? = null,
+    @Json(name = "cloud_cover")
+    val cloudCover: Int? = null,
+    @Json(name = "uv_index")
+    val uvIndex: Double? = null
 )
 
 @JsonClass(generateAdapter = true)

@@ -22,7 +22,9 @@ data class CurrentWeather(
     val visibility: Double? = null,
     val surfacePressure: Double? = null,
     val windGusts: Double? = null,
-    val dewPoint: Double? = null
+    val dewPoint: Double? = null,
+    val cloudCover: Int? = null,
+    val uvIndex: Double? = null
 )
 
 @Serializable

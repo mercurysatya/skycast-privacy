@@ -21,6 +21,7 @@ import com.vayu.weather.presentation.ConsentManager
 @Composable
 fun AdBanner(modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    if (com.vayu.weather.presentation.premium.PremiumManager.isPremium) return
     if (!ConsentManager.canRequestAds(context)) return
 
     AndroidView(

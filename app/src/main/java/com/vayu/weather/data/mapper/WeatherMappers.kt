@@ -23,7 +23,9 @@ fun WeatherDto.toWeatherInfo(): WeatherInfo {
                 visibility = current?.visibility,
                 surfacePressure = current?.surfacePressure,
                 windGusts = current?.windGusts,
-                dewPoint = current?.dewPoint
+                dewPoint = current?.dewPoint,
+                cloudCover = current?.cloudCover,
+                uvIndex = current?.uvIndex
             ),
             hourly = hourly?.toHourlyWeather() ?: emptyList(),
             daily = daily?.toDailyWeather() ?: emptyList()

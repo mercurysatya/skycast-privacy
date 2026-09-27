@@ -62,7 +62,7 @@ fun SkyCastWindCompass(
         WindUnit.KPH -> "km/h"
         WindUnit.MPH -> "mph"
         WindUnit.MS -> "m/s"
-        WindUnit.KNOTS -> "knots"
+        WindUnit.KNOTS -> "kn"
     }
     val displayGust = gustsKph?.let { gust ->
         when (windUnit) {

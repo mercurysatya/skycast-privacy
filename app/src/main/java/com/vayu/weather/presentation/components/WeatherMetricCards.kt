@@ -242,6 +242,7 @@ private fun formatWindDirection(degrees: Double?): String {
 @Composable
 fun PressureCard(
     pressure: Double?,
+    pressureUnit: String = "hPa",
     modifier: Modifier = Modifier
 ) {
     val hpa = pressure?.roundToInt() ?: 0
@@ -255,6 +256,13 @@ fun PressureCard(
         hpa < 1000 -> WeatherColors.uvModerate
         else -> Color.White.copy(alpha = WeatherOpacity.TEXT_SECONDARY)
     }
+
+    val displayPressure = if (pressureUnit == "inHg" && pressure != null) {
+        com.vayu.weather.data.converter.PressureConverter.hpaToInHg(pressure).roundToInt()
+    } else {
+        hpa
+    }
+    val displayLabel = if (pressureUnit == "inHg") "inHg" else "hPa"
 
     GlassCard(modifier = modifier) {
         Column(
@@ -271,13 +279,13 @@ fun PressureCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "$hpa",
+                text = "$displayPressure",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
             Text(
-                text = "hPa",
+                text = displayLabel,
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = WeatherOpacity.TEXT_TERTIARY)
             )
@@ -520,16 +528,17 @@ fun MoonPhaseCard(
 @Composable
 fun PrecipitationTimelineCard(
     hourlyData: List<com.vayu.weather.domain.model.HourlyWeather>,
+    currentTimeInLocation: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (hourlyData.isEmpty()) return
 
-    val next6Hours = remember(hourlyData) {
-        val now = java.time.LocalDateTime.now()
-        val currentHour = now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
+    val next6Hours = remember(hourlyData, currentTimeInLocation) {
+        val nowStr = currentTimeInLocation?.take(13)?.let { "${it}:00" }
+            ?: java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:00"))
         hourlyData
             .sortedBy { it.time }
-            .filter { it.time >= currentHour }
+            .filter { it.time >= nowStr }
             .take(6)
     }
 

@@ -50,16 +50,23 @@ fun SkyCastPrecipitationTimeline(
     hourly: List<HourlyWeather>,
     isCelsius: Boolean = true,
     hoursToShow: Int = 10,
+    currentTimeInLocation: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (hourly.isEmpty()) return
 
     val sorted = hourly.sortedBy { it.time }
-    val now = LocalDateTime.now()
+    // Use the API's location time when available so the "Now" anchor
+    // matches the weather location, not the device timezone.
+    val locationNow = if (currentTimeInLocation != null) {
+        parseHourly(currentTimeInLocation) ?: LocalDateTime.now()
+    } else {
+        LocalDateTime.now()
+    }
     val window = sorted
         .asSequence()
         .mapNotNull { h -> parseHourly(h.time)?.let { it to h } }
-        .filter { (time, _) -> !time.isBefore(now.minusMinutes(30)) }
+        .filter { (time, _) -> !time.isBefore(locationNow.minusMinutes(30)) }
         .take(hoursToShow)
         .toList()
     if (window.isEmpty()) return

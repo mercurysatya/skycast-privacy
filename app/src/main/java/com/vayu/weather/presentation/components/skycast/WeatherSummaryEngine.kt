@@ -273,8 +273,10 @@ object WeatherSummaryEngine {
         if (isCelsius) c.roundToInt() else (c * 9.0 / 5.0 + 32).roundToInt()
 
     /** Convenience helper for "best outdoor time" suggestion used by morning briefing. */
-    fun suggestOutdoorWindow(hourly: List<HourlyWeather>, isCelsius: Boolean): String? {
-        val now = LocalDateTime.now()
+    fun suggestOutdoorWindow(hourly: List<HourlyWeather>, isCelsius: Boolean, currentTimeInLocation: String? = null): String? {
+        val now = if (currentTimeInLocation != null) {
+            parseHourly(currentTimeInLocation) ?: LocalDateTime.now()
+        } else LocalDateTime.now()
         val good = hourly.sortedBy { it.time }
             .mapNotNull { h ->
                 val time = parseHourly(h.time) ?: return@mapNotNull null

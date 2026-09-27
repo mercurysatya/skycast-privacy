@@ -51,6 +51,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setPremium(value: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setPremium(value)
+            _state.update { it.copy(isPremium = value) }
+        }
+    }
+
     fun toggleTemperatureUnit() {
         viewModelScope.launch {
             val newUnit = if (_state.value.temperatureUnit == TemperatureUnit.CELSIUS)

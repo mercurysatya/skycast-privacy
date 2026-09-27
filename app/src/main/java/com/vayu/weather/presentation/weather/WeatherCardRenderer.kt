@@ -184,7 +184,7 @@ object WeatherCardRenderer {
                     textSize = 24f
                 }
                 canvas.drawText(
-                    "🌅 ${sr.take(5)}  —  🌇 ${ss.take(5)}",
+                    "🌅 ${sr.substringAfter("T").take(5)}  —  🌇 ${ss.substringAfter("T").take(5)}",
                     CARD_WIDTH / 2f, 920f, sunPaint
                 )
             }
@@ -370,7 +370,7 @@ object WeatherCardRenderer {
                     textSize = 28f
                 }
                 canvas.drawText(
-                    "🌅 ${sr.take(5)}  —  🌇 ${ss.take(5)}",
+                    "🌅 ${sr.substringAfter("T").take(5)}  —  🌇 ${ss.substringAfter("T").take(5)}",
                     STORY_WIDTH / 2f, 1150f, sunPaint
                 )
             }

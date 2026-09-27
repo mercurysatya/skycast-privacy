@@ -215,77 +215,84 @@ fun SkyCastSunMoonCard(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Canvas(modifier = Modifier.size(56.dp)) {
-                        val cx = size.width / 2f
-                        val cy = size.height / 2f
-                        val r = size.width / 2.2f
-                        val illum = moonPhase.illuminationFraction
+                Canvas(modifier = Modifier.size(56.dp)) {
+                    val cx = size.width / 2f
+                    val cy = size.height / 2f
+                    val r = size.width / 2.2f
+                    val illum = moonPhase.illuminationFraction
 
-                        when {
-                            illum < 0.01 -> {
-                                // New Moon — fully dark
+                    // Draw the moon disc with an arc-based terminator.
+                    // At each phase the lit side is carved from the full disc
+                    // using a single arc whose x-extent is controlled by [illum].
+                    // Waxing: left side lit.  Waning: right side lit.
+                    when {
+                        illum < 0.01 -> {
+                            // New Moon — fully dark
+                            drawCircle(
+                                color = Color(0xFF1A1A2E),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                        }
+                        illum > 0.99 -> {
+                            // Full Moon — fully lit
+                            drawCircle(
+                                color = Color(0xFFF5F5DC),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                        }
+                        else -> {
+                            // The lit portion is the intersection of the moon
+                            // disc with a half-plane defined by the terminator
+                            // x-position.  We draw this by:
+                            //  1. Fill the full disc with the lit colour.
+                            //  2. Overlay the dark colour on the unlit side.
+                            //  3. Carve the lit region back with a single arc
+                            //     whose x-extent equals (illum * 2 * r).
+                            //
+                            // The half-disc base works because at 50%
+                            // illumination the carved arc exactly covers the
+                            // unlit half.  At other illuminations the arc
+                            // extends beyond (gibbous) or shrinks into
+                            // (crescent) the half-disc.
+                            val litExtent = illum.toFloat() * 2f * r  // 0→2r
+
+                            drawCircle(
+                                color = Color(0xFFF5F5DC),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+
+                            if (isWaxing) {
+                                // Waxing: dark on right, lit on left.
+                                // Overlay dark, then carve lit arc from right.
                                 drawCircle(
                                     color = Color(0xFF1A1A2E),
                                     radius = r,
                                     center = Offset(cx, cy)
                                 )
-                            }
-                            illum > 0.99 -> {
-                                // Full Moon — no shadow
                                 drawCircle(
                                     color = Color(0xFFF5F5DC),
                                     radius = r,
+                                    center = Offset(cx + r - litExtent, cy)
+                                )
+                            } else {
+                                // Waning: dark on left, lit on right.
+                                drawCircle(
+                                    color = Color(0xFF1A1A2E),
+                                    radius = r,
                                     center = Offset(cx, cy)
                                 )
-                            }
-                            else -> {
-                                // Terminator geometry: build a half-disc that
-                                // represents either the lit (waxing) or dark
-                                // (waning) side, then overlay the opposite half
-                                // trimmed by an elliptical terminator.
-                                //
-                                // For a waxing moon, the RIGHT side is dark.
-                                // For a waning moon, the LEFT side is dark.
-                                val terminatorX = cx + (terminatorOffset * r).toFloat()
-                                if (isWaxing) {
-                                    // Lit half-disc (left side) + dark half-disc (right side trimmed by ellipse)
-                                    drawCircle(
-                                        color = Color(0xFFF5F5DC),
-                                        radius = r,
-                                        center = Offset(cx, cy)
-                                    )
-                                    drawCircle(
-                                        color = Color(0xFF1A1A2E),
-                                        radius = r,
-                                        center = Offset(cx, cy)
-                                    )
-                                    // Carve the lit portion back using an ellipse
-                                    drawCircle(
-                                        color = Color(0xFFF5F5DC),
-                                        radius = r,
-                                        center = Offset(terminatorX, cy)
-                                    )
-                                } else {
-                                    // Waning: left side dark, right side lit
-                                    drawCircle(
-                                        color = Color(0xFFF5F5DC),
-                                        radius = r,
-                                        center = Offset(cx, cy)
-                                    )
-                                    drawCircle(
-                                        color = Color(0xFF1A1A2E),
-                                        radius = r,
-                                        center = Offset(cx, cy)
-                                    )
-                                    drawCircle(
-                                        color = Color(0xFFF5F5DC),
-                                        radius = r,
-                                        center = Offset(terminatorX, cy)
-                                    )
-                                }
+                                drawCircle(
+                                    color = Color(0xFFF5F5DC),
+                                    radius = r,
+                                    center = Offset(cx - r + litExtent, cy)
+                                )
                             }
                         }
                     }
+                }
                 }
                 Column {
                     Text(

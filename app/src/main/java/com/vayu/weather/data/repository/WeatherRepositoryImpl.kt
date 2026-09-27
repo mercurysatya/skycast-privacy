@@ -279,6 +279,20 @@ class WeatherRepositoryImpl @Inject constructor(
         dao.clearWeatherAlerts()
     }
 
+    override suspend fun findRecentWeatherAlert(title: String, severity: String, sinceTimestamp: Long): WeatherAlert? {
+        val entity = dao.findRecentWeatherAlert(title, severity, sinceTimestamp) ?: return null
+        return WeatherAlert(
+            id = entity.id,
+            title = entity.title,
+            message = entity.message,
+            severity = entity.severity,
+            timestamp = entity.timestamp,
+            latitude = entity.latitude,
+            longitude = entity.longitude,
+            cityName = entity.cityName
+        )
+    }
+
     override suspend fun clearWeatherCache() {
         dao.clearWeatherCache()
     }

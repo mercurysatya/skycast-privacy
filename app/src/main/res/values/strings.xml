@@ -209,6 +209,7 @@
 
     <!-- Alerts History -->
     <string name="alert_count">%1$d alerts</string>
+    <string name="alert_count_one">%1$d alert</string>
     <string name="filter_all">All</string>
     <string name="no_matching_alerts">No matching alerts</string>
     <string name="no_matching_alerts_subtitle">No alerts match the selected filter.

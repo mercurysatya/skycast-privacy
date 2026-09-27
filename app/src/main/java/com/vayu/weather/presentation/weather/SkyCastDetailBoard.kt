@@ -50,6 +50,8 @@ import kotlin.math.roundToInt
 fun SkyCastDetailBoard(
     info: WeatherInfo,
     isCelsius: Boolean,
+    windUnit: com.vayu.weather.presentation.weather.WindUnit = com.vayu.weather.presentation.weather.WindUnit.KPH,
+    pressureUnit: String = "hPa",
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -70,9 +72,28 @@ fun SkyCastDetailBoard(
             if (v < 1000) "${(v / 100.0).roundToInt() * 100}m"
             else "${(v / 1000.0).let { if (it - it.toInt() >= 0.5) it.toInt() + 1 else it.toInt() }} km"
         }
-        val wind = info.current.windSpeed?.roundToInt()
-        val gusts = info.current.windGusts?.roundToInt()
-        val cloud = info.current.visibility?.let { (100 - (it / 10000).toInt().coerceIn(0, 100)) }
+        val windKmh = info.current.windSpeed
+        val windDisplay = when (windUnit) {
+            com.vayu.weather.presentation.weather.WindUnit.KPH -> windKmh?.let { "${it.roundToInt()}" }
+            com.vayu.weather.presentation.weather.WindUnit.MPH -> windKmh?.let { "${(it * 0.621371).toInt()}" }
+            com.vayu.weather.presentation.weather.WindUnit.MS -> windKmh?.let { "${(it / 3.6).toInt()}" }
+            com.vayu.weather.presentation.weather.WindUnit.KNOTS -> windKmh?.let { "${(it * 0.539957).toInt()}" }
+        }
+        val windLabel = when (windUnit) {
+            com.vayu.weather.presentation.weather.WindUnit.KPH -> "km/h"
+            com.vayu.weather.presentation.weather.WindUnit.MPH -> "mph"
+            com.vayu.weather.presentation.weather.WindUnit.MS -> "m/s"
+            com.vayu.weather.presentation.weather.WindUnit.KNOTS -> "kn"
+        }
+        val gustsKmh = info.current.windGusts
+        val gustsDisplay = when (windUnit) {
+            com.vayu.weather.presentation.weather.WindUnit.KPH -> gustsKmh?.let { "${it.roundToInt()}" }
+            com.vayu.weather.presentation.weather.WindUnit.MPH -> gustsKmh?.let { "${(it * 0.621371).toInt()}" }
+            com.vayu.weather.presentation.weather.WindUnit.MS -> gustsKmh?.let { "${(it / 3.6).toInt()}" }
+            com.vayu.weather.presentation.weather.WindUnit.KNOTS -> gustsKmh?.let { "${(it * 0.539957).toInt()}" }
+        }
+        val cloud = info.current.cloudCover
+        val pressureLabel = if (pressureUnit == "inHg") "inHg" else "hPa"
         val rain = info.hourly.firstOrNull()?.precipitationProbability ?: 0
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -111,16 +132,16 @@ fun SkyCastDetailBoard(
             SkyCastMetricCard(
                 icon = Icons.Rounded.Air,
                 label = "Wind",
-                value = wind?.let { "$it" } ?: "—",
-                subtitle = "km/h",
+                value = windDisplay?.let { "$it" } ?: "—",
+                subtitle = windLabel,
                 accent = com.vayu.weather.ui.theme.SoftLavender,
                 modifier = Modifier.weight(1f)
             )
             SkyCastMetricCard(
                 icon = Icons.Rounded.Speed,
                 label = "Gusts",
-                value = gusts?.let { "$it" } ?: "—",
-                subtitle = "km/h",
+                value = gustsDisplay?.let { "$it" } ?: "—",
+                subtitle = windLabel,
                 accent = com.vayu.weather.ui.theme.SoftLavender,
                 modifier = Modifier.weight(1f)
             )
@@ -130,7 +151,7 @@ fun SkyCastDetailBoard(
                 icon = Icons.Rounded.Compress,
                 label = "Pressure",
                 value = pressure?.let { "$it" } ?: "—",
-                subtitle = "hPa",
+                subtitle = pressureLabel,
                 accent = FreshGreen,
                 modifier = Modifier.weight(1f)
             )
@@ -154,7 +175,7 @@ fun SkyCastDetailBoard(
             SkyCastMetricCard(
                 icon = Icons.Rounded.Compress,
                 label = "Cloud cover",
-                value = "${cloud ?: 0}%",
+                value = cloud?.let { "$it%" } ?: "—",
                 accent = com.vayu.weather.ui.theme.StormGray,
                 modifier = Modifier.weight(1f)
             )

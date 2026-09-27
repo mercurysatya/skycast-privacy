@@ -95,7 +95,7 @@ object WindConverter {
             WindUnit.KPH -> speedKmh?.let { "${it.toInt()} km/h" } ?: "--"
             WindUnit.MPH -> speedKmh?.let { "${kmhToMph(it).toInt()} mph" } ?: "--"
             WindUnit.MS -> speedKmh?.let { "${kmhToMs(it).toInt()} m/s" } ?: "--"
-            WindUnit.KNOTS -> speedKmh?.let { "${kmhToKnots(it).toInt()} knots" } ?: "--"
+            WindUnit.KNOTS -> speedKmh?.let { "${kmhToKnots(it).toInt()} kn" } ?: "--"
         }
     }
 
@@ -106,7 +106,7 @@ object WindConverter {
             WindUnit.KPH -> "km/h"
             WindUnit.MPH -> "mph"
             WindUnit.MS -> "m/s"
-            WindUnit.KNOTS -> "knots"
+            WindUnit.KNOTS -> "kn"
         }
     }
 }

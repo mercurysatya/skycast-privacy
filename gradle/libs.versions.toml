@@ -1,6 +1,6 @@
 [versions]
 firebaseBOM = "34.18.0"
-agp = "9.3.2"
+agp = "9.4.1"
 coreKtx = "1.19.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"

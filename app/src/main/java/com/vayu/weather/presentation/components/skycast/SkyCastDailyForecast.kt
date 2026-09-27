@@ -62,6 +62,7 @@ fun SkyCastDailyForecast(
     daily: List<DailyWeather>,
     hourly: List<HourlyWeather>,
     isCelsius: Boolean,
+    currentTimeInLocation: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (daily.isEmpty()) return
@@ -82,7 +83,9 @@ fun SkyCastDailyForecast(
 
             daily.forEachIndexed { index, day ->
                 val isExpanded = expanded == day.date
-                val today = LocalDate.now()
+                val today = if (currentTimeInLocation != null) {
+                    try { java.time.LocalDate.parse(currentTimeInLocation.substringBefore("T")) } catch (_: Exception) { LocalDate.now() }
+                } else LocalDate.now()
                 val date = try { LocalDate.parse(day.date) } catch (e: Exception) { today }
                 val label = when (date) {
                     today -> "Today"
@@ -342,8 +345,10 @@ private fun DailyDetails(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                DayExtra(label = "Sunrise", value = day.sunrise.take(5))
-                DayExtra(label = "Sunset", value = day.sunset.take(5))
+                // API times are ISO local datetime strings ("2026-09-03T05:57") —
+                // take the time component, not the first 5 chars of the date.
+                DayExtra(label = "Sunrise", value = day.sunrise.substringAfter("T").take(5))
+                DayExtra(label = "Sunset", value = day.sunset.substringAfter("T").take(5))
                 DayExtra(
                     label = "UV",
                     value = day.uvIndex?.let { "${it.roundToInt()}" } ?: "—"

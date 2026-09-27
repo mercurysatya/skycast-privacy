@@ -328,7 +328,8 @@ fun WeatherDashboard(
                     item(key = "summary") {
                         WeatherSummary(
                             info = info,
-                            isCelsius = isCelsius
+                            isCelsius = isCelsius,
+                            currentTimeInLocation = info.current.time
                         )
                     }
 
@@ -336,7 +337,9 @@ fun WeatherDashboard(
                         Spacer(modifier = Modifier.height(24.dp))
                         HourlyForecastSection(
                             hourlyData = info.hourly,
-                            isCelsius = isCelsius
+                            isCelsius = isCelsius,
+                            pressureUnit = settings.pressureUnit,
+                            precipitationUnit = settings.precipitationUnit
                         )
                     }
 
@@ -345,7 +348,8 @@ fun WeatherDashboard(
                         DailyForecastSection(
                             dailyData = info.daily,
                             hourlyData = info.hourly,
-                            isCelsius = isCelsius
+                            isCelsius = isCelsius,
+                            currentTimeInLocation = info.current.time
                         )
                     }
 
@@ -390,6 +394,7 @@ fun WeatherDashboard(
                                         )
                                         PressureCard(
                                             pressure = info.current.surfacePressure,
+                                            pressureUnit = settings.pressureUnit,
                                             modifier = Modifier.width(180.dp)
                                         )
                                         MoonPhaseCard(
@@ -420,6 +425,7 @@ fun WeatherDashboard(
 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                             PressureCard(
                                                 pressure = info.current.surfacePressure,
+                                                pressureUnit = settings.pressureUnit,
                                                 modifier = Modifier.weight(1f)
                                             )
                                             MoonPhaseCard(
@@ -442,6 +448,7 @@ Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Spacer(modifier = Modifier.height(16.dp))
                             PrecipitationTimelineCard(
                                 hourlyData = info.hourly,
+                                currentTimeInLocation = info.current.time,
                                 modifier = Modifier.padding(horizontal = 20.dp)
                             )
                     }
@@ -477,6 +484,7 @@ Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         WeatherTrends(
                             hourlyData = info.hourly,
                             isCelsius = isCelsius,
+                            currentTimeInLocation = info.current.time,
                             modifier = Modifier.padding(horizontal = 20.dp)
                         )
                     }
@@ -505,7 +513,7 @@ Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     // === SUN ARC ===
                     item(key = "sunarc") {
                         Spacer(modifier = Modifier.height(16.dp))
-                        SunArcAnimation(dailyData = info.daily)
+                        SunArcAnimation(dailyData = info.daily, currentTimeInLocation = info.current.time)
                     }
 
                     val updatedTime = state.lastUpdatedTime
@@ -856,9 +864,10 @@ private fun HeroSection(
 private fun WeatherSummary(
     info: WeatherInfo,
     isCelsius: Boolean,
+    currentTimeInLocation: String? = null,
     modifier: Modifier = Modifier
 ) {
-    val summary = remember(info) { generateWeatherSummary(info, isCelsius) }
+    val summary = remember(info, currentTimeInLocation) { generateWeatherSummary(info, isCelsius, currentTimeInLocation) }
     if (summary.isNotEmpty()) {
         Text(
             text = summary,
@@ -896,11 +905,13 @@ private fun plainWeatherDescription(code: Int, isDay: Boolean): String = when (c
     else -> "cloudy"
 }
 
-private fun generateWeatherSummary(info: WeatherInfo, isCelsius: Boolean): String {
+private fun generateWeatherSummary(info: WeatherInfo, isCelsius: Boolean, currentTimeInLocation: String? = null): String {
     val current = info.current
     val today = info.daily.firstOrNull()
     val nextHours = info.hourly.sortedBy { it.time }.take(6)
-    val nowHour = java.time.LocalDateTime.now().hour
+    val nowHour = if (currentTimeInLocation != null) {
+        try { currentTimeInLocation.substringAfter("T").take(2).toInt() } catch (_: Exception) { java.time.LocalDateTime.now().hour }
+    } else java.time.LocalDateTime.now().hour
     val timeOfDay = when {
         nowHour in 5..11 -> "this morning"
         nowHour in 12..16 -> "this afternoon"
@@ -959,7 +970,9 @@ private fun generateWeatherSummary(info: WeatherInfo, isCelsius: Boolean): Strin
 @Composable
 private fun HourlyForecastSection(
     hourlyData: List<HourlyWeather>,
-    isCelsius: Boolean
+    isCelsius: Boolean,
+    pressureUnit: String = "hPa",
+    precipitationUnit: String = "mm"
 ) {
     var selectedHour by remember { mutableStateOf<String?>(null) }
     val haptic = rememberHapticFeedback()
@@ -1042,12 +1055,18 @@ private fun HourlyForecastSection(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            HourlyDetailItem("Pressure", "${data.pressure?.roundToInt() ?: "--"} hPa")
+                            HourlyDetailItem("Pressure", data.pressure?.let { p ->
+                                if (pressureUnit == "inHg") "${com.vayu.weather.data.converter.PressureConverter.hpaToInHg(p).roundToInt()} inHg"
+                                else "${p.roundToInt()} hPa"
+                            } ?: "--")
                             HourlyDetailItem("Visibility", data.visibility?.let { v ->
                                 if (v < 1000) "${(v / 100.0).roundToInt() * 100}m"
                                 else "${(v / 1000.0).let { k -> if (k - k.toInt() >= 0.5) k.toInt() + 1 else k.toInt() }} km"
                             } ?: "--")
-                            HourlyDetailItem("Precip", data.precipitation?.let { "${String.format("%.1f", it)} mm" } ?: "--")
+                            HourlyDetailItem("Precip", data.precipitation?.let {
+                                if (precipitationUnit == "inches") "${String.format("%.2f", com.vayu.weather.data.converter.PrecipitationConverter.mmToInches(it))} in"
+                                else "${String.format("%.1f", it)} mm"
+                            } ?: "--")
                         }
                     }
                 }
@@ -1216,7 +1235,8 @@ private fun HourlyPillCard(
 private fun DailyForecastSection(
     dailyData: List<DailyWeather>,
     hourlyData: List<HourlyWeather>,
-    isCelsius: Boolean
+    isCelsius: Boolean,
+    currentTimeInLocation: String? = null
 ) {
     if (dailyData.isEmpty()) return
     val allMin = remember(dailyData) { dailyData.minOf { it.minTemp }.roundToInt() }
@@ -1259,6 +1279,7 @@ private fun DailyForecastSection(
                         globalMax = allMax,
                         isLast = dailyData.lastIndex == index,
                         isExpanded = expandedDay == day.date,
+                        currentTimeInLocation = currentTimeInLocation,
                         onClick = {
                             haptic(HapticFeedbackConstants.VIRTUAL_KEY)
                             expandedDay = if (expandedDay == day.date) null else day.date
@@ -1279,10 +1300,13 @@ private fun DailyRow(
     globalMax: Int,
     isLast: Boolean = false,
     isExpanded: Boolean = false,
+    currentTimeInLocation: String? = null,
     onClick: () -> Unit = {}
 ) {
     val nowLabel = stringResource(R.string.now)
-    val today = java.time.LocalDate.now()
+    val today = if (currentTimeInLocation != null) {
+        try { java.time.LocalDate.parse(currentTimeInLocation.substringBefore("T")) } catch (_: Exception) { java.time.LocalDate.now() }
+    } else java.time.LocalDate.now()
     val tomorrow = today.plusDays(1)
     val dateLabel = try {
         val date = java.time.LocalDate.parse(data.date)
@@ -1391,7 +1415,7 @@ private fun DailyRow(
                     HourlyDetailItem("UV", data.uvIndex?.let { "${it.roundToInt()}" } ?: "--")
                     HourlyDetailItem("Condition", localizedWeatherDescription(data.weatherCode, true))
                     if (data.sunrise != null && data.sunset != null) {
-                        HourlyDetailItem("Sun", "${data.sunrise.take(5)} / ${data.sunset.take(5)}")
+                        HourlyDetailItem("Sun", "${data.sunrise.substringAfter("T").take(5)} / ${data.sunset.substringAfter("T").take(5)}")
                     }
                 }
                 // Hourly breakdown for this day
@@ -1936,7 +1960,7 @@ private fun generateInsights(info: WeatherInfo, isCelsius: Boolean): List<Insigh
 // ============================================================
 
 @Composable
-private fun SunMoonSection(dailyData: List<DailyWeather>) {
+private fun SunMoonSection(dailyData: List<DailyWeather>, currentTimeInLocation: String? = null) {
     val today = dailyData.firstOrNull() ?: return
     val sunrise = today.sunrise ?: return
     val sunset = today.sunset ?: return
@@ -1976,6 +2000,7 @@ private fun SunMoonSection(dailyData: List<DailyWeather>) {
             SunArc(
                 sunriseTime = sunriseTime,
                 sunsetTime = sunsetTime,
+                currentTimeInLocation = currentTimeInLocation,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(100.dp)
@@ -2006,9 +2031,15 @@ private fun SunMoonSection(dailyData: List<DailyWeather>) {
 private fun SunArc(
     sunriseTime: String,
     sunsetTime: String,
+    currentTimeInLocation: String? = null,
     modifier: Modifier = Modifier
 ) {
-    val now = java.time.LocalTime.now()
+    val now = if (currentTimeInLocation != null) {
+        try {
+            val timeStr = currentTimeInLocation.substringAfter("T")
+            java.time.LocalTime.parse(timeStr)
+        } catch (_: Exception) { java.time.LocalTime.now() }
+    } else java.time.LocalTime.now()
     val currentMinutes = now.hour * 60 + now.minute
 
     val (sunriseMinutes, sunsetMinutes) = remember(sunriseTime, sunsetTime) {

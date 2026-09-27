@@ -115,7 +115,8 @@ fun WeatherDetailScreen(
                     HourlyForecastExpanded(
                         hourlyData = info.hourly,
                         isCelsius = isCelsius,
-                        windUnit = settings.windUnit
+                        windUnit = settings.windUnit,
+                        currentTimeInLocation = info.current.time
                     )
                 }
 
@@ -124,7 +125,8 @@ fun WeatherDetailScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                     DailyForecastExpanded(
                         dailyData = info.daily,
-                        isCelsius = isCelsius
+                        isCelsius = isCelsius,
+                        currentTimeInLocation = info.current.time
                     )
                 }
 
@@ -397,10 +399,13 @@ private fun DetailInfoItem(
 private fun HourlyForecastExpanded(
     hourlyData: List<HourlyWeather>,
     isCelsius: Boolean,
-    windUnit: WindUnit
+    windUnit: WindUnit,
+    currentTimeInLocation: String? = null
 ) {
-    val currentHour = remember {
-        LocalTime.now().format(DateTimeFormatter.ofPattern("HH:00"))
+    val currentHour = remember(currentTimeInLocation) {
+        if (currentTimeInLocation != null) {
+            try { currentTimeInLocation.substringAfter("T").take(5) } catch (_: Exception) { LocalTime.now().format(DateTimeFormatter.ofPattern("HH:00")) }
+        } else LocalTime.now().format(DateTimeFormatter.ofPattern("HH:00"))
     }
 
     Column(
@@ -514,7 +519,8 @@ private fun HourlyForecastExpanded(
 @Composable
 private fun DailyForecastExpanded(
     dailyData: List<DailyWeather>,
-    isCelsius: Boolean
+    isCelsius: Boolean,
+    currentTimeInLocation: String? = null
 ) {
     Column(
         modifier = Modifier
@@ -541,7 +547,8 @@ private fun DailyForecastExpanded(
                     data = day,
                     isCelsius = isCelsius,
                     isFirst = index == 0,
-                    isLast = index == dailyData.lastIndex
+                    isLast = index == dailyData.lastIndex,
+                    currentTimeInLocation = currentTimeInLocation
                 )
                 if (index < dailyData.lastIndex) {
                     HorizontalDivider(
@@ -559,11 +566,14 @@ private fun DailyDetailItem(
     data: DailyWeather,
     isCelsius: Boolean,
     isFirst: Boolean,
-    isLast: Boolean
+    isLast: Boolean,
+    currentTimeInLocation: String? = null
 ) {
-    val dateLabel = remember(data.date) {
+    val dateLabel = remember(data.date, currentTimeInLocation) {
         val date = try { LocalDate.parse(data.date) } catch (e: Exception) { LocalDate.now() }
-        val today = LocalDate.now()
+        val today = if (currentTimeInLocation != null) {
+            try { LocalDate.parse(currentTimeInLocation.substringBefore("T")) } catch (_: Exception) { LocalDate.now() }
+        } else LocalDate.now()
         when (date) {
             today -> "Today"
             today.plusDays(1) -> "Tomorrow"
@@ -746,7 +756,7 @@ private fun windUnitLabel(unit: WindUnit): String = when (unit) {
     WindUnit.KPH -> "km/h"
     WindUnit.MPH -> "mph"
     WindUnit.MS -> "m/s"
-    WindUnit.KNOTS -> "knots"
+    WindUnit.KNOTS -> "kn"
 }
 
 private fun formatTimeFromISO(isoString: String): String {

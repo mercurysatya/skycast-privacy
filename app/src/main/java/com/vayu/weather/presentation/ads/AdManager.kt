@@ -41,8 +41,16 @@ object AdManager {
 
     private const val TAG = "AdManager"
 
-    /** Idempotent Mobile Ads initialization — must only run after consent allows ads. */
+    /** Premium members never load or see an ad. */
+    private fun adsDisabled(): Boolean =
+        com.vayu.weather.presentation.premium.PremiumManager.isPremium
+
+    /** Idempotent Mobile Ads initialization �?" must only run after consent allows ads. */
     fun initializeMobileAds(context: Context) {
+        if (adsDisabled()) {
+            Log.d(TAG, "Skipping Mobile Ads init - premium entitlement active")
+            return
+        }
         if (mobileAdsInitialized) return
         synchronized(this) {
             if (mobileAdsInitialized) return
@@ -60,6 +68,10 @@ object AdManager {
     // ======================== INTERSTITIAL ========================
 
     fun loadInterstitial(context: Context) {
+        if (adsDisabled()) {
+            Log.d(TAG, "Skipping interstitial load - premium entitlement active")
+            return
+        }
         if (!ConsentManager.canRequestAds(context)) {
             Log.d(TAG, "Skipping interstitial load — no consent")
             return
@@ -90,6 +102,10 @@ object AdManager {
      * Calls onAdDismissed when done (whether ad showed or not).
      */
     fun showInterstitial(activity: Activity, onAdDismissed: () -> Unit) {
+        if (adsDisabled()) {
+            onAdDismissed()
+            return
+        }
         if (!ConsentManager.canRequestAds(activity)) {
             onAdDismissed()
             return
@@ -143,6 +159,10 @@ object AdManager {
     // ======================== REWARDED ========================
 
     fun loadRewardedAd(context: Context) {
+        if (adsDisabled()) {
+            Log.d(TAG, "Skipping rewarded ad load - premium entitlement active")
+            return
+        }
         if (!ConsentManager.canRequestAds(context)) {
             Log.d(TAG, "Skipping rewarded ad load — no consent")
             return
