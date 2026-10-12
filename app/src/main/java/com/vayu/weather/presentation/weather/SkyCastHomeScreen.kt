@@ -56,12 +56,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.vayu.weather.R
 import com.vayu.weather.domain.model.AirQuality
 import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.presentation.components.skycast.SkyCastAqiCard
@@ -457,7 +459,7 @@ private fun SkyCastLocationHeader(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
 
-    val displayCity = cityName?.takeIf { it.isNotBlank() } ?: "Current location"
+    val displayCity = cityName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.current_location)
     val displayRegion = regionName?.takeIf { it.isNotBlank() }
     val a11y = buildString {
         append("Location: ").append(displayCity)
@@ -517,13 +519,13 @@ private fun SkyCastLocationHeader(
         ) {
             CompactAction(
                 icon = Icons.Rounded.Refresh,
-                contentDescription = "Refresh weather",
+                contentDescription = stringResource(R.string.cd_refresh),
                 badgeCount = 0,
                 onClick = onRefresh
             )
             CompactAction(
                 icon = Icons.Rounded.Share,
-                contentDescription = "Share weather",
+                contentDescription = stringResource(R.string.share_weather),
                 badgeCount = 0,
                 onClick = onShare
             )
@@ -540,7 +542,7 @@ private fun SkyCastLocationHeader(
                 ) {
                     if (alertCount > 0) {
                         DropdownMenuItem(
-                            text = { Text("Alerts ($alertCount)") },
+                            text = { Text(stringResource(R.string.alert_count, alertCount)) },
                             onClick = { menuOpen = false; onOpenAlerts() }
                         )
                     }
@@ -564,11 +566,11 @@ private fun SkyCastLocationHeader(
                         onClick = { menuOpen = false; onOpenPremium() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Settings") },
+                        text = { Text(stringResource(R.string.settings)) },
                         onClick = { menuOpen = false; onOpenSettings() }
                     )
                     DropdownMenuItem(
-                        text = { Text("History") },
+                        text = { Text(stringResource(R.string.history)) },
                         onClick = { menuOpen = false; onOpenHistory() }
                     )
                     DropdownMenuItem(

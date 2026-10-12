@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Only backup user settings; everything else is excluded by default -->
-    <include domain="sharedpref" path="settings_prefs.xml"/>
+    <!--
+        Settings live in a Preferences DataStore, whose on-disk file is
+        files/datastore/settings_prefs.preferences_pb — the previous
+        sharedpref include matched nothing. With an explicit <include>,
+        only listed paths are backed up, so widget snapshots, the streak
+        counter and databases are already excluded; no <exclude> entries
+        (lint FullBackupContent rejects excludes outside included paths).
+    -->
+    <include domain="file" path="datastore/settings_prefs.preferences_pb"/>
 </full-backup-content>

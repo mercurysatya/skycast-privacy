@@ -94,7 +94,7 @@ fun SearchScreen(
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Plan a trip — Travel forecast")
+            Text(stringResource(R.string.plan_a_trip))
         }
 
         Spacer(modifier = Modifier.height(12.dp))

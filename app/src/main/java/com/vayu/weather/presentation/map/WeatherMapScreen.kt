@@ -266,6 +266,23 @@ fun WeatherMapScreen(
         )
     }
 
+    // Keep the "conditions at map center" mini-card and the alert chips in
+    // sync when the user pans/zooms. Previously onBoundsChanged fired only on
+    // programmatic camera moves, so the card showed stale weather while
+    // presenting itself as the map-center conditions.
+    LaunchedEffect(cameraState.position.target) {
+        val target = cameraState.position.target
+        // Skip the untouched first position (20°N, 0°) — it would fire a
+        // pointless request over the Atlantic before the camera moves.
+        if (target.latitude == 20.0 && target.longitude == 0.0) return@LaunchedEffect
+        kotlinx.coroutines.delay(700) // debounce while the user drags
+        mapViewModel.onBoundsChanged(
+            target.latitude,
+            target.longitude,
+            cameraState.position.zoom
+        )
+    }
+
     // Load grid data when overlay type switches to Temperature or Wind
     LaunchedEffect(radarState.overlayType) {
         if (radarState.overlayType == OverlayType.TEMPERATURE || radarState.overlayType == OverlayType.WIND) {
@@ -377,12 +394,33 @@ fun WeatherMapScreen(
         // are displayed in the weather detail cards instead.
 
         // === WEATHER ALERT ZONES ===
-        mapAlerts.forEach { alert ->
-            AlertZoneMarker(
-                alert = alert,
-                cameraState = cameraState,
-                modifier = Modifier.align(Alignment.TopStart)
-            )
+        // The MapLibre Compose version in use cannot project lat/lon to screen
+        // coordinates, so these are informational chips, not geographic pins.
+        // They are stacked in a column (previously every chip drew on top of
+        // the others at TopStart, overlapping the compass controls).
+        if (mapAlerts.isNotEmpty()) {
+            Column(
+                modifier = Modifier.align(Alignment.TopStart).padding(top = 190.dp, start = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                mapAlerts.take(2).forEach { alert ->
+                    AlertZoneMarker(
+                        alert = alert,
+                        cameraState = cameraState
+                    )
+                }
+                if (mapAlerts.size > 2) {
+                    Text(
+                        text = "+${mapAlerts.size - 2} more",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
         }
 
         // === COMPASS + ZOOM CONTROLS (top-left) ===

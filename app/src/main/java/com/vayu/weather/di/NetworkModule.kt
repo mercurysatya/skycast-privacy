@@ -39,7 +39,11 @@ object NetworkModule {
             .build()
         return OkHttpClient.Builder()
             .cache(cache)
-            .addInterceptor { chain ->
+            // Network interceptor: only it can rewrite the headers of the
+            // response that OkHttp STORES. The previous application-level
+            // rewrite ran after the cache decision and had no effect, and
+            // api.open-meteo.com sends no cache headers of its own.
+            .addNetworkInterceptor { chain ->
                 val response = chain.proceed(chain.request())
                 response.newBuilder()
                     .header("Cache-Control", cacheControl.toString())

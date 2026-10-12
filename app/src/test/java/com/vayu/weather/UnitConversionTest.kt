@@ -71,9 +71,11 @@ class UnitConversionTest {
     }
 
     @Test
-    fun `getTemperatureDisplay truncates to integer`() {
+    fun `getTemperatureDisplay rounds to integer`() {
         val result = UnitsConverter.getTemperatureDisplay(25.7, TemperatureUnit.CELSIUS)
-        assertTrue("Should contain 25", result.contains("25"))
+        assertTrue("Should round 25.7 to 26", result.contains("26"))
+        val negative = UnitsConverter.getTemperatureDisplay(-1.6, TemperatureUnit.CELSIUS)
+        assertTrue("Should round -1.6 to -2", negative.contains("-2"))
     }
 
     @Test
@@ -177,7 +179,7 @@ class UnitConversionTest {
     @Test
     fun `getWindDisplay ms shows m slash s`() {
         val result = WindConverter.getWindDisplay(10.0, WindUnit.MS)
-        assertEquals("2 m/s", result)
+        assertEquals("3 m/s", result)
     }
 
     @Test
@@ -203,7 +205,7 @@ class UnitConversionTest {
     @Test
     fun `getWindDisplay rounds to integer`() {
         val result = WindConverter.getWindDisplay(15.7, WindUnit.KPH)
-        assertEquals("15 km/h", result)
+        assertEquals("16 km/h", result)
     }
 
     @Test
@@ -269,7 +271,7 @@ class UnitConversionTest {
     @Test
     fun `getPressureDisplay inhg shows inHg`() {
         val result = PressureConverter.getPressureDisplay(1013.0, PressureUnit.INHG)
-        assertEquals("29 inHg", result)
+        assertEquals("30 inHg", result)
     }
 
     @Test
@@ -279,9 +281,9 @@ class UnitConversionTest {
     }
 
     @Test
-    fun `getPressureDisplay truncates to integer`() {
+    fun `getPressureDisplay rounds to integer`() {
         val result = PressureConverter.getPressureDisplay(1013.6, PressureUnit.HPA)
-        assertEquals("1013 hPa", result)
+        assertEquals("1014 hPa", result)
     }
 
     @Test

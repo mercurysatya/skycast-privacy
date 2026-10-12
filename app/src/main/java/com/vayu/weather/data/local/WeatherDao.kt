@@ -114,12 +114,14 @@ interface WeatherDao {
     @Query("DELETE FROM weather_history WHERE id IN (SELECT id FROM weather_history ORDER BY timestamp ASC LIMIT :count)")
     suspend fun deleteOldestWeatherHistory(count: Int)
 
-    // On this day - get history entries for a specific month/day across years
-    @Query("SELECT * FROM weather_history WHERE strftime('%m-%d', timestamp/1000, 'unixepoch') = :monthDay ORDER BY timestamp DESC")
+    // On this day - get history entries for a specific month/day across years.
+    // 'localtime' matters: the caller passes the device-local month-day, but
+    // strftime defaults to UTC, which mismatches for most of the world.
+    @Query("SELECT * FROM weather_history WHERE strftime('%m-%d', timestamp/1000, 'unixepoch', 'localtime') = :monthDay ORDER BY timestamp DESC")
     fun getWeatherHistoryForMonthDay(monthDay: String): Flow<List<WeatherHistoryEntity>>
 
     // On this day for specific location
-    @Query("SELECT * FROM weather_history WHERE latitude = :lat AND longitude = :lon AND strftime('%m-%d', timestamp/1000, 'unixepoch') = :monthDay ORDER BY timestamp DESC")
+    @Query("SELECT * FROM weather_history WHERE latitude = :lat AND longitude = :lon AND strftime('%m-%d', timestamp/1000, 'unixepoch', 'localtime') = :monthDay ORDER BY timestamp DESC")
     fun getWeatherHistoryForLocationAndMonthDay(lat: Double, lon: Double, monthDay: String): Flow<List<WeatherHistoryEntity>>
 
     /**

@@ -11,10 +11,10 @@ import androidx.compose.runtime.setValue
  * object only mirrors the flag so non-composable call sites (AdManager,
  * AdBanner, workers) can read it synchronously without a coroutine.
  *
- * Purchase flow is intentionally decoupled from the UI: [PremiumScreen]
- * talks to SettingsViewModel#setPremium, which writes through to DataStore
- * and then updates [isPremium] via [SettingsManager]. Swapping the local
- * unlock for Google Play Billing therefore only touches SettingsManager.
+ * The entitlement is produced exclusively by verified Google Play purchase
+ * state ([com.vayu.weather.data.billing.BillingManager]): Play reports a
+ * PURCHASED purchase, it is acknowledged, and only then is the flag set via
+ * SettingsManager#setPremiumFromBilling. There is no local unlock.
  */
 object PremiumManager {
 
@@ -28,39 +28,6 @@ object PremiumManager {
     fun sync(value: Boolean) {
         isPremium = value
     }
-
-    data class Plan(
-        val id: String,
-        val title: String,
-        val price: String,
-        val period: String,
-        val note: String? = null,
-        val bestValue: Boolean = false
-    )
-
-    val plans: List<Plan> = listOf(
-        Plan(
-            id = "monthly",
-            title = "Monthly",
-            price = "₹49",
-            period = "/ month"
-        ),
-        Plan(
-            id = "annual",
-            title = "Annual",
-            price = "₹299",
-            period = "/ year",
-            note = "₹25 per month · billed once",
-            bestValue = true
-        ),
-        Plan(
-            id = "lifetime",
-            title = "Lifetime",
-            price = "₹799",
-            period = "one-time",
-            note = "Pay once, keep forever"
-        )
-    )
 
     val benefits: List<Pair<String, String>> = listOf(
         "Ad-free everywhere" to "No banners or interstitials, on every screen.",

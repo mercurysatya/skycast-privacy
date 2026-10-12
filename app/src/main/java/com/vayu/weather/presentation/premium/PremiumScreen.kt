@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vayu.weather.data.billing.BillingOffer
+import com.vayu.weather.data.billing.BillingUiState
 import com.vayu.weather.ui.theme.SkyBlue
 
 private val GoldStart = Color(0xFFFBBF24)
@@ -52,19 +54,28 @@ private val GoldEnd = Color(0xFFF59E0B)
 /**
  * SkyCast Premium paywall.
  *
- * Entitlement is applied through [onPurchase]; persistence and the
- * synchronous [PremiumManager] mirror live in SettingsManager.
+ * Purchases go through the genuine Google Play purchase sheet
+ * ([onPurchase]); the entitlement is granted only after Play reports a
+ * verified PURCHASED state and it is acknowledged. Prices, periods and the
+ * offer list are the localized values returned by Google Play — never
+ * invented in the app. When no Play products are configured, purchase is
+ * disabled with an honest explanation instead of a fake success.
+ *
+ * Entitlement persistence and the synchronous [PremiumManager] mirror live in
+ * SettingsManager, written only from verified billing state.
  */
 @Composable
 fun PremiumScreen(
     isPremium: Boolean,
+    billing: BillingUiState,
     onBack: () -> Unit,
-    onPurchase: (planId: String) -> Unit,
+    onPurchase: (BillingOffer) -> Unit,
+    onRestore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedPlanId by remember { mutableStateOf(PremiumManager.plans.first { it.bestValue }.id) }
-    var isProcessing by remember { mutableStateOf(false) }
-    var restoreNote by remember { mutableStateOf<String?>(null) }
+    var selectedOfferToken by remember { mutableStateOf<String?>(null) }
+    val selectedOffer = billing.offers.firstOrNull { it.offerToken == selectedOfferToken }
+        ?: billing.offers.firstOrNull()
 
     Column(
         modifier = modifier
@@ -185,17 +196,16 @@ fun PremiumScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = restoreNote
-                            ?: "Ads are hidden and every premium feature is unlocked on this device.",
+                        text = billing.message?.text
+                            ?: "Ads are hidden and every premium feature is unlocked while your Google Play entitlement is active.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.65f)
+                        color = if (billing.message?.isError == true) GoldEnd
+                        else Color.White.copy(alpha = 0.65f)
                     )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedButton(
-                    onClick = {
-                        restoreNote = "Entitlement restored for this Google account."
-                    },
+                    onClick = onRestore,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp)
                 ) {
@@ -203,11 +213,65 @@ fun PremiumScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Restore purchase")
                 }
+            } else if (!billing.productsConfigured) {
+                // No Play products exist yet: never show prices that cannot be
+                // charged and never simulate a purchase.
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color.White.copy(alpha = 0.06f))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Premium purchases aren't set up yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "The paywall is ready, but no Google Play products have been " +
+                            "published for this app, so nothing can be purchased right now.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.65f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = {},
+                    enabled = false,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GoldEnd,
+                        contentColor = Color(0xFF1F1200)
+                    )
+                ) {
+                    Text(
+                        text = "Upgrade to Premium",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Purchases are handled by Google Play and linked to your Google account.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.45f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             } else {
-                // Plans
+                // Genuine Play offers with localized pricing.
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PremiumManager.plans.forEach { plan ->
-                        val selected = plan.id == selectedPlanId
+                    billing.offers.forEach { offer ->
+                        val selected = offer.offerToken == selectedOffer?.offerToken
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -221,51 +285,27 @@ fun PremiumScreen(
                                     color = if (selected) SkyBlue else Color.White.copy(alpha = 0.12f),
                                     shape = RoundedCornerShape(16.dp)
                                 )
-                                .clickable { selectedPlanId = plan.id }
+                                .clickable { selectedOfferToken = offer.offerToken }
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = plan.title,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.White
-                                    )
-                                    if (plan.bestValue) {
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "BEST VALUE",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF052E16),
-                                            modifier = Modifier
-                                                .background(
-                                                    GoldEnd,
-                                                    RoundedCornerShape(6.dp)
-                                                )
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                if (!plan.note.isNullOrBlank()) {
-                                    Text(
-                                        text = plan.note,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.6f)
-                                    )
-                                }
+                                Text(
+                                    text = offer.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    text = plan.price,
+                                    text = offer.displayPrice,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
                                 Text(
-                                    text = plan.period,
+                                    text = offer.displayPeriod,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.White.copy(alpha = 0.55f)
                                 )
@@ -278,12 +318,12 @@ fun PremiumScreen(
 
                 Button(
                     onClick = {
-                        if (!isProcessing) {
-                            isProcessing = true
-                            onPurchase(selectedPlanId)
+                        val offer = selectedOffer
+                        if (offer != null && !billing.purchaseInProgress) {
+                            onPurchase(offer)
                         }
                     },
-                    enabled = !isProcessing,
+                    enabled = selectedOffer != null && !billing.purchaseInProgress,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),
@@ -293,7 +333,7 @@ fun PremiumScreen(
                         contentColor = Color(0xFF1F1200)
                     )
                 ) {
-                    if (isProcessing) {
+                    if (billing.purchaseInProgress) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp,
@@ -308,9 +348,22 @@ fun PremiumScreen(
                     }
                 }
 
+                if (billing.message != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = billing.message.text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (billing.message.isError) GoldEnd
+                        else Color.White.copy(alpha = 0.65f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "Cancel anytime. Entitlement is applied immediately and restored across reinstalls.",
+                    text = "Purchases are handled by Google Play and linked to your Google account. " +
+                        "Manage or cancel anytime in the Play Store.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.45f),
                     textAlign = TextAlign.Center,

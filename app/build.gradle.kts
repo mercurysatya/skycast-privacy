@@ -28,7 +28,9 @@ val admobBannerId = resolveAdMob("ADMOB_BANNER_ID", "ca-app-pub-3940256099942544
 val admobInterstitialId = resolveAdMob("ADMOB_INTERSTITIAL_ID", "ca-app-pub-3940256099942544/1033173712")
 val admobRewardedId = resolveAdMob("ADMOB_REWARDED_ID", "ca-app-pub-3940256099942544/5224354917")
 
-val isTestAdmobId = admobAppId.startsWith("ca-app-pub-3940256099942544")
+val isTestAdmobId = listOf(
+    admobAppId, admobBannerId, admobInterstitialId, admobRewardedId
+).any { it.startsWith("ca-app-pub-3940256099942544") }
 
 // ── Release signing ──────────────────────────────────────────────────────
 // Credentials are read from `key.properties` (gitignored). The file must
@@ -123,7 +125,10 @@ android {
             // error if the developer forgot to inject production AdMob IDs.
             afterEvaluate {
                 val allowTestIds = (project.findProperty("allowTestAdmobIds") as? String)?.toBoolean() == true
-                tasks.matching { it.name.startsWith("assemble") && it.name.contains("Release", ignoreCase = true) }.configureEach {
+                tasks.matching {
+                    (it.name.startsWith("assemble") || it.name.startsWith("bundle")) &&
+                        it.name.contains("Release", ignoreCase = true)
+                }.configureEach {
                     doFirst {
                         if (isTestAdmobId && !allowTestIds) {
                             throw GradleException(
@@ -199,6 +204,7 @@ dependencies {
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
     implementation(libs.play.services.ads)
+    implementation(libs.play.billing)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
     implementation("com.google.firebase:firebase-analytics")

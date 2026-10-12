@@ -21,6 +21,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +63,8 @@ fun SkyCastMetricDetailSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val data = remember(metric, info) { metricData(metric, info, isCelsius) }
     if (data == null) {
-        onDismiss()
+        // Dismissing must not mutate parent state during composition.
+        LaunchedEffect(metric) { onDismiss() }
         return
     }
 

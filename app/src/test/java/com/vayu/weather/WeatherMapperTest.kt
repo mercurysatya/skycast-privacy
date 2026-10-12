@@ -158,6 +158,70 @@ class WeatherMapperTest {
         assertNull(result[0].sunset)
     }
 
+    // ── Regression: null provider values must be dropped, never fabricated ──
+
+    @Test
+    fun `toHourlyWeather drops entries with missing temperature`() {
+        val dto = HourlyWeatherDto(
+            time = listOf("2024-01-15T14:00", "2024-01-15T15:00", "2024-01-15T16:00"),
+            temperatures = listOf(22.5, null, 20.0),
+            weatherCodes = listOf(0, 1, 2)
+        )
+        val result = dto.toHourlyWeather()
+        // The null-temperature hour must disappear, not become "0.0°".
+        assertEquals(2, result.size)
+        assertEquals(22.5, result[0].temperature, 0.001)
+        assertEquals("2024-01-15T16:00", result[1].time)
+        assertEquals(20.0, result[1].temperature, 0.001)
+    }
+
+    @Test
+    fun `toDailyWeather drops entries with missing min or max temperature`() {
+        val dto = DailyWeatherDto(
+            time = listOf("2024-01-15", "2024-01-16"),
+            weatherCodes = listOf(0, 1),
+            maxTemperatures = listOf(25.0, null),
+            minTemperatures = listOf(null, 18.0)
+        )
+        val result = dto.toDailyWeather()
+        // Both days had a missing temperature and must be dropped: a 0.0 min
+        // used to trigger a false "Cold Alert (0 °C)".
+        assertTrue("No day with missing temperatures may survive", result.isEmpty())
+    }
+
+    @Test
+    fun `toWeatherInfo prefers sea-level pressure when present`() {
+        val dto = WeatherDto(
+            latitude = 0.0,
+            longitude = 0.0,
+            current = CurrentWeatherDto(
+                time = "2024-01-15T14:00",
+                temperature = 22.5,
+                weatherCode = 0,
+                surfacePressure = 920.0,   // elevated city, e.g. Bengaluru
+                pressureMsl = 1013.0
+            )
+        )
+        val result = dto.toWeatherInfo()
+        assertEquals(1013.0, result.current.surfacePressure!!, 0.001)
+    }
+
+    @Test
+    fun `toWeatherInfo falls back to surface pressure when MSL missing`() {
+        val dto = WeatherDto(
+            latitude = 0.0,
+            longitude = 0.0,
+            current = CurrentWeatherDto(
+                time = "2024-01-15T14:00",
+                temperature = 22.5,
+                weatherCode = 0,
+                surfacePressure = 1011.0
+            )
+        )
+        val result = dto.toWeatherInfo()
+        assertEquals(1011.0, result.current.surfacePressure!!, 0.001)
+    }
+
     @Test
     fun `toCity maps all fields`() {
         val dto = GeocodingResultDto(

@@ -49,12 +49,22 @@ class WeatherRepositoryImpl @Inject constructor(
     companion object {
         private const val CACHE_TTL_MS = 30 * 60 * 1000L
 
+        /** Cached rows older than this are pruned; the offline fallback only
+         * needs the most recent state per location. */
+        private const val CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000L
+
         /** In-memory cache for air quality: key = "lat,long", value = Pair(timestamp, AirQuality). */
         private val aqiCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, AirQuality>>()
+
+        internal fun cacheKeyFor(lat: Double, lon: Double): String =
+            java.util.Locale.US.let { "%.3f,%.3f".format(it, lat, lon) }
     }
 
     override suspend fun getWeatherData(lat: Double, long: Double): Result<WeatherInfo> {
-        val locationId = "$lat,$long"
+        // Quantize the key: raw GPS coordinates differ on every fix, so the
+        // exact-coordinate key never hit the 30-min TTL and inserted a new row
+        // on every refresh. 3 decimals ≈ 110 m.
+        val locationId = cacheKeyFor(lat, long)
 
         // Check cache first
         val cached = dao.getWeatherCache(locationId)
@@ -94,6 +104,9 @@ class WeatherRepositoryImpl @Inject constructor(
                 lastUpdated = System.currentTimeMillis()
             )
             dao.insertWeatherCache(cacheEntity)
+            // Opportunistically prune rows the exact-coordinate bug left behind
+            // (and any genuinely stale entries).
+            dao.deleteStaleCache(System.currentTimeMillis() - CACHE_MAX_AGE_MS)
             Result.success(weatherInfo)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -311,6 +324,11 @@ class WeatherRepositoryImpl @Inject constructor(
             dao.clearWeatherHistory()
             dao.deleteAllFavoriteCities()
         }
+        // Also wipe the non-Room stores the privacy wipe used to miss:
+        // the in-memory AQI cache, the widget snapshot and the streak prefs.
+        aqiCache.clear()
+        application.deleteSharedPreferences("weather_widget_prefs")
+        application.deleteSharedPreferences("weather_streak")
     }
 
     // ---- Weather History ----

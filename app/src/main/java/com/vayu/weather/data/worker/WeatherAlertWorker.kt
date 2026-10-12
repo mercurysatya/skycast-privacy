@@ -38,77 +38,89 @@ class WeatherAlertWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         if (!settingsManager.getNotificationsEnabled()) return Result.success()
 
-        val location = locationTracker.getCurrentLocation() ?: return Result.retry()
+        // A fresh fused location fix is not guaranteed while the app is in the
+        // background (no ACCESS_BACKGROUND_LOCATION by design), so fall back to
+        // the last persisted coordinates instead of retrying forever.
+        val fix = locationTracker.getCurrentLocation()
+        val lat = fix?.latitude ?: settingsManager.getLastLat()
+        val lon = fix?.longitude ?: settingsManager.getLastLon()
+        if (lat == null || lon == null) {
+            // Nothing actionable for this cycle — retrying cannot help.
+            return Result.success()
+        }
 
-        val result = getWeatherUseCase(location.latitude, location.longitude)
-        val weatherInfo = result.getOrNull() ?: return Result.retry()
+        val result = getWeatherUseCase(lat, lon)
+        val weatherInfo = result.getOrNull()
+            ?: return if (runAttemptCount >= 3) Result.failure() else Result.retry()
 
         val severityFilter = settingsManager.getSeverityFilter()
 
         // ===== RAIN ALERT =====
-        val nextRainProb = weatherInfo.daily.firstOrNull()?.precipitationProbability ?: 0
-        if (nextRainProb >= settingsManager.getRainAlertThreshold()) {
+        // Missing data must never be treated as 0 — that produced false
+        // "freezing" / "rain" alerts when the provider omits fields.
+        val nextRainProb = weatherInfo.daily.firstOrNull()?.precipitationProbability
+        if (nextRainProb != null && nextRainProb >= settingsManager.getRainAlertThreshold()) {
             val severity = if (nextRainProb >= 80) "high" else "medium"
             if (passesFilter(severity, severityFilter)) {
                 val title = applicationContext.getString(R.string.rain_alert_title)
                 val message = applicationContext.getString(R.string.rain_alert_message, nextRainProb)
-                storeAndNotify(title, message, severity, location.latitude, location.longitude)
+                storeAndNotify(title, message, severity, lat, lon)
             }
         }
 
         // ===== WIND ALERT =====
         if (settingsManager.getEnableWindAlerts()) {
-            val windSpeed = weatherInfo.current.windSpeed ?: 0.0
+            val windSpeed = weatherInfo.current.windSpeed
             val windThreshold = settingsManager.getWindAlertThreshold()
-            if (windSpeed >= windThreshold) {
+            if (windSpeed != null && windSpeed >= windThreshold) {
                 val severity = if (windSpeed >= windThreshold * 1.5) "high" else "medium"
                 if (passesFilter(severity, severityFilter)) {
                     val windKph = windSpeed.roundToInt()
                     val title = applicationContext.getString(R.string.wind_alert_title)
                     val message = applicationContext.getString(R.string.wind_alert_message, windKph)
-                    storeAndNotify(title, message, severity, location.latitude, location.longitude)
+                    storeAndNotify(title, message, severity, lat, lon)
                 }
             }
         }
 
         // ===== UV ALERT =====
         if (settingsManager.getEnableUvAlerts()) {
-            val uvIndex = weatherInfo.daily.firstOrNull()?.uvIndex?.toInt() ?: 0
+            val uvIndex = weatherInfo.daily.firstOrNull()?.uvIndex?.toInt()
             val uvThreshold = settingsManager.getUvAlertThreshold()
-            if (uvIndex >= uvThreshold) {
+            if (uvIndex != null && uvIndex >= uvThreshold) {
                 val severity = if (uvIndex >= 11) "high" else "medium"
                 if (passesFilter(severity, severityFilter)) {
                     val title = applicationContext.getString(R.string.uv_alert_title)
                     val message = applicationContext.getString(R.string.uv_alert_message, uvIndex)
-                    storeAndNotify(title, message, severity, location.latitude, location.longitude)
+                    storeAndNotify(title, message, severity, lat, lon)
                 }
             }
         }
 
         // ===== HEAT ALERT =====
         if (settingsManager.getEnableHeatAlerts()) {
-            val maxTemp = weatherInfo.daily.firstOrNull()?.maxTemp?.toInt() ?: 0
+            val maxTemp = weatherInfo.daily.firstOrNull()?.maxTemp?.toInt()
             val heatThreshold = settingsManager.getHeatAlertThreshold()
-            if (maxTemp >= heatThreshold) {
+            if (maxTemp != null && maxTemp >= heatThreshold) {
                 val severity = if (maxTemp >= heatThreshold + 5) "high" else "medium"
                 if (passesFilter(severity, severityFilter)) {
                     val title = applicationContext.getString(R.string.heat_alert_title)
                     val message = applicationContext.getString(R.string.heat_alert_message, maxTemp)
-                    storeAndNotify(title, message, severity, location.latitude, location.longitude)
+                    storeAndNotify(title, message, severity, lat, lon)
                 }
             }
         }
 
         // ===== COLD ALERT =====
         if (settingsManager.getEnableColdAlerts()) {
-            val minTemp = weatherInfo.daily.firstOrNull()?.minTemp?.toInt() ?: 0
+            val minTemp = weatherInfo.daily.firstOrNull()?.minTemp?.toInt()
             val coldThreshold = settingsManager.getColdAlertThreshold()
-            if (minTemp <= coldThreshold) {
+            if (minTemp != null && minTemp <= coldThreshold) {
                 val severity = if (minTemp <= coldThreshold - 5) "high" else "medium"
                 if (passesFilter(severity, severityFilter)) {
                     val title = applicationContext.getString(R.string.cold_alert_title)
                     val message = applicationContext.getString(R.string.cold_alert_message, minTemp)
-                    storeAndNotify(title, message, severity, location.latitude, location.longitude)
+                    storeAndNotify(title, message, severity, lat, lon)
                 }
             }
         }

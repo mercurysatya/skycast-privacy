@@ -21,7 +21,12 @@ fun WeatherDto.toWeatherInfo(): WeatherInfo {
                 apparentTemperature = current?.apparentTemperature,
                 isDay = current?.isDay == 1,
                 visibility = current?.visibility,
-                surfacePressure = current?.surfacePressure,
+                // Prefer sea-level pressure: the hourly trend chart plots
+                // pressure_msl, and the "High/Normal/Low pressure" thresholds
+                // (~1013 hPa) are only meaningful at sea level. Mixing surface
+                // pressure into the card showed two different "current pressure"
+                // numbers on the same screen and mislabeled elevated cities.
+                surfacePressure = current?.pressureMsl ?: current?.surfacePressure,
                 windGusts = current?.windGusts,
                 dewPoint = current?.dewPoint,
                 cloudCover = current?.cloudCover,
@@ -39,10 +44,13 @@ fun WeatherDto.toWeatherInfo(): WeatherInfo {
 fun HourlyWeatherDto.toHourlyWeather(): List<HourlyWeather> {
     return time.mapIndexedNotNull { index, timeStr ->
         if (timeStr == null) return@mapIndexedNotNull null
+        // Missing temperature means the provider omitted this hour's data;
+        // fabricating 0.0 would render "0°, Clear sky" cards.
+        val temperature = temperatures.getOrNull(index) ?: return@mapIndexedNotNull null
         try {
             HourlyWeather(
                 time = timeStr,
-                temperature = temperatures.getOrNull(index) ?: 0.0,
+                temperature = temperature,
                 weatherCode = weatherCodes.getOrNull(index) ?: 0,
                 humidity = humidities?.getOrNull(index),
                 pressure = pressures?.getOrNull(index),
@@ -63,12 +71,16 @@ fun HourlyWeatherDto.toHourlyWeather(): List<HourlyWeather> {
 fun DailyWeatherDto.toDailyWeather(): List<DailyWeather> {
     return time.mapIndexedNotNull { index, dateStr ->
         if (dateStr == null) return@mapIndexedNotNull null
+        // Same as hourly: a null min/max must drop the day, not become 0 °C
+        // (which triggered false "Cold Alert (0 °C)" notifications).
+        val maxTemp = maxTemperatures.getOrNull(index) ?: return@mapIndexedNotNull null
+        val minTemp = minTemperatures.getOrNull(index) ?: return@mapIndexedNotNull null
         try {
             DailyWeather(
                 date = dateStr,
                 weatherCode = weatherCodes.getOrNull(index) ?: 0,
-                maxTemp = maxTemperatures.getOrNull(index) ?: 0.0,
-                minTemp = minTemperatures.getOrNull(index) ?: 0.0,
+                maxTemp = maxTemp,
+                minTemp = minTemp,
                 uvIndex = uvIndices?.getOrNull(index),
                 precipitationProbability = precipitationProbabilities?.getOrNull(index),
                 sunrise = sunrise?.getOrNull(index),

@@ -15,13 +15,17 @@ import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.vayu.weather.data.billing.BillingManager
+import com.vayu.weather.data.billing.BillingOffer
 import com.vayu.weather.data.worker.WeatherAlertWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
@@ -32,15 +36,34 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val settingsManager: SettingsManager,
     private val deleteAllLocalDataUseCase: DeleteAllLocalDataUseCase,
-    private val clearWeatherCacheUseCase: ClearWeatherCacheUseCase
+    private val clearWeatherCacheUseCase: ClearWeatherCacheUseCase,
+    private val billingManager: BillingManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
     val state: StateFlow<SettingsState> = _state.asStateFlow()
 
+    /** Genuine Play Billing state for the paywall (offers, entitlement, messages). */
+    val billingState = billingManager.state
+
     init {
         viewModelScope.launch {
             _state.value = settingsManager.loadAllPreferences()
+        }
+        // Verified entitlement is the only source of truth: re-query Play on
+        // start (covers reinstall restore + revocation) and propagate every
+        // change into the DataStore cache, UI state and ad gating.
+        viewModelScope.launch {
+            billingManager.refresh()
+        }
+        viewModelScope.launch {
+            billingManager.state
+                .map { it.entitlement.isPremium }
+                .distinctUntilChanged()
+                .collect { active ->
+                    settingsManager.setPremiumFromBilling(active)
+                    _state.update { it.copy(isPremium = active) }
+                }
         }
     }
 
@@ -51,11 +74,33 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setPremium(value: Boolean) {
+    /**
+     * Opens the genuine Google Play purchase sheet for [offer].
+     * There is no local unlock path: Premium is granted only after Play
+     * reports a verified PURCHASED state (see [BillingManager]).
+     */
+    fun launchPremiumPurchase(activity: android.app.Activity, offer: BillingOffer) {
         viewModelScope.launch {
-            settingsManager.setPremium(value)
-            _state.update { it.copy(isPremium = value) }
+            billingManager.launchPurchase(activity, offer)
         }
+    }
+
+    /** Re-queries Play and reports the result — the real "restore purchase". */
+    fun restorePremiumPurchases() {
+        viewModelScope.launch {
+            billingManager.restorePurchases()
+        }
+    }
+
+    /** Re-verifies the entitlement (called on app start and resume). */
+    fun refreshBilling() {
+        viewModelScope.launch {
+            billingManager.refresh()
+        }
+    }
+
+    fun clearBillingMessage() {
+        billingManager.clearMessage()
     }
 
     fun toggleTemperatureUnit() {

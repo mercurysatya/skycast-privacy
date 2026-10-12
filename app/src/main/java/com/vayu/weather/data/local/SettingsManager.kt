@@ -367,12 +367,19 @@ private object Keys {
     }
 
     // === SkyCast Premium ===
+    //
+    // The ONLY production writer of `true` is [setPremiumFromBilling], fed by
+    // verified Google Play purchase state (BillingManager). There is no local
+    // unlock: a button press or boolean can never create a paid entitlement.
+    // The DataStore value is a display cache; BillingManager re-verifies it
+    // against Play on every app start and resume (expiry, cancellation and
+    // revocation take effect on the next successful query).
     suspend fun isPremium(): Boolean =
         dataStore.data.first()[Keys.IS_PREMIUM] ?: false
 
-    suspend fun setPremium(value: Boolean) {
-        dataStore.edit { it[Keys.IS_PREMIUM] = value }
-        com.vayu.weather.presentation.premium.PremiumManager.sync(value)
+    suspend fun setPremiumFromBilling(active: Boolean) {
+        dataStore.edit { it[Keys.IS_PREMIUM] = active }
+        com.vayu.weather.presentation.premium.PremiumManager.sync(active)
     }
 
     // === Clock Format ===

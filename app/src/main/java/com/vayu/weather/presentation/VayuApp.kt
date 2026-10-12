@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -54,6 +55,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.text.font.FontWeight
 
+/** What the next Search-screen city selection should feed. */
+private enum class PendingCitySelection { NONE, COMPARE, TRAVEL }
+
 @Composable
 fun VayuApp() {
     val navColors = NavigationBarItemDefaults.colors(
@@ -74,20 +78,34 @@ fun VayuApp() {
     val favoritesViewModel: FavoritesViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
     val alertsViewModel: AlertsViewModel = hiltViewModel()
+    // Activity-scoped ViewModels hoisted out of conditional branches so the
+    // Search screen can hand a picked city to Compare/Travel (previously these
+    // screens could never receive a city — "Add city"/"Pick destination" were dead ends).
+    val compareViewModel: com.vayu.weather.presentation.compare.CompareViewModel = hiltViewModel()
+    val travelViewModel: com.vayu.weather.presentation.travel.TravelViewModel = hiltViewModel()
+    val favoritesWithWeatherViewModel: com.vayu.weather.presentation.favorites.FavoritesWithWeatherViewModel = hiltViewModel()
+    val historyViewModel: com.vayu.weather.presentation.history.WeatherHistoryViewModel = hiltViewModel()
     val context = LocalContext.current
     val activity = context as? Activity
 
     val settingsState by settingsViewModel.state.collectAsState()
     val nav = com.vayu.weather.presentation.navigation.rememberSkyCastNavController()
-    var showOnboarding by remember { mutableStateOf(true) }
-    var onboardingChecked by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
-    var showAlerts by remember { mutableStateOf(false) }
-    var showDetail by remember { mutableStateOf(false) }
-    var showHistory by remember { mutableStateOf(false) }
-    var showPrivacyPolicy by remember { mutableStateOf(false) }
-    var showPremium by remember { mutableStateOf(false) }
-    var privacyPolicyAnchor by remember { mutableStateOf<String?>(null) }
+    // Saveable so an open screen survives rotation and process death.
+    var showOnboarding by rememberSaveable { mutableStateOf(true) }
+    var onboardingChecked by rememberSaveable { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showAlerts by rememberSaveable { mutableStateOf(false) }
+    var showDetail by rememberSaveable { mutableStateOf(false) }
+    var showHistory by rememberSaveable { mutableStateOf(false) }
+    var showPrivacyPolicy by rememberSaveable { mutableStateOf(false) }
+    var showPremium by rememberSaveable { mutableStateOf(false) }
+    var privacyPolicyAnchor by rememberSaveable { mutableStateOf<String?>(null) }
+
+    /**
+     * Set when the user taps "Add city" (Compare) or "Pick destination"
+     * (Travel); consumed by the next city selection on the Search screen.
+     */
+    var pendingCitySelection by remember { mutableStateOf(PendingCitySelection.NONE) }
 
     val scope = rememberCoroutineScope()
     val currentRoute = nav.currentRoute
@@ -99,24 +117,33 @@ fun VayuApp() {
     val shareChooserTitle = stringResource(R.string.share_weather_title)
 
     // Single, well-ordered back-handler. Modal screens above the primary
-    // route are popped in reverse order.
-    BackHandler(enabled = nav.stack.isNotEmpty() || showPrivacyPolicy || showPremium) {
-        if (showPrivacyPolicy) {
-            showPrivacyPolicy = false
-            privacyPolicyAnchor = null
-        } else if (showPremium) {
-            showPremium = false
-        } else if (!nav.popBackStack()) {
-            // Stack empty — nothing to do; system will exit the app.
+    // route are popped in reverse order; without these flags the system
+    // back press would finish the activity from Settings/Alerts/History/Detail.
+    val anyModalOpen = showPrivacyPolicy || showPremium || showSettings ||
+        showAlerts || showHistory || showDetail
+    BackHandler(enabled = nav.stack.isNotEmpty() || anyModalOpen) {
+        when {
+            showPrivacyPolicy -> {
+                showPrivacyPolicy = false
+                privacyPolicyAnchor = null
+            }
+            showPremium -> showPremium = false
+            showSettings -> showSettings = false
+            showAlerts -> showAlerts = false
+            showHistory -> showHistory = false
+            showDetail -> showDetail = false
+            else -> nav.popBackStack()
         }
     }
 
     LaunchedEffect(Unit) {
         Log.d("VayuApp", "LaunchedEffect: Loading weather and ad")
         SplashGate.isReady = true
-        onboardingChecked = true
+        // Read the flag before flipping onboardingChecked, otherwise returning
+        // users see the onboarding screen flash for a frame on every cold start.
         val onboardingComplete = settingsViewModel.isOnboardingComplete()
         showOnboarding = !onboardingComplete
+        onboardingChecked = true
         if (onboardingComplete) {
             weatherViewModel.loadWeatherInfo()
         }
@@ -128,6 +155,9 @@ fun VayuApp() {
     LaunchedEffect(activity) {
         val act = activity ?: return@LaunchedEffect
         ConsentManager.gatherConsent(act) {
+            // Banner composables read canRequestAds during composition; bump
+            // the version so they appear once consent allows ads.
+            AdManager.onConsentChanged()
             if (ConsentManager.canRequestAds(act)) {
                 AdManager.initializeMobileAds(act)
                 AdManager.preloadNext(act)
@@ -135,11 +165,14 @@ fun VayuApp() {
         }
     }
 
-    // Reload ads when app returns to foreground
+    // Reload ads and re-verify the Play entitlement when returning to foreground
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(activity) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                // Re-query Play: expiry, cancellation and revocation take
+                // effect here, and a purchase completed elsewhere is picked up.
+                settingsViewModel.refreshBilling()
                 val act = activity
                 if (act != null && ConsentManager.canRequestAds(act)) {
                     AdManager.preloadNext(act)
@@ -167,6 +200,9 @@ fun VayuApp() {
                     onComplete = {
                         showOnboarding = false
                         settingsViewModel.setOnboardingComplete()
+                        // Without this, a first-run user lands on the empty
+                        // dashboard error state because nothing triggers a load.
+                        weatherViewModel.loadWeatherInfo()
                     }
                 )
             } else if (showPrivacyPolicy) {
@@ -185,7 +221,6 @@ fun VayuApp() {
                     onBack = { showDetail = false }
                 )
             } else if (showHistory) {
-                val historyViewModel: WeatherHistoryViewModel = hiltViewModel()
                 WeatherHistoryScreen(
                     viewModel = historyViewModel,
                     isCelsius = settingsState.temperatureUnit == TemperatureUnit.CELSIUS,
@@ -202,6 +237,23 @@ fun VayuApp() {
                     onSnoozeAlert = { alert, duration -> alertsViewModel.snoozeAlert(alert, duration) },
                     onSnoozeDurationChange = alertsViewModel::updateSnoozeDuration,
                     onBack = { showAlerts = false }
+                )
+            } else if (showPremium) {
+                val billingState = settingsViewModel.billingState.collectAsState().value
+                com.vayu.weather.presentation.premium.PremiumScreen(
+                    isPremium = settingsState.isPremium,
+                    billing = billingState,
+                    onBack = {
+                        settingsViewModel.clearBillingMessage()
+                        showPremium = false
+                    },
+                    onPurchase = { offer ->
+                        val act = activity
+                        if (act != null) {
+                            settingsViewModel.launchPremiumPurchase(act, offer)
+                        }
+                    },
+                    onRestore = { settingsViewModel.restorePremiumPurchases() }
                 )
             } else if (showSettings) {
                 SettingsScreen(
@@ -249,13 +301,12 @@ fun VayuApp() {
                     onDeleteAllData = { settingsViewModel.deleteAllData() },
                     onClearCache = { settingsViewModel.clearWeatherCache() },
                     onOpenAlerts = { showAlerts = true },
-                    onOpenPremium = { showPremium = true }
-                )
-            } else if (showPremium) {
-                com.vayu.weather.presentation.premium.PremiumScreen(
-                    isPremium = settingsState.isPremium,
-                    onBack = { showPremium = false },
-                    onPurchase = { settingsViewModel.setPremium(true) }
+                    onOpenPremium = {
+                        // Keep settings true underneath: the premium branch
+                        // renders before the settings branch, so the paywall
+                        // overlays Settings and BACK reveals Settings again.
+                        showPremium = true
+                    }
                 )
             } else {
                 Scaffold(
@@ -281,15 +332,15 @@ fun VayuApp() {
                                                     Badge { Text(filteredAlerts.size.toString()) }
                                                 }
                                             ) {
-                                                Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
+                                                Icon(Icons.Rounded.Cloud, stringResource(R.string.weather), Modifier.size(24.dp))
                                             }
                                         } else {
-                                            Icon(Icons.Rounded.Cloud, "Weather", Modifier.size(24.dp))
+                                            Icon(Icons.Rounded.Cloud, stringResource(R.string.weather), Modifier.size(24.dp))
                                         }
                                     },
                                     label = {
                                         Text(
-                                            "Weather",
+                                            stringResource(R.string.weather),
                                             fontWeight = if (primary == com.vayu.weather.presentation.navigation.Routes.Weather) FontWeight.SemiBold else FontWeight.Medium
                                         )
                                     },
@@ -298,10 +349,10 @@ fun VayuApp() {
                                 NavigationBarItem(
                                     selected = primary == com.vayu.weather.presentation.navigation.Routes.Search,
                                     onClick = { nav.navigate(com.vayu.weather.presentation.navigation.Routes.Search) },
-                                    icon = { Icon(Icons.Rounded.Search, "Search", Modifier.size(24.dp)) },
+                                    icon = { Icon(Icons.Rounded.Search, stringResource(R.string.search), Modifier.size(24.dp)) },
                                     label = {
                                         Text(
-                                            "Search",
+                                            stringResource(R.string.search),
                                             fontWeight = if (primary == com.vayu.weather.presentation.navigation.Routes.Search) FontWeight.SemiBold else FontWeight.Medium
                                         )
                                     },
@@ -310,10 +361,10 @@ fun VayuApp() {
                                 NavigationBarItem(
                                     selected = primary == com.vayu.weather.presentation.navigation.Routes.Favorites,
                                     onClick = { nav.navigate(com.vayu.weather.presentation.navigation.Routes.Favorites) },
-                                    icon = { Icon(Icons.Rounded.Favorite, "Favorites", Modifier.size(24.dp)) },
+                                    icon = { Icon(Icons.Rounded.Favorite, stringResource(R.string.favorites), Modifier.size(24.dp)) },
                                     label = {
                                         Text(
-                                            "Favorites",
+                                            stringResource(R.string.favorites),
                                             fontWeight = if (primary == com.vayu.weather.presentation.navigation.Routes.Favorites) FontWeight.SemiBold else FontWeight.Medium
                                         )
                                     },
@@ -322,10 +373,10 @@ fun VayuApp() {
                                 NavigationBarItem(
                                     selected = primary == com.vayu.weather.presentation.navigation.Routes.Map,
                                     onClick = { nav.navigate(com.vayu.weather.presentation.navigation.Routes.Map) },
-                                    icon = { Icon(Icons.Rounded.Map, "Map", Modifier.size(24.dp)) },
+                                    icon = { Icon(Icons.Rounded.Map, stringResource(R.string.map), Modifier.size(24.dp)) },
                                     label = {
                                         Text(
-                                            "Map",
+                                            stringResource(R.string.map),
                                             fontWeight = if (primary == com.vayu.weather.presentation.navigation.Routes.Map) FontWeight.SemiBold else FontWeight.Medium
                                         )
                                     },
@@ -338,11 +389,13 @@ fun VayuApp() {
                     Box(modifier = Modifier.padding(padding).fillMaxSize()) {
                         when {
                             nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Compare -> {
-                                val compareViewModel: com.vayu.weather.presentation.compare.CompareViewModel = hiltViewModel()
                                 com.vayu.weather.presentation.compare.SkyCastCompareScreen(
                                     selected = compareViewModel.selected,
                                     maxCities = com.vayu.weather.presentation.compare.CompareViewModel.MAX_CITIES,
-                                    onAddCity = { nav.replacePrimary(com.vayu.weather.presentation.navigation.Routes.Search) },
+                                    onAddCity = {
+                                        pendingCitySelection = PendingCitySelection.COMPARE
+                                        nav.replacePrimary(com.vayu.weather.presentation.navigation.Routes.Search)
+                                    },
                                     onRemoveCity = compareViewModel::remove,
                                     onCityTapped = { city ->
                                         weatherViewModel.loadWeatherForCity(city.latitude, city.longitude, city.name)
@@ -352,11 +405,13 @@ fun VayuApp() {
                                 )
                             }
                             nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Travel -> {
-                                val travelViewModel: com.vayu.weather.presentation.travel.TravelViewModel = hiltViewModel()
                                 com.vayu.weather.presentation.travel.SkyCastTravelScreen(
                                     state = travelViewModel.state,
                                     onSetDate = travelViewModel::setDate,
-                                    onPickDestination = { nav.popBackStack() },
+                                    onPickDestination = {
+                                        pendingCitySelection = PendingCitySelection.TRAVEL
+                                        nav.navigate(com.vayu.weather.presentation.navigation.Routes.Search)
+                                    },
                                     onRefresh = travelViewModel::refresh,
                                     isCelsius = settingsState.temperatureUnit == com.vayu.weather.presentation.weather.TemperatureUnit.CELSIUS,
                                     onBack = { nav.popBackStack() }
@@ -368,10 +423,24 @@ fun VayuApp() {
                                     onQueryChange = searchViewModel::onQueryChange,
                                     onCitySelected = { city ->
                                         searchViewModel.addToRecentSearches(city)
-                                        weatherViewModel.loadWeatherForCity(
-                                            city.latitude, city.longitude, city.name
-                                        )
-                                        nav.replacePrimary(com.vayu.weather.presentation.navigation.Routes.Weather)
+                                        when (pendingCitySelection) {
+                                            PendingCitySelection.COMPARE -> {
+                                                pendingCitySelection = PendingCitySelection.NONE
+                                                compareViewModel.add(city)
+                                                nav.navigate(com.vayu.weather.presentation.navigation.Routes.Compare)
+                                            }
+                                            PendingCitySelection.TRAVEL -> {
+                                                pendingCitySelection = PendingCitySelection.NONE
+                                                travelViewModel.setDestination(city)
+                                                nav.navigate(com.vayu.weather.presentation.navigation.Routes.Travel)
+                                            }
+                                            PendingCitySelection.NONE -> {
+                                                weatherViewModel.loadWeatherForCity(
+                                                    city.latitude, city.longitude, city.name
+                                                )
+                                                nav.replacePrimary(com.vayu.weather.presentation.navigation.Routes.Weather)
+                                            }
+                                        }
                                     },
                                     onToggleFavorite = { city ->
                                         favoritesViewModel.toggleFavorite(city)
@@ -381,19 +450,16 @@ fun VayuApp() {
                                     },
                                     onClearRecentSearches = searchViewModel::clearRecentSearches,
                                     onOpenTravel = {
-                                        val act = activity
-                                        if (act != null) {
-                                            com.vayu.weather.presentation.ads.AdManager.showInterstitial(act) {
-                                                nav.navigate(com.vayu.weather.presentation.navigation.Routes.Travel)
-                                            }
-                                        } else {
-                                            nav.navigate(com.vayu.weather.presentation.navigation.Routes.Travel)
-                                        }
+                                        // No interstitial on entry: interrupting navigation into
+                                        // a feature screen violates the conservative ad policy for
+                                        // a weather app (AdMob disruptive-ads guidance). The
+                                        // interstitial API remains for future policy-compliant
+                                        // placements only.
+                                        nav.navigate(com.vayu.weather.presentation.navigation.Routes.Travel)
                                     }
                                 )
                             }
                             nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Favorites -> {
-                                val favoritesWithWeatherViewModel: com.vayu.weather.presentation.favorites.FavoritesWithWeatherViewModel = hiltViewModel()
                                 com.vayu.weather.presentation.favorites.SkyCastFavoritesScreen(
                                     favorites = favoritesWithWeatherViewModel.favorites,
                                     onCitySelected = { city ->
@@ -405,14 +471,8 @@ fun VayuApp() {
                                     onRemoveFavorite = favoritesWithWeatherViewModel::removeFavorite,
                                     onBrowseCities = { nav.navigate(com.vayu.weather.presentation.navigation.Routes.Search) },
                                     onCompare = {
-                                        val act = activity
-                                        if (act != null) {
-                                            com.vayu.weather.presentation.ads.AdManager.showInterstitial(act) {
-                                                nav.navigate(com.vayu.weather.presentation.navigation.Routes.Compare)
-                                            }
-                                        } else {
-                                            nav.navigate(com.vayu.weather.presentation.navigation.Routes.Compare)
-                                        }
+                                        // No interstitial on entry — see onOpenTravel above.
+                                        nav.navigate(com.vayu.weather.presentation.navigation.Routes.Compare)
                                     },
                                     isCelsius = settingsState.temperatureUnit == com.vayu.weather.presentation.weather.TemperatureUnit.CELSIUS
                                 )
@@ -424,7 +484,7 @@ fun VayuApp() {
                             }
                             else -> {
                                 var openMetric by remember { mutableStateOf<String?>(null) }
-                                var isDetailedForecastUnlocked by remember { mutableStateOf(false) }
+                                var isDetailedForecastUnlocked by rememberSaveable { mutableStateOf(false) }
                                 // Premium unlocks the extended outlook permanently; the
                                 // rewarded-ad path remains for free users.
                                 val detailedForecastUnlocked =
@@ -486,26 +546,30 @@ fun VayuApp() {
                                                         throw IllegalStateException("No share image")
                                                     }
                                                 } catch (e: Exception) {
-                                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                        type = "text/plain"
-                                                        putExtra(Intent.EXTRA_TEXT, shareText)
-                                                        putExtra(Intent.EXTRA_SUBJECT, shareSubject)
+                                                    // Text fallback needs its own guard: no activity may
+                                                    // accept text/plain (or the host may be finishing).
+                                                    try {
+                                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                            type = "text/plain"
+                                                            putExtra(Intent.EXTRA_TEXT, shareText)
+                                                            putExtra(Intent.EXTRA_SUBJECT, shareSubject)
+                                                        }
+                                                        context.startActivity(Intent.createChooser(shareIntent, shareChooserTitle))
+                                                    } catch (e2: Exception) {
+                                                        Log.e("VayuApp", "Share failed", e2)
                                                     }
-                                                    context.startActivity(Intent.createChooser(shareIntent, shareChooserTitle))
                                                 }
                                             }
                                         }
                                     },
                                     onRefresh = { weatherViewModel.refreshWeatherInfo() },
                                     onOpenDetail = {
-                                        val act = activity
-                                        if (act != null) {
-                                            com.vayu.weather.presentation.ads.AdManager.showInterstitial(act) {
-                                                showDetail = true
-                                            }
-                                        } else {
-                                            showDetail = true
-                                        }
+                                        // No interstitial here: opening a
+                                        // detailed forecast is core weather
+                                        // functionality (AdMob disruptive-ad
+                                        // guidance). Travel/Compare entries
+                                        // keep their capped interstitials.
+                                        showDetail = true
                                     },
                                     onToggleUnit = settingsViewModel::toggleTemperatureUnit,
                                     onToggleTheme = {
@@ -525,9 +589,18 @@ fun VayuApp() {
                                     onWatchAdForDetails = {
                                         val act = activity
                                         if (act != null) {
-                                            com.vayu.weather.presentation.ads.AdManager.showRewardedAd(act, onRewardGranted = {
-                                                isDetailedForecastUnlocked = true
-                                            }, onAdDismissed = {})
+                                            if (!com.vayu.weather.presentation.ads.AdManager.isRewardedAdReady()) {
+                                                android.widget.Toast.makeText(
+                                                    act,
+                                                    act.getString(R.string.ad_not_ready),
+                                                    android.widget.Toast.LENGTH_SHORT
+                                                ).show()
+                                                com.vayu.weather.presentation.ads.AdManager.loadRewardedAd(act)
+                                            } else {
+                                                com.vayu.weather.presentation.ads.AdManager.showRewardedAd(act, onRewardGranted = {
+                                                    isDetailedForecastUnlocked = true
+                                                }, onAdDismissed = {})
+                                            }
                                         }
                                     }
                                 )

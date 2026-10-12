@@ -1,6 +1,7 @@
 package com.vayu.weather.data.location
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
@@ -89,6 +90,9 @@ class DefaultLocationTracker @Inject constructor(
                 }
             }
 
+            // Permission was verified in getCurrentLocation() before any of
+            // these private helpers run (they are only reachable from there).
+            @SuppressLint("MissingPermission")
             locationClient.requestLocationUpdates(locationRequest, callback, Looper.getMainLooper())
                 .addOnFailureListener { continuation.safeResume(null) }
 
@@ -162,11 +166,16 @@ class DefaultLocationTracker @Inject constructor(
         return best
     }
 
+    // Bounded: an unfinalized GMS Task could otherwise hang a caller (and a
+    // WorkManager run) forever. Permission was verified in getCurrentLocation().
+    @SuppressLint("MissingPermission")
     private suspend fun fusedLastLocation(): Location? =
-        suspendCancellableCoroutine { continuation ->
-            locationClient.lastLocation
-                .addOnSuccessListener { location -> continuation.safeResume(location) }
-                .addOnFailureListener { continuation.safeResume(null) }
+        withTimeoutOrNull(TimeUnit.SECONDS.toMillis(5)) {
+            suspendCancellableCoroutine { continuation ->
+                locationClient.lastLocation
+                    .addOnSuccessListener { location -> continuation.safeResume(location) }
+                    .addOnFailureListener { continuation.safeResume(null) }
+            }
         }
 
     private fun isFresh(location: Location): Boolean =

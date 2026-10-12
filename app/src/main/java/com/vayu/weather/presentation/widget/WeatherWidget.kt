@@ -187,11 +187,20 @@ object WidgetLayouts {
                 val today = info.daily.firstOrNull()
                 val high = today?.maxTemp?.let { if (isC) it.roundToInt() else (it * 9.0 / 5.0 + 32).roundToInt() }
                 val low = today?.minTemp?.let { if (isC) it.roundToInt() else (it * 9.0 / 5.0 + 32).roundToInt() }
-                val rainProb = info.hourly.minByOrNull {
-                    kotlin.math.abs(
-                        java.time.LocalDateTime.parse(it.time).toEpochSecond(java.time.ZoneOffset.UTC) -
-                        java.time.Instant.now().epochSecond
-                    )
+                // Hourly times are location-local wall clock (timezone=auto).
+                // Parsing them as UTC displaced "now" by the location's offset,
+                // so the widget showed the rain chance of the wrong hour; an
+                // unparseable time must not crash the whole widget render.
+                val rainProb = info.hourly.minByOrNull { hour ->
+                    val hourSeconds = try {
+                        java.time.LocalDateTime.parse(hour.time)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toEpochSecond()
+                    } catch (e: Exception) {
+                        null
+                    }
+                    if (hourSeconds == null) Long.MAX_VALUE
+                    else kotlin.math.abs(hourSeconds - java.time.Instant.now().epochSecond)
                 }?.precipitationProbability ?: 0
                 val label = weatherLabel(info.current.weatherCode, info.current.isDay)
 

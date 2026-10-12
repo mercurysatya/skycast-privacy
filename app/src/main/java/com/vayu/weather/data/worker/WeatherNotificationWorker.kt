@@ -63,8 +63,14 @@ class WeatherNotificationWorker @AssistedInject constructor(
             }
 
             Result.success()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // WorkManager stopping the run is not a failure to retry.
+            throw e
+        } catch (e: retrofit2.HttpException) {
+            // A 4xx/5xx from the provider will not be fixed by retrying forever.
+            if (runAttemptCount >= 2) Result.failure() else Result.retry()
         } catch (e: Exception) {
-            Result.retry()
+            if (runAttemptCount >= 3) Result.failure() else Result.retry()
         }
     }
 
@@ -85,9 +91,9 @@ class WeatherNotificationWorker @AssistedInject constructor(
         val windDisplay = windKmh?.let {
             when (windUnit) {
                 com.vayu.weather.presentation.weather.WindUnit.KPH -> "${it.roundToInt()} km/h"
-                com.vayu.weather.presentation.weather.WindUnit.MPH -> "${(it * 0.621371).toInt()} mph"
-                com.vayu.weather.presentation.weather.WindUnit.MS -> "${(it / 3.6).toInt()} m/s"
-                com.vayu.weather.presentation.weather.WindUnit.KNOTS -> "${(it * 0.539957).toInt()} kn"
+                com.vayu.weather.presentation.weather.WindUnit.MPH -> "${(it * 0.621371).roundToInt()} mph"
+                com.vayu.weather.presentation.weather.WindUnit.MS -> "${(it / 3.6).roundToInt()} m/s"
+                com.vayu.weather.presentation.weather.WindUnit.KNOTS -> "${(it * 0.539957).roundToInt()} kn"
             }
         }
 
@@ -208,7 +214,11 @@ class WeatherNotificationWorker @AssistedInject constructor(
         val endMin = settingsManager.getQuietHoursEndMinute()
         val start = java.time.LocalTime.of(startHour, startMin)
         val end = java.time.LocalTime.of(endHour, endMin)
-        return if (start.isBefore(end) || start == end) {
+        return if (start == end) {
+            // Start == end would mean an empty (or 24h) window depending on the
+            // branch below; treat it as "quiet hours disabled".
+            false
+        } else if (start.isBefore(end)) {
             !now.isBefore(start) && !now.isAfter(end)
         } else {
             // Overnight quiet hours (e.g. 22:00 → 07:00)

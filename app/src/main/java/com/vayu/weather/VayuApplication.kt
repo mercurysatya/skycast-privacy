@@ -78,6 +78,12 @@ class VayuApplication : Application(), Configuration.Provider {
     private fun setupWeatherAlerts() {
         val workRequest = PeriodicWorkRequestBuilder<com.vayu.weather.data.worker.WeatherAlertWorker>(
             3, TimeUnit.HOURS
+        ).setConstraints(
+            // The worker fetches weather over the network; without this
+            // constraint every offline run scheduled a pointless retry chain.
+            androidx.work.Constraints.Builder()
+                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                .build()
         ).build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             com.vayu.weather.data.worker.WeatherAlertWorker.WORK_NAME,

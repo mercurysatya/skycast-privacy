@@ -31,6 +31,48 @@ object AdManager {
     @Volatile
     private var mobileAdsInitialized = false
 
+    /**
+     * Bumped whenever the consent state changes so banner composables
+     * (which read `canRequestAds` during composition) re-evaluate and appear
+     * once consent allows ads — previously an EEA user who granted consent
+     * never saw a banner until some unrelated recomposition.
+     */
+    var consentVersion = androidx.compose.runtime.mutableStateOf(0)
+        private set
+
+    fun onConsentChanged() {
+        consentVersion.value++
+    }
+
+    /**
+     * The single cached banner view. Compose disposes and recreates
+     * AndroidViews as they scroll off a LazyColumn or as screens switch,
+     * and every recreation issued a brand-new ad request. Reusing one
+     * AdView keeps banner requests at a policy-friendly minimum.
+     */
+    @Volatile
+    private var bannerAdView: com.google.android.gms.ads.AdView? = null
+
+    /** Returns the shared banner AdView, creating and loading it once. */
+    fun getOrCreateBannerView(context: Context): com.google.android.gms.ads.AdView {
+        bannerAdView?.let { return it }
+        synchronized(this) {
+            bannerAdView?.let { return it }
+            val view = com.google.android.gms.ads.AdView(context.applicationContext).apply {
+                setAdSize(
+                    com.google.android.gms.ads.AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+                        context,
+                        com.google.android.gms.ads.AdSize.FULL_WIDTH
+                    )
+                )
+                adUnitId = BuildConfig.ADMOB_BANNER_ID
+                loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
+            }
+            bannerAdView = view
+            return view
+        }
+    }
+
     // Frequency capping: last interstitial shown time
     @Volatile private var lastInterstitialTime = 0L
     private const val INTERSTITIAL_MIN_INTERVAL_MS = 180_000L // 3 minutes

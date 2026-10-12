@@ -15,9 +15,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
         // Hold the splash until the app has picked its start destination,
-        // so the Search pane never flashes before the dashboard is shown
+        // so the Search pane never flashes before the dashboard is shown.
+        // Only reset on a real cold start — on rotation/process recreation
+        // the flag is already correct and re-holding it re-flashed the splash.
         splash.setKeepOnScreenCondition { !SplashGate.isReady }
-        SplashGate.isReady = false
+        if (savedInstanceState == null) {
+            SplashGate.isReady = false
+        }
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()

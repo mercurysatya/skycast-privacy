@@ -2,6 +2,7 @@ package com.vayu.weather.data.converter
 
 import com.vayu.weather.presentation.weather.TemperatureUnit
 import com.vayu.weather.presentation.weather.WindUnit
+import kotlin.math.roundToInt
 
 /**
  * Centralized unit conversion layer.
@@ -31,8 +32,8 @@ object UnitsConverter {
         unit: TemperatureUnit
     ): String {
         return when (unit) {
-            TemperatureUnit.CELSIUS -> "${temperature.toInt()}\u00B0C"
-            TemperatureUnit.FAHRENHEIT -> "${celsiusToFahrenheit(temperature).toInt()}\u00B0F"
+            TemperatureUnit.CELSIUS -> "${temperature.roundToInt()}\u00B0C"
+            TemperatureUnit.FAHRENHEIT -> "${celsiusToFahrenheit(temperature).roundToInt()}\u00B0F"
         }
     }
 
@@ -92,10 +93,10 @@ object WindConverter {
         unit: WindUnit
     ): String {
         return when (unit) {
-            WindUnit.KPH -> speedKmh?.let { "${it.toInt()} km/h" } ?: "--"
-            WindUnit.MPH -> speedKmh?.let { "${kmhToMph(it).toInt()} mph" } ?: "--"
-            WindUnit.MS -> speedKmh?.let { "${kmhToMs(it).toInt()} m/s" } ?: "--"
-            WindUnit.KNOTS -> speedKmh?.let { "${kmhToKnots(it).toInt()} kn" } ?: "--"
+            WindUnit.KPH -> speedKmh?.let { "${it.roundToInt()} km/h" } ?: "--"
+            WindUnit.MPH -> speedKmh?.let { "${kmhToMph(it).roundToInt()} mph" } ?: "--"
+            WindUnit.MS -> speedKmh?.let { "${kmhToMs(it).roundToInt()} m/s" } ?: "--"
+            WindUnit.KNOTS -> speedKmh?.let { "${kmhToKnots(it).roundToInt()} kn" } ?: "--"
         }
     }
 
@@ -133,8 +134,8 @@ object PressureConverter {
         unit: PressureUnit
     ): String {
         return when (unit) {
-            PressureUnit.HPA -> pressureHpa?.let { "${it.toInt()} hPa" } ?: "--"
-            PressureUnit.INHG -> pressureHpa?.let { "${hpaToInHg(it).toInt()} inHg" } ?: "--"
+            PressureUnit.HPA -> pressureHpa?.let { "${it.roundToInt()} hPa" } ?: "--"
+            PressureUnit.INHG -> pressureHpa?.let { "${hpaToInHg(it).roundToInt()} inHg" } ?: "--"
         }
     }
 
@@ -170,8 +171,8 @@ object PrecipitationConverter {
         unit: PrecipitationUnit
     ): String {
         return when (unit) {
-            PrecipitationUnit.MM -> amountMm?.let { "${it.toInt()} mm" } ?: "--"
-            PrecipitationUnit.INCH -> amountMm?.let { "${mmToInches(it).toInt()} in" } ?: "--"
+            PrecipitationUnit.MM -> amountMm?.let { "${it.roundToInt()} mm" } ?: "--"
+            PrecipitationUnit.INCH -> amountMm?.let { "${mmToInches(it).roundToInt()} in" } ?: "--"
         }
     }
 

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -122,14 +123,16 @@ fun SkyCastFavoriteCard(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
                 if (onRemove != null) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = "Remove",
-                        tint = Color.White.copy(alpha = 0.4f),
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clickable(onClick = onRemove)
-                    )
+                    // IconButton provides the 48dp minimum touch target; a bare
+                    // 18dp clickable was unusable with TalkBack/touch.
+                    IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "Remove",
+                            tint = Color.White.copy(alpha = 0.4f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
