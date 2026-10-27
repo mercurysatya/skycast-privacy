@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -149,7 +150,7 @@ fun OnboardingScreen(
         OnboardingPage(
             icon = Icons.Rounded.CheckCircle,
             title = stringResource(R.string.onboarding_get_started),
-            description = "You're all set! Swipe up to see your weather.",
+            description = stringResource(R.string.onboarding_done_desc),
             iconTint = Color(0xFF22C55E)
         )
     )
@@ -159,6 +160,9 @@ fun OnboardingScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            // Edge-to-edge activity: keep the CTA and Skip above the system
+            // bars (the fixed 48dp here is not always equal to the nav bar).
+            .systemBarsPadding()
             .background(
                 Brush.verticalGradient(
                     colors = listOf(

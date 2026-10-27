@@ -28,6 +28,15 @@ object AdManager {
     @Volatile private var interstitialAd: InterstitialAd? = null
     @Volatile private var rewardedAd: RewardedAd? = null
 
+    /**
+     * One in-flight load per slot. Without these, the two nearly-simultaneous
+     * preload triggers at cold start (ON_RESUME + UMP consent callback) each
+     * issued a real ad request and the slower duplicate discarded the first
+     * response (observed: "Interstitial/rewarded ad loaded" twice per launch).
+     */
+    private val interstitialLoadGate = AdLoadGate()
+    private val rewardedLoadGate = AdLoadGate()
+
     @Volatile
     private var mobileAdsInitialized = false
 
@@ -118,6 +127,11 @@ object AdManager {
             Log.d(TAG, "Skipping interstitial load — no consent")
             return
         }
+        if (interstitialAd != null) return
+        if (!interstitialLoadGate.acquire()) {
+            Log.d(TAG, "Interstitial load already in flight — skipping duplicate request")
+            return
+        }
         Log.d(TAG, "Loading interstitial ad")
         val adRequest = AdRequest.Builder().build()
         InterstitialAd.load(
@@ -128,11 +142,13 @@ object AdManager {
                 override fun onAdLoaded(ad: InterstitialAd) {
                     Log.d(TAG, "Interstitial ad loaded successfully")
                     interstitialAd = ad
+                    interstitialLoadGate.release()
                 }
 
                 override fun onAdFailedToLoad(adError: LoadAdError) {
                     Log.e(TAG, "Interstitial ad failed to load: ${adError.message}")
                     interstitialAd = null
+                    interstitialLoadGate.release()
                 }
             }
         )
@@ -209,6 +225,11 @@ object AdManager {
             Log.d(TAG, "Skipping rewarded ad load — no consent")
             return
         }
+        if (rewardedAd != null) return
+        if (!rewardedLoadGate.acquire()) {
+            Log.d(TAG, "Rewarded load already in flight — skipping duplicate request")
+            return
+        }
         Log.d(TAG, "Loading rewarded ad")
         val adRequest = AdRequest.Builder().build()
         RewardedAd.load(
@@ -219,11 +240,13 @@ object AdManager {
                 override fun onAdLoaded(ad: RewardedAd) {
                     Log.d(TAG, "Rewarded ad loaded")
                     rewardedAd = ad
+                    rewardedLoadGate.release()
                 }
 
                 override fun onAdFailedToLoad(adError: LoadAdError) {
                     Log.e(TAG, "Rewarded ad failed: ${adError.message}")
                     rewardedAd = null
+                    rewardedLoadGate.release()
                 }
             }
         )

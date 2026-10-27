@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug-build-only manifest additions. Merged ONLY when building debug
+     variants; release artifacts are untouched. Registers the debug consent
+     reset receiver so ADB can wipe stored UMP consent state for testing. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <!-- Exported on purpose: the ADB shell (shell uid) must be able to
+             deliver the broadcast; a signature permission would block it.
+             Debug variant only — never shipped. -->
+        <receiver
+            android:name="com.vayu.weather.presentation.DebugConsentResetReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver"
+            tools:node="merge">
+            <intent-filter>
+                <action android:name="com.vayu.weather.DEBUG_RESET_CONSENT" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

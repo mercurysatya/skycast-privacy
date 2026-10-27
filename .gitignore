@@ -32,6 +32,22 @@ FINAL_VERIFICATION_REPORT.md
 *.py
 *.png
 
+# Local device evidence, build/test dumps, and transient audit output
+/artifacts/
+/reports.zip
+/FIN/
+/audit_summary.txt
+/example_backup.kt
+/test_output.txt
+/test_run*.txt
+/build.txt
+/build_current.log
+/build_log.txt
+/build_output.txt
+/build_premium.log
+/output.txt
+/lint_debug.txt
+
 # Keep privacy policy and gitignore
 !/privacy-policy.html
 !/.gitignore

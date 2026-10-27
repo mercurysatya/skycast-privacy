@@ -43,6 +43,10 @@ class AlertsViewModel @Inject constructor(
         viewModelScope.launch {
             snoozeDuration.value = settingsManager.getSnoozeDurationMs().toLong()
             pushFrequencyHours.value = settingsManager.getPushAlertFrequencyHours()
+            state = state.copy(
+                snoozeDurationMinutes = (settingsManager.getSnoozeDurationMs() / 60_000)
+                    .coerceIn(5, 1440)
+            )
         }
     }
 
@@ -91,9 +95,13 @@ class AlertsViewModel @Inject constructor(
     }
 
     fun updateSnoozeDuration(durationMs: Int) {
-        snoozeDuration.value = durationMs.toLong()
+        val clamped = durationMs.coerceIn(5 * 60_000, 1440 * 60_000)
+        snoozeDuration.value = clamped.toLong()
+        state = state.copy(
+            snoozeDurationMinutes = clamped / 60_000
+        )
         viewModelScope.launch {
-            settingsManager.setSnoozeDurationMs(durationMs)
+            settingsManager.setSnoozeDurationMs(clamped)
         }
     }
 

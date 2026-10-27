@@ -1,0 +1,21 @@
+TestCaseID,Module,TestScenario,Preconditions,TestSteps,ExpectedResult,ActualResult,Status,Severity,AutomationStatus,Evidence,Notes
+VAAYU-TC-001,Startup,Application launches launches installation and first launch,None,1. Install app via debug APK 2. Launch from launcher 3. Verify observe initial screen,App launches launches=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Could not install/run test APK on device; baseline from source review only
+VAAYU-TC-002,Startup,Subsequent launch from background,None,1. Launch-app in background 2. Return to app 3. Verify verify state restoration,AppState=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Could not test on device; baseline from source review
+VAAYU-TC-003,Startup,S,S,Return from process death,None,1. Kill-app terminated 2. Relaunch 3. Verify verify UI state,AppState=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Could not test on device; baseline from source review
+VAAYU-TC-004,Navigation,S,S,Main screen elements (buttons, icons, icons,None,1. Launch-app launch 2. Tap each UI element 3. verify tappable and visible,UI=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Could not test on device; source review only
+VAAYU-TC-005,Navigation,Navigate navigation to settings,None,1. from main screen 2. tap settings 3. verify screen transition,ScreenTransition=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Could not test on device
+VAAYU-TC-006,Navigation,Back action from settings,None,1. in settings 2. press Back 3. verify returns to main,Navigation=PASS,BLOCKED,NOT APPICABLE,N/A,N/A Could not test on device
+VAAYU-TC-007,Weather,Current temperature display,None,1. load weather data 2. verify temperature value on screen 3. compare with API response,TempAccuracy=FAIL,BLOCKED,NOT APPLICABLE,N/A,N/A No mock or API comparison data available for validation; noted as gap
+VAAYU-TC-008,Weather,Feels-like temperature display,None,1. load weather data 2. verify feels-like value 3. check units label,FeelLike=FAIL,BLOCKED,NOT APPLICABLE,N/A,N/A No comparative data available for validation
+VAAYU-TC-009,Weather,Weather condition description,None,1. load weather data 2. verify condition text 3. check description field,ConditionText=FAIL,BLOCKED,NOT APPLICABLE,N/A,N/A No comparative data available
+VAAYU-TC-010,Weather,Units=FAIL,BLOCKED,NOT APPLICABLE,N/A,N/A No comparative data available
+VAAYU-TC-011,Location,Permission accepted flow,None,1. grant location permission 2. launch app 3. verify city is shown,LocationAccept=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Could not test on device
+VAAYU-TC-012,Location,Permission denied flow,None,1. deny location permission 2. launch app 3. verify degraded usable handling,LocationDenied=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Could not test on device
+VAAYU-TC-013,API,Successful=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Could not test with real API; mock tests not observed in repo
+VAAYU-TC-014,Settings,Unit selection (metric/imperial),None,1. open settings 2. toggle unit 3. verify temperature units change,UnitSelection=FAIL,BLOCKED,NOT APPLICABLE,N/A,N/A Could not verify on device
+VAAYU-TC-015,Settings,Theme change (light/dark),None,1. open settings 2. toggle theme 3. verify color scheme,ThemeChange=FAIL,BLOCKED,NOT APPLICABLE,N/A,N/A Could not verify on device
+VAAYU-TC-016,Settings,Preferred=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Could not test on device
+VAAYU-TC-017,AdMob,Test ad loading,None,1. launch app 2. observe ad loading 3. verify no crashes,AdLoad=NOT APPLICABLE,BLOCKED,NOT APPLICABLE,N/A,N/A AdMob test execution not observed; configured but not tested live
+VAAYU-TC-018,Security,No hardcoded credentials,None,1. inspect source 2. search for API keys 3. verify none in Build,Security=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Based on source review; ProGuard rules suggest credentials may be obfuscated but not confirmed
+VAAYU-TC-019,GooglePlay,Manifest=PASS,BLOCKED,NOT APPLICABLE,N/A,N/A Google Play requirements not verified without release submission
+VAAYU-TC-020,Performance,Performance=FAIL,BLOCKED,NOT APPLICABLE,N/A,N/A No process death testing on device

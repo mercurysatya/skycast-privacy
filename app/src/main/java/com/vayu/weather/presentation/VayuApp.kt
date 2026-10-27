@@ -95,6 +95,8 @@ fun VayuApp() {
     var onboardingChecked by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showAlerts by rememberSaveable { mutableStateOf(false) }
+    /** Opens the alerts screen in history mode (from Settings → Alert History). */
+    var showAlertsHistory by rememberSaveable { mutableStateOf(false) }
     var showDetail by rememberSaveable { mutableStateOf(false) }
     var showHistory by rememberSaveable { mutableStateOf(false) }
     var showPrivacyPolicy by rememberSaveable { mutableStateOf(false) }
@@ -236,7 +238,10 @@ fun VayuApp() {
                     onToggleExpand = alertsViewModel::toggleExpandAlert,
                     onSnoozeAlert = { alert, duration -> alertsViewModel.snoozeAlert(alert, duration) },
                     onSnoozeDurationChange = alertsViewModel::updateSnoozeDuration,
-                    onBack = { showAlerts = false }
+                    onBack = { showAlerts = false },
+                    // The settings entry opens the full history; every other
+                    // entry shows the current advisories.
+                    showHistory = showAlertsHistory
                 )
             } else if (showPremium) {
                 val billingState = settingsViewModel.billingState.collectAsState().value
@@ -300,7 +305,12 @@ fun VayuApp() {
                     },
                     onDeleteAllData = { settingsViewModel.deleteAllData() },
                     onClearCache = { settingsViewModel.clearWeatherCache() },
-                    onOpenAlerts = { showAlerts = true },
+                    onOpenAlerts = {
+                        // "Alert History" opens the full history, including the
+                        // advisories that are over.
+                        showAlertsHistory = true
+                        showAlerts = true
+                    },
                     onOpenPremium = {
                         // Keep settings true underneath: the premium branch
                         // renders before the settings branch, so the paywall
@@ -398,7 +408,9 @@ fun VayuApp() {
                                     },
                                     onRemoveCity = compareViewModel::remove,
                                     onCityTapped = { city ->
-                                        weatherViewModel.loadWeatherForCity(city.latitude, city.longitude, city.name)
+                                        weatherViewModel.loadWeatherForCity(
+                                            city.latitude, city.longitude, city.name, city.admin1
+                                        )
                                     },
                                     onBack = { nav.popBackStack() },
                                     isCelsius = settingsState.temperatureUnit == com.vayu.weather.presentation.weather.TemperatureUnit.CELSIUS
@@ -407,6 +419,7 @@ fun VayuApp() {
                             nav.currentRoute == com.vayu.weather.presentation.navigation.Routes.Travel -> {
                                 com.vayu.weather.presentation.travel.SkyCastTravelScreen(
                                     state = travelViewModel.state,
+                                    travelDateOutOfRange = travelViewModel.travelDateOutOfRange,
                                     onSetDate = travelViewModel::setDate,
                                     onPickDestination = {
                                         pendingCitySelection = PendingCitySelection.TRAVEL
@@ -436,7 +449,7 @@ fun VayuApp() {
                                             }
                                             PendingCitySelection.NONE -> {
                                                 weatherViewModel.loadWeatherForCity(
-                                                    city.latitude, city.longitude, city.name
+                                                    city.latitude, city.longitude, city.name, city.admin1
                                                 )
                                                 nav.replacePrimary(com.vayu.weather.presentation.navigation.Routes.Weather)
                                             }
@@ -464,11 +477,12 @@ fun VayuApp() {
                                     favorites = favoritesWithWeatherViewModel.favorites,
                                     onCitySelected = { city ->
                                         weatherViewModel.loadWeatherForCity(
-                                            city.latitude, city.longitude, city.name
+                                            city.latitude, city.longitude, city.name, city.admin1
                                         )
                                         nav.replacePrimary(com.vayu.weather.presentation.navigation.Routes.Weather)
                                     },
                                     onRemoveFavorite = favoritesWithWeatherViewModel::removeFavorite,
+                    onReorder = favoritesWithWeatherViewModel::reorderFavorites,
                                     onBrowseCities = { nav.navigate(com.vayu.weather.presentation.navigation.Routes.Search) },
                                     onCompare = {
                                         // No interstitial on entry — see onOpenTravel above.
@@ -495,7 +509,12 @@ fun VayuApp() {
                                     cityName = weatherViewModel.currentCityName,
                                     regionName = weatherViewModel.state.regionName,
                                     onOpenSettings = { showSettings = true },
-                                    onOpenAlerts = { showAlerts = true },
+                                    onOpenAlerts = {
+                                        // The dashboard opens the current
+                                        // advisories, not the history.
+                                        showAlertsHistory = false
+                                        showAlerts = true
+                                    },
                                     onOpenHistory = { showHistory = true },
                                     onShare = {
                                         val weatherInfo = weatherViewModel.state.weatherInfo

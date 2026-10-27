@@ -9,6 +9,8 @@ data class WeatherDto(
     val latitude: Double,
     @Json(name = "longitude")
     val longitude: Double,
+    @Json(name = "timezone")
+    val timezone: String? = null,
     @Json(name = "current")
     val current: CurrentWeatherDto? = null,
     @Json(name = "hourly")

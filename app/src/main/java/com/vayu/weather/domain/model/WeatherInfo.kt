@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 data class WeatherInfo(
     val current: CurrentWeather,
     val hourly: List<HourlyWeather>,
-    val daily: List<DailyWeather>
+    val daily: List<DailyWeather>,
+    /** IANA time zone of the forecast location, e.g. "Asia/Kolkata". */
+    val timezone: String? = null
 )
 
 @Serializable

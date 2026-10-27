@@ -33,7 +33,8 @@ fun WeatherDto.toWeatherInfo(): WeatherInfo {
                 uvIndex = current?.uvIndex
             ),
             hourly = hourly?.toHourlyWeather() ?: emptyList(),
-            daily = daily?.toDailyWeather() ?: emptyList()
+            daily = daily?.toDailyWeather() ?: emptyList(),
+            timezone = timezone
         )
     } catch (e: Exception) {
         Log.e("WeatherMappers", "Error mapping WeatherDto to WeatherInfo", e)

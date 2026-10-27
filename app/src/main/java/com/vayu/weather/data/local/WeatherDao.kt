@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface WeatherDao {
 
-    @Query("SELECT * FROM favorite_cities")
+    /** Favorites in the user's drag order ([FavoriteCityEntity.sortIndex]). */
+    @Query("SELECT * FROM favorite_cities ORDER BY sortIndex ASC")
     fun getFavoriteCities(): Flow<List<FavoriteCityEntity>>
 
     @Query("SELECT EXISTS(SELECT 1 FROM favorite_cities WHERE id = :cityId)")
@@ -24,6 +25,12 @@ interface WeatherDao {
 
     @Delete
     suspend fun deleteFavoriteCity(city: FavoriteCityEntity)
+
+    @Query("SELECT COALESCE(MAX(sortIndex), 0) FROM favorite_cities")
+    suspend fun getMaxFavoriteSortIndex(): Int
+
+    @Query("UPDATE favorite_cities SET sortIndex = :sortIndex WHERE id = :id")
+    suspend fun updateFavoriteSortIndex(id: Long, sortIndex: Int)
 
     @Query("SELECT * FROM weather_cache WHERE locationId = :locationId")
     suspend fun getWeatherCache(locationId: String): WeatherCacheEntity?
@@ -74,8 +81,39 @@ interface WeatherDao {
     @Query("SELECT * FROM weather_alerts ORDER BY timestamp DESC LIMIT :limit")
     fun getWeatherAlerts(limit: Int = 50): Flow<List<WeatherAlertEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertWeatherAlert(alert: WeatherAlertEntity)
+    /** Advisories that are still valid — the ones the UI counts as active. */
+    @Query("SELECT * FROM weather_alerts WHERE expiresAt > :now ORDER BY timestamp DESC LIMIT :limit")
+    fun getActiveWeatherAlerts(limit: Int = 50, now: Long = System.currentTimeMillis()): Flow<List<WeatherAlertEntity>>
+
+    // ABORT (not REPLACE): a duplicate fingerprint must fail loudly instead of
+    // silently replacing a row, so the caller can decide what to do.
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertWeatherAlert(alert: WeatherAlertEntity): Long
+
+    @Query("SELECT * FROM weather_alerts WHERE fingerprint = :fingerprint LIMIT 1")
+    suspend fun getWeatherAlertByFingerprint(fingerprint: String): WeatherAlertEntity?
+
+    @Query("SELECT * FROM weather_alerts WHERE fingerprint LIKE :locationPrefix ORDER BY timestamp DESC")
+    suspend fun getWeatherAlertsByLocationPrefix(locationPrefix: String): List<WeatherAlertEntity>
+
+    @Query(
+        "UPDATE weather_alerts SET message = :message, severity = :severity, timestamp = :timestamp, " +
+            "latitude = :latitude, longitude = :longitude, cityName = :cityName, expiresAt = :expiresAt " +
+            "WHERE id = :id"
+    )
+    suspend fun updateWeatherAlertContent(
+        id: Long,
+        message: String,
+        severity: String,
+        timestamp: Long,
+        latitude: Double?,
+        longitude: Double?,
+        cityName: String?,
+        expiresAt: Long
+    )
+
+    @Query("UPDATE weather_alerts SET expiresAt = :expiresAt WHERE id = :id")
+    suspend fun updateWeatherAlertExpiry(id: Long, expiresAt: Long)
 
     @Query(
         "SELECT * FROM weather_alerts WHERE title = :title AND severity = :severity AND timestamp >= :since LIMIT 1"

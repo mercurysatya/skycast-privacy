@@ -357,7 +357,11 @@ private fun TemperatureChart(dailyData: List<WeatherHistoryDay>, isCelsius: Bool
                     .height(180.dp)
             ) {
                 val chartWidth = size.width
-                val chartHeight = size.height
+                // Reserve a 40px bottom band INSIDE the Canvas for the x-axis
+                // labels. They used to be drawn at chartHeight + 32px — outside
+                // the Canvas bounds — bleeding into the legend row below it and
+                // colliding with the High/Low labels on screen.
+                val chartHeight = size.height - 40f
                 val stepX = if (dailyData.size > 1) chartWidth / (dailyData.size - 1) else chartWidth
 
                 // Draw grid lines

@@ -3,7 +3,9 @@ package com.vayu.weather.di
 import android.app.Application
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.vayu.weather.data.location.DefaultLocationNameResolver
 import com.vayu.weather.data.location.DefaultLocationTracker
+import com.vayu.weather.domain.location.LocationNameResolver
 import com.vayu.weather.domain.location.LocationTracker
 import dagger.Binds
 import dagger.Module
@@ -19,6 +21,12 @@ abstract class LocationModule {
     @Binds
     @Singleton
     abstract fun bindLocationTracker(defaultLocationTracker: DefaultLocationTracker): LocationTracker
+
+    @Binds
+    @Singleton
+    abstract fun bindLocationNameResolver(
+        defaultLocationNameResolver: DefaultLocationNameResolver
+    ): LocationNameResolver
 
     companion object {
         @Provides

@@ -194,7 +194,7 @@ fun SkyCastCompareScreen(
             ) {
                 rows.forEach { (label, fn) ->
                     item(key = "row_$label", contentType = "compareRow") {
-                        CompareRow(label = label, selected = selected, fn = fn)
+                        CompareRow(label = label, selected = selected, maxCities = maxCities, fn = fn)
                     }
                 }
             }
@@ -271,6 +271,7 @@ private fun CompareCityHeader(
 private fun CompareRow(
     label: String,
     selected: List<CityWeather>,
+    maxCities: Int,
     fn: (CityWeather) -> String
 ) {
     Row(
@@ -295,6 +296,11 @@ private fun CompareRow(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
+        }
+        // Reserve the empty "Add city" slot so metric columns line up with the
+        // city headers above (the header row reserves the same weight).
+        if (selected.size < maxCities) {
+            Box(modifier = Modifier.weight(1f))
         }
     }
 }

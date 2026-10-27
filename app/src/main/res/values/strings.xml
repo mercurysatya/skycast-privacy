@@ -355,6 +355,7 @@ Try selecting a different severity level.</string>
     <!-- Onboarding -->
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
+    <string name="onboarding_done_desc">You\'re all set! Swipe up to see your weather.</string>
     <string name="onboarding_get_started">Get Started</string>
     <string name="onboarding_welcome_title">Welcome to SkyCast</string>
     <string name="onboarding_welcome_desc">Your personal weather companion with real-time forecasts, radar maps, and severe weather alerts.</string>
@@ -380,7 +381,7 @@ Try selecting a different severity level.</string>
     <string name="high">High</string>
     <string name="low">Low</string>
     <string name="days_tracked">Days</string>
-    <string name="alert_snooze">Snooze for 30 min</string>
+    <string name="alert_snooze">Snooze for %1$d min</string>
     <string name="snooze">Snooze</string>
     <!-- Quiet Hours and Notification Schedule -->
     <string name="quiet_hours_group">Quiet Hours &amp; Notification Schedule</string>

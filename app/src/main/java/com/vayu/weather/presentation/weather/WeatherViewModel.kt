@@ -7,12 +7,14 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayu.weather.data.local.SettingsManager
+import com.vayu.weather.domain.location.LocationNameResolver
 import com.vayu.weather.domain.location.LocationTracker
 import com.vayu.weather.domain.model.AirQuality
 import com.vayu.weather.domain.model.WeatherHistorySnapshot
 import com.vayu.weather.domain.repository.WeatherRepository
 import com.vayu.weather.domain.use_case.GetAirQualityUseCase
 import com.vayu.weather.domain.use_case.GetWeatherUseCase
+import com.vayu.weather.domain.use_case.EvaluateWeatherAdvisoriesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -28,7 +30,9 @@ class WeatherViewModel @Inject constructor(
     private val getWeatherUseCase: GetWeatherUseCase,
     private val getAirQualityUseCase: GetAirQualityUseCase,
     private val repository: WeatherRepository,
+    private val evaluateWeatherAdvisories: EvaluateWeatherAdvisoriesUseCase,
     val locationTracker: LocationTracker,
+    val locationNameResolver: LocationNameResolver,
     val settingsManager: SettingsManager
 ) : ViewModel() {
 
@@ -46,6 +50,9 @@ class WeatherViewModel @Inject constructor(
     private var refreshJob: Job? = null
     private var loadJob: Job? = null
 
+    /** Reverse-geocoding lookup for the GPS position; cancelled on a manual pick. */
+    private var nameResolveJob: Job? = null
+
     /** Every alert ever stored; filtered down to the visible location on use. */
     private var allAlerts: List<com.vayu.weather.domain.repository.WeatherAlert> = emptyList()
 
@@ -54,7 +61,7 @@ class WeatherViewModel @Inject constructor(
         // Collect alerts so the home screen can display them without a
         // separate ViewModel — the alerts screen has its own AlertsViewModel.
         viewModelScope.launch {
-            repository.getWeatherAlerts().collect { alerts ->
+            repository.getActiveWeatherAlerts().collect { alerts ->
                 allAlerts = alerts
                 publishAlerts()
             }
@@ -64,19 +71,22 @@ class WeatherViewModel @Inject constructor(
     /**
      * An alert belongs to the location it was generated for. Without this,
      * a UV alert raised for Bangalore would show up on London's dashboard.
+     * Only advisories that are still valid count as active.
      */
     private fun publishAlerts() {
         val lat = currentLat
         val lon = currentLon
+        val now = System.currentTimeMillis()
         val visible = if (lat == null || lon == null) {
-            allAlerts
+            allAlerts.filter { it.isActive(now) }
         } else {
             allAlerts.filter { alert ->
                 val aLat = alert.latitude
                 val aLon = alert.longitude
                 aLat != null && aLon != null &&
                     Math.abs(aLat - lat) <= 1.0 &&
-                    Math.abs(aLon - lon) <= 1.0
+                    Math.abs(aLon - lon) <= 1.0 &&
+                    alert.isActive(now)
             }
         }
         state = state.copy(alerts = visible)
@@ -144,12 +154,25 @@ class WeatherViewModel @Inject constructor(
                 if (location != null) {
                     val switching = state.weatherInfo != null &&
                         (currentLat != location.latitude || currentLon != location.longitude)
+                    val sameCoordinates = currentLat == location.latitude &&
+                        currentLon == location.longitude
                     // A GPS fix is the device's own location, not a picked city.
-                    currentCityName = null
+                    // A name that already belongs to these very coordinates stays
+                    // valid; a name from different coordinates is stale and must go.
+                    currentCityName = if (sameCoordinates) currentCityName else null
+                    // Captured before the asynchronous lookup can change it, so
+                    // the location is persisted exactly once with a known name.
+                    val nameToPersist = currentCityName
                     currentLat = location.latitude
                     currentLon = location.longitude
+                    if (!sameCoordinates) {
+                        state = state.copy(regionName = null)
+                    }
                     publishAlerts()
                     dropStaleData(switching)
+                    // Resolve the place name in the background so the header can
+                    // show the real city instead of the "current location" fallback.
+                    resolveNameForLocation(location.latitude, location.longitude)
                     loadAirQuality(location.latitude, location.longitude)
                     loadPreviousDayTemp(location.latitude, location.longitude)
                     getWeatherUseCase(location.latitude, location.longitude)
@@ -161,6 +184,20 @@ class WeatherViewModel @Inject constructor(
                                 lastUpdatedTime = currentTimeString()
                             )
                             saveWeatherSnapshot(weatherInfo, location.latitude, location.longitude)
+                            evaluateAdvisories(weatherInfo, location.latitude, location.longitude, nameToPersist)
+                            // Persist the GPS fix as well: a device that only ever
+                            // used GPS otherwise never wrote LAST_LAT/LON, so a
+                            // later launch without a fix (revoked permission,
+                            // airplane mode, GPS outage) had no fallback at all.
+                            // Guard: this coroutine may outlive this load if the
+                            // user picked another city first — never overwrite.
+                            if (currentLat == location.latitude && currentLon == location.longitude) {
+                                viewModelScope.launch {
+                                    settingsManager.setLastLocation(
+                                        location.latitude, location.longitude, nameToPersist
+                                    )
+                                }
+                            }
                         }
                         .onFailure { e -> handleLoadFailure(e) }
                 } else if (fallbackLat != null && fallbackLon != null) {
@@ -183,6 +220,7 @@ class WeatherViewModel @Inject constructor(
                                 lastUpdatedTime = currentTimeString()
                             )
                             saveWeatherSnapshot(weatherInfo, fallbackLat, fallbackLon)
+                            evaluateAdvisories(weatherInfo, fallbackLat, fallbackLon, currentCityName)
                             // Persist successful location so future refreshes can fall back to it
                             viewModelScope.launch { settingsManager.setLastLocation(
                                 fallbackLat, fallbackLon, currentCityName
@@ -218,13 +256,23 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun loadWeatherForCity(lat: Double, lon: Double, cityName: String? = null) {
+    fun loadWeatherForCity(
+        lat: Double,
+        lon: Double,
+        cityName: String? = null,
+        regionName: String? = null
+    ) {
         // Only treat this as a location switch when the coordinates actually
         // change — re-selecting the same city should keep its data on screen.
         val switching = state.weatherInfo != null && (currentLat != lat || currentLon != lon)
+        // A manual pick owns the title: cancel a GPS name lookup that is still
+        // in flight so a slow reverse-geocode cannot overwrite the chosen city.
+        nameResolveJob?.cancel()
+        nameResolveJob = null
         currentCityName = cityName
         currentLat = lat
         currentLon = lon
+        state = state.copy(regionName = regionName?.takeIf { it.isNotBlank() })
         publishAlerts()
         loadJob?.cancel()
         refreshJob?.cancel()
@@ -247,6 +295,7 @@ class WeatherViewModel @Inject constructor(
                             lastUpdatedTime = currentTimeString()
                         )
                         saveWeatherSnapshot(weatherInfo, lat, lon)
+                        evaluateAdvisories(weatherInfo, lat, lon, currentCityName)
                         // Persist successful location so future refreshes can fall back to it
                         viewModelScope.launch { settingsManager.setLastLocation(
                             lat, lon, currentCityName
@@ -312,6 +361,9 @@ class WeatherViewModel @Inject constructor(
     private suspend fun refreshWithCoords(lat: Double, lon: Double) {
         loadAirQuality(lat, lon)
         loadPreviousDayTemp(lat, lon)
+        // A refresh must not lose the place name: only look one up when none is
+        // known yet (GPS position whose first lookup failed, for example).
+        resolveNameForLocation(lat, lon)
         getWeatherUseCase(lat, lon)
             .onSuccess { weatherInfo ->
                 state = state.copy(
@@ -320,6 +372,9 @@ class WeatherViewModel @Inject constructor(
                     refreshError = null,
                     lastUpdatedTime = currentTimeString()
                 )
+                // The forecast may have changed — keep the advisories in sync.
+                // The upsert is idempotent, so this cannot duplicate anything.
+                evaluateAdvisories(weatherInfo, lat, lon, currentCityName)
                 viewModelScope.launch { settingsManager.setLastLocation(lat, lon, currentCityName) }
             }
             .onFailure { e ->
@@ -334,8 +389,71 @@ class WeatherViewModel @Inject constructor(
         state = state.copy(refreshError = null)
     }
 
-    private suspend fun saveWeatherSnapshot(
+    /**
+     * Reverse-geocodes the given coordinates so the header can show the real
+     * place name instead of the localized "current location" fallback.
+     *
+     * - Runs off the main thread (the resolver does the lookup on IO).
+     * - A result is only applied when it still belongs to the location that is
+     *   on screen, so a slow lookup can never overwrite a newer position.
+     * - A name that is already known is never looked up again.
+     * - When no name can be resolved the fallback simply stays — no error is
+     *   shown and nothing is suppressed.
+     */
+    private fun resolveNameForLocation(lat: Double, lon: Double) {
+        if (currentCityName != null) return
+        nameResolveJob?.cancel()
+        nameResolveJob = viewModelScope.launch {
+            val resolved = try {
+                locationNameResolver.resolveName(lat, lon)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("WeatherViewModel", "Location name lookup failed: ${e.message}")
+                null
+            }
+            // Stale guard: the user may have moved or picked a city meanwhile.
+            if (currentLat != lat || currentLon != lon) return@launch
+            val city = resolved?.city?.takeIf { it.isNotBlank() } ?: return@launch
+            currentCityName = city
+            state = state.copy(regionName = resolved.region?.takeIf { it.isNotBlank() })
+            // Persist it so the next launch (and the widget/notification
+            // workers) can show the same name without another lookup.
+            viewModelScope.launch {
+                settingsManager.setLastLocation(lat, lon, city)
+            }
+        }
+    }
+
+    /**
+     * Keeps the stored advisories in sync with the freshly loaded forecast.
+     *
+     * The write is an idempotent upsert keyed on the advisory's identity, so
+     * refreshing the weather can never pile up duplicate cards. No
+     * notification is sent from here — that is the background worker's job.
+     */
+    private suspend fun evaluateAdvisories(
         weatherInfo: com.vayu.weather.domain.model.WeatherInfo,
+        latitude: Double,
+        longitude: Double,
+        cityName: String?
+    ) {
+        try {
+            evaluateWeatherAdvisories(
+                weatherInfo = weatherInfo,
+                latitude = latitude,
+                longitude = longitude,
+                cityName = cityName
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // An advisory problem must never break the weather screen.
+            Log.w("WeatherViewModel", "Advisory evaluation failed: ${e.message}")
+        }
+    }
+
+    private suspend fun saveWeatherSnapshot(        weatherInfo: com.vayu.weather.domain.model.WeatherInfo,
         lat: Double,
         lon: Double
     ) {

@@ -16,6 +16,12 @@ import com.vayu.weather.presentation.premium.PremiumManager
  * The AdView is a process-wide singleton owned by [AdManager]: Compose
  * disposes/recreates AndroidViews when they leave a LazyColumn or when the
  * user switches tabs, and each recreation used to trigger a fresh ad request.
+ *
+ * INVARIANT: exactly ONE AdBanner may be composed at a time (today: the
+ * exclusive Search / Travel / Compare routes in VayuApp). A single View can
+ * only have one parent, so adding a second concurrent banner (e.g., inside
+ * the dashboard or a modal) would throw "The specified child already has a
+ * parent" — use a per-screen factory or a pool if that becomes a design need.
  */
 @Composable
 fun AdBanner(modifier: Modifier = Modifier) {

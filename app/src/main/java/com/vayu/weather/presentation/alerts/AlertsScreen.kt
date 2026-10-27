@@ -50,9 +50,28 @@ fun AlertsScreen(
     onSnoozeDurationChange: (Int) -> Unit,
     onToggleExpand: (Long) -> Unit,
     onBack: () -> Unit = {},
+    /**
+     * Shows the full alert history (including advisories that are over)
+     * instead of only the current ones. The "Alert History" entry in the
+     * settings opens the screen in this mode.
+     */
+    showHistory: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var showClearDialog by remember { mutableStateOf(false) }
+
+    // The screen shows the current advisories; the history view shows every
+    // stored advisory. Both the header count and the filter chips describe
+    // exactly the list that is on screen.
+    val visibleAlerts = remember(state.alerts, showHistory) {
+        state.visibleAlerts(showHistory)
+    }
+    val filteredAlerts = remember(visibleAlerts, state.severityFilter, state.weatherTypeFilter, state.snoozedAlertIds) {
+        state.filtered(visibleAlerts)
+    }
+    val highCount = visibleAlerts.count { it.severity == "high" }
+    val mediumCount = visibleAlerts.count { it.severity == "medium" }
+    val lowCount = visibleAlerts.count { it.severity == "low" }
 
     if (showClearDialog) {
         AlertDialog(
@@ -103,12 +122,12 @@ fun AlertsScreen(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                if (state.alerts.isNotEmpty()) {
+                if (visibleAlerts.isNotEmpty()) {
                     Text(
-                        text = if (state.alerts.size == 1) {
-                            stringResource(R.string.alert_count_one, state.alerts.size)
+                        text = if (visibleAlerts.size == 1) {
+                            stringResource(R.string.alert_count_one, visibleAlerts.size)
                         } else {
-                            stringResource(R.string.alert_count, state.alerts.size)
+                            stringResource(R.string.alert_count, visibleAlerts.size)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
@@ -116,7 +135,7 @@ fun AlertsScreen(
                 }
             }
 
-            if (state.alerts.isNotEmpty()) {
+            if (visibleAlerts.isNotEmpty()) {
                 IconButton(onClick = { showClearDialog = true }) {
                     Icon(
                         imageVector = Icons.Rounded.DeleteSweep,
@@ -128,17 +147,18 @@ fun AlertsScreen(
         }
 
         // Severity filter chips
-        if (state.alerts.isNotEmpty()) {
+        if (visibleAlerts.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp),
+                    .padding(bottom = 12.dp)
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilterChip(
                     selected = state.severityFilter == SeverityFilter.ALL,
                     onClick = { onFilterChange(SeverityFilter.ALL) },
-                    label = { Text("${stringResource(R.string.filter_all)} (${state.alerts.size})") },
+                    label = { Text("${stringResource(R.string.filter_all)} (${visibleAlerts.size})") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                     )
@@ -146,7 +166,7 @@ fun AlertsScreen(
                 FilterChip(
                     selected = state.severityFilter == SeverityFilter.HIGH,
                     onClick = { onFilterChange(SeverityFilter.HIGH) },
-                    label = { Text("${stringResource(R.string.severity_high)} (${state.highCount})") },
+                    label = { Text("${stringResource(R.string.severity_high)} ($highCount)") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                     )
@@ -154,7 +174,7 @@ fun AlertsScreen(
                 FilterChip(
                     selected = state.severityFilter == SeverityFilter.MEDIUM,
                     onClick = { onFilterChange(SeverityFilter.MEDIUM) },
-                    label = { Text("${stringResource(R.string.severity_medium)} (${state.mediumCount})") },
+                    label = { Text("${stringResource(R.string.severity_medium)} ($mediumCount)") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
                     )
@@ -163,7 +183,7 @@ fun AlertsScreen(
         }
 
         // Weather type filter chips
-        if (state.alerts.isNotEmpty()) {
+        if (visibleAlerts.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -182,7 +202,7 @@ fun AlertsScreen(
                 FilterChip(
                     selected = state.weatherTypeFilter == WeatherTypeFilter.RAIN,
                     onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.RAIN) },
-                    label = { Text("Rain (${state.rainCount})") },
+                    label = { Text("Rain (${visibleAlerts.count { it.title.contains("Rain", ignoreCase = true) }})") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFF1E88E5).copy(alpha = 0.15f)
                     )
@@ -190,7 +210,7 @@ fun AlertsScreen(
                 FilterChip(
                     selected = state.weatherTypeFilter == WeatherTypeFilter.WIND,
                     onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.WIND) },
-                    label = { Text("Wind (${state.windCount})") },
+                    label = { Text("Wind (${visibleAlerts.count { it.title.contains("Wind", ignoreCase = true) }})") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFF78909C).copy(alpha = 0.15f)
                     )
@@ -198,7 +218,7 @@ fun AlertsScreen(
                 FilterChip(
                     selected = state.weatherTypeFilter == WeatherTypeFilter.UV,
                     onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.UV) },
-                    label = { Text("UV (${state.uvCount})") },
+                    label = { Text("UV (${visibleAlerts.count { it.title.contains("UV", ignoreCase = true) }})") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFFFFB300).copy(alpha = 0.15f)
                     )
@@ -206,7 +226,7 @@ fun AlertsScreen(
                 FilterChip(
                     selected = state.weatherTypeFilter == WeatherTypeFilter.HEAT,
                     onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.HEAT) },
-                    label = { Text("Heat (${state.heatCount})") },
+                    label = { Text("Heat (${visibleAlerts.count { it.title.contains("Heat", ignoreCase = true) }})") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFFE53935).copy(alpha = 0.15f)
                     )
@@ -214,7 +234,7 @@ fun AlertsScreen(
                 FilterChip(
                     selected = state.weatherTypeFilter == WeatherTypeFilter.COLD,
                     onClick = { onWeatherTypeFilterChange(WeatherTypeFilter.COLD) },
-                    label = { Text("Cold (${state.coldCount})") },
+                    label = { Text("Cold (${visibleAlerts.count { it.title.contains("Cold", ignoreCase = true) }})") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFF4FC3F7).copy(alpha = 0.15f)
                     )
@@ -232,7 +252,7 @@ fun AlertsScreen(
             ) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
-        } else if (state.filteredAlerts.isEmpty()) {
+        } else if (filteredAlerts.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -268,8 +288,8 @@ fun AlertsScreen(
             }
         } else {
             // Group alerts by date
-            val groupedAlerts = remember(state.filteredAlerts) {
-                groupAlertsByDate(state.filteredAlerts)
+            val groupedAlerts = remember(filteredAlerts) {
+                groupAlertsByDate(filteredAlerts)
             }
 
             LazyColumn(
@@ -292,14 +312,10 @@ fun AlertsScreen(
                             isExpanded = state.expandedAlertId == alert.id,
                             onToggleExpand = { onToggleExpand(alert.id) },
                             onDelete = { onDeleteAlert(alert) },
-                            onSnoozeAlert = { alertId, duration ->
-                                // Snooze logic handled in ViewModel
-                            },
-                            onSnoozeDurationChange = { duration ->
-                                // Duration change handled in ViewModel
-                            },
+                            onSnoozeAlert = onSnoozeAlert,
+                            onSnoozeDurationChange = onSnoozeDurationChange,
                             snoozedAlertIds = state.snoozedAlertIds,
-                            snoozeDurationMinutes = 30
+                            snoozeDurationMinutes = state.snoozeDurationMinutes
                         )
                     }
                 }
@@ -459,21 +475,44 @@ private fun AlertCard(
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = stringResource(R.string.alert_snooze),
+                                text = stringResource(R.string.alert_snooze, snoozeDurationMinutes),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
+                            // Editable minutes field (5-1440). Digits-only with a
+                            // crash-safe parse: an empty/partial input just keeps
+                            // the previous value instead of throwing.
+                            var minutesText by remember(alert.id) {
+                                mutableStateOf(snoozeDurationMinutes.toString())
+                            }
+                            val displayMinutes = minutesText.toIntOrNull()
+                                ?: snoozeDurationMinutes
                             OutlinedTextField(
-                                value = snoozeDurationMinutes.toString(),
-                                onValueChange = { onSnoozeDurationChange(it.toInt()) },
+                                value = minutesText,
+                                onValueChange = { raw ->
+                                    val digits = raw.filter { it.isDigit() }.take(4)
+                                    minutesText = digits
+                                    digits.toIntOrNull()?.let { minutes ->
+                                        if (minutes > 0) {
+                                            onSnoozeDurationChange(minutes * 60_000)
+                                        }
+                                    }
+                                },
                                 modifier = Modifier.width(80.dp),
-                                readOnly = true,
-                                enabled = false,
+                                singleLine = true,
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                                )
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Button(
-                                onClick = { onSnoozeAlert(alert, snoozeDurationMinutes.toLong() * 60 * 1000) },
+                                onClick = {
+                                    onSnoozeAlert(
+                                        alert,
+                                        displayMinutes.coerceIn(5, 1440).toLong() * 60_000
+                                    )
+                                },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.secondary
                                 )

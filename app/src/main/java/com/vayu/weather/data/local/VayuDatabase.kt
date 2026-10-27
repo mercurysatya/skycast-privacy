@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         WeatherAlertEntity::class,
         WeatherHistoryEntity::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = false
 )
 abstract class VayuDatabase : RoomDatabase() {

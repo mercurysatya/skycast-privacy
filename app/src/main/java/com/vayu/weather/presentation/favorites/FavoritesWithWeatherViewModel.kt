@@ -10,6 +10,7 @@ import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.domain.use_case.GetFavoritesUseCase
 import com.vayu.weather.domain.use_case.GetWeatherUseCase
 import com.vayu.weather.domain.use_case.RemoveFavoriteUseCase
+import com.vayu.weather.domain.use_case.ReorderFavoritesUseCase
 import com.vayu.weather.domain.use_case.ToggleFavoriteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -37,7 +38,8 @@ class FavoritesWithWeatherViewModel @Inject constructor(
     private val getFavoritesUseCase: GetFavoritesUseCase,
     private val getWeatherUseCase: GetWeatherUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
-    private val removeFavoriteUseCase: RemoveFavoriteUseCase
+    private val removeFavoriteUseCase: RemoveFavoriteUseCase,
+    private val reorderFavoritesUseCase: ReorderFavoritesUseCase
 ) : ViewModel() {
 
     var favorites by mutableStateOf<List<FavoriteWithWeather>>(emptyList())
@@ -90,6 +92,10 @@ class FavoritesWithWeatherViewModel @Inject constructor(
         val item = current.removeAt(fromIndex)
         current.add(toIndex, item)
         favorites = current
+        // Persist the new order; the favorites flow re-emits in that order.
+        viewModelScope.launch {
+            reorderFavoritesUseCase(current.map { it.city })
+        }
     }
 
     private fun update(city: City, block: (FavoriteWithWeather) -> FavoriteWithWeather) {

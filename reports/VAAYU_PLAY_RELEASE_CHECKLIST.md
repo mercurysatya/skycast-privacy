@@ -12,8 +12,8 @@ Status labels: PASS / FAIL / BLOCKED / NOT RUN / REQUIRES OWNER ACTION.
   `testDebugUnitTest` PASS (338/338, exit 0) → `lintDebug` PASS (0 issues, exit 0) →
   `assembleDebug` PASS (exit 0) → `lintVitalRelease` PASS ("No issues found", exit 0) →
   `assembleRelease bundleRelease` PASS (exit 0). Fresh artifacts rebuilt from final
-  source: `app-release.apk` 24,028,408 B (07:11:27) / `app-release.aab` 33,526,445 B
-  (07:11:32), 2026-10-12. `apksigner verify` PASS (exit 0); `jarsigner -verify` on the
+  source: `app-release.apk` 24,028,408 B (07:56:04) / `app-release.aab` 33,526,441 B
+  (08:01:35), 2026-10-12. `apksigner verify` PASS (exit 0); `jarsigner -verify` on the
   AAB: "jar verified". Release BuildConfig banner/interstitial/rewarded IDs byte-match
   `local.properties`; release manifest App ID matches; zero Google test IDs in release
   config; zero hardcoded ad IDs in `app/src`. Merged release manifest verified:

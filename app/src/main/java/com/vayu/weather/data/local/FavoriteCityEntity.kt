@@ -11,5 +11,7 @@ data class FavoriteCityEntity(
     val longitude: Double,
     val country: String?,
     val admin1: String?,
-    val countryCode: String?
+    val countryCode: String?,
+    /** Stable, user-controlled ordering (0 = first). Set to rowid by MIGRATION_4_5. */
+    val sortIndex: Int = 0
 )

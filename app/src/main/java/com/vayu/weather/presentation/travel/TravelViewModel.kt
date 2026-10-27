@@ -38,6 +38,12 @@ class TravelViewModel @Inject constructor(
     var state by mutableStateOf(TravelState())
         private set
 
+    /** True when both inputs are set but the date has no daily row (past the
+     * provider's horizon) — the generic hint would then be misleading. */
+    val travelDateOutOfRange: Boolean
+        get() = state.destination != null && state.travelDate != null &&
+            state.dailyForDate == null && !state.isLoading && state.error == null
+
     fun setDestination(city: City) {
         state = state.copy(destination = city, error = null)
         refresh()

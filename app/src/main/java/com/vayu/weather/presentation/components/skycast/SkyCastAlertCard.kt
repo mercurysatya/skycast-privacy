@@ -50,14 +50,17 @@ fun SkyAlertSeverity.rank(): Int = when (this) {
     SkyAlertSeverity.Emergency -> 4
 }
 
-/** Maximum age in milliseconds for an alert to be considered active (24 hours). */
-const val ALERT_MAX_AGE_MS: Long = 24L * 60L * 60L * 1000L
-
-/** Filter and sort alerts: remove expired (24h old), then sort by severity descending. */
-fun filterAndSortAlerts(alerts: List<WeatherAlert>): List<WeatherAlert> {
-    val now = System.currentTimeMillis()
+/**
+ * Filter and sort alerts: keep the ones that are still valid, then sort by
+ * severity descending.
+ *
+ * An advisory is valid while its validity window is open. Rows without a
+ * validity window (the ones that predate the advisory model) are history and
+ * never count as active.
+ */
+fun filterAndSortAlerts(alerts: List<WeatherAlert>, now: Long = System.currentTimeMillis()): List<WeatherAlert> {
     return alerts
-        .filter { now - it.timestamp <= ALERT_MAX_AGE_MS }
+        .filter { alert -> alert.expiresAt > now }
         .sortedByDescending { severityFromLevel(it.severity).rank() }
 }
 @Composable

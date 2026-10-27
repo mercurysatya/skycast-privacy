@@ -201,6 +201,9 @@ fun WeatherMapScreen(
     var showLayerPanel by remember { mutableStateOf(false) }
     var showLegend by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
+    // Hoisted so the favorites strip can step aside when the radar
+    // time-slider expands (a private in-slider state used to overlap it).
+    var sliderExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
     val radarState by mapViewModel.radarState.collectAsState()
@@ -397,10 +400,14 @@ fun WeatherMapScreen(
         // The MapLibre Compose version in use cannot project lat/lon to screen
         // coordinates, so these are informational chips, not geographic pins.
         // They are stacked in a column (previously every chip drew on top of
-        // the others at TopStart, overlapping the compass controls).
+        // the others at TopStart, overlapping the compass controls). The column
+        // starts BELOW the control rail: the rail (compass + 3 FABs) ends at
+        // 52dp + 40dp + 3*(36dp + 6dp) = 218dp; starting at 232dp keeps the
+        // chips clear of the reset-compass button (the old 190dp start made the
+        // first chip cover it).
         if (mapAlerts.isNotEmpty()) {
             Column(
-                modifier = Modifier.align(Alignment.TopStart).padding(top = 190.dp, start = 12.dp),
+                modifier = Modifier.align(Alignment.TopStart).padding(top = 232.dp, start = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 mapAlerts.take(2).forEach { alert ->
@@ -513,7 +520,8 @@ fun WeatherMapScreen(
                             mapWeatherDescription(info.weatherCode, info.isDay),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -521,7 +529,9 @@ fun WeatherMapScreen(
         }
 
         // === SEARCH BAR ===
-        AnimatedVisibility(visible = showSearch, enter = slideInVertically { -it }, exit = slideOutVertically { -it }, modifier = Modifier.align(Alignment.TopCenter).padding(top = if (centerWeather != null && centerWeather?.error == null) 90.dp else 48.dp, start = 16.dp, end = 16.dp)) {
+        // start = 60.dp keeps the field clear of the compass/zoom rail at the
+        // top-left; a full-width field drew over those controls.
+        AnimatedVisibility(visible = showSearch, enter = slideInVertically { -it }, exit = slideOutVertically { -it }, modifier = Modifier.align(Alignment.TopCenter).padding(top = if (centerWeather != null && centerWeather?.error == null) 90.dp else 48.dp, start = 60.dp, end = 16.dp)) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -571,7 +581,12 @@ fun WeatherMapScreen(
 
         // === FAVORITE CITIES STRIP (bottom, above radar slider) ===
         if (favoritePins.isNotEmpty()) {
-            val favBottomPadding = if (radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0) 80.dp else 12.dp
+            val radarActive = radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0
+            val favBottomPadding = when {
+                radarActive && sliderExpanded -> 132.dp
+                radarActive -> 80.dp
+                else -> 12.dp
+            }
             FavoriteCitiesStrip(
                 pins = favoritePins,
                 onCityTap = { pin ->
@@ -666,7 +681,14 @@ fun WeatherMapScreen(
 
         // === LEGEND ===
         if (showLegend) {
-            val legendBottomPadding = if (radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0) 90.dp else 80.dp
+            val radarActive = radarState.overlayType != OverlayType.NONE && mapViewModel.getActiveFrameCount() > 0
+            // Park the legend above the favorites strip when both are visible,
+            // otherwise it draws over the trailing chips and steals their taps.
+            val legendBottomPadding = when {
+                radarActive && favoritePins.isNotEmpty() -> 150.dp
+                radarActive -> 90.dp
+                else -> 80.dp
+            }
             RadarLegend(overlayType = radarState.overlayType, modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = legendBottomPadding))
         }
 
@@ -687,6 +709,8 @@ fun WeatherMapScreen(
                 onNextFrame = { mapViewModel.selectNextFrame() },
                 onToggleAutoPlay = { mapViewModel.toggleAutoPlay() },
                 isAutoPlaying = isAutoPlaying,
+                expanded = sliderExpanded,
+                onToggleExpanded = { sliderExpanded = !sliderExpanded },
                 modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp, start = 12.dp, end = 76.dp)
             )
         }
@@ -1172,9 +1196,10 @@ private fun RadarTimeSlider(
     onNextFrame: () -> Unit,
     onToggleAutoPlay: () -> Unit,
     isAutoPlaying: Boolean,
+    expanded: Boolean = false,
+    onToggleExpanded: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var expanded by remember { mutableStateOf(false) }
     Card(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)), elevation = CardDefaults.cardElevation(6.dp)) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             // Single row: play controls + timestamp + expand toggle
@@ -1196,7 +1221,7 @@ private fun RadarTimeSlider(
                 Text("${(frameIndex + 1).coerceAtLeast(0)}/$frameCount",
                      style = MaterialTheme.typography.labelSmall,
                      color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(24.dp)) {
+                IconButton(onClick = onToggleExpanded, modifier = Modifier.size(24.dp)) {
                     Icon(
                         imageVector = if (expanded) Icons.Rounded.ExpandMore else Icons.Rounded.ExpandLess,
                         contentDescription = if (expanded) "Collapse" else "Expand",
@@ -1283,8 +1308,9 @@ private suspend fun shareMapScreenshot(
                 }
                 canvas.drawText("📍 ${"%.1f".format(pos.latitude)}°, ${"%.1f".format(pos.longitude)}°", 24f, bitmap.height - 38f, subPaint)
 
-                // Draw branding
-                canvas.drawText("SkyCast Weather", bitmap.width - 280f, bitmap.height - 38f, subPaint)
+                // Draw branding (guard the x so narrow captures keep the label on-canvas)
+                val brandingX = (bitmap.width - 280f).coerceAtLeast(24f)
+                canvas.drawText("SkyCast Weather", brandingX, bitmap.height - 38f, subPaint)
 
                 // Save and share
                 val file = java.io.File(context.cacheDir, "map_share.png")

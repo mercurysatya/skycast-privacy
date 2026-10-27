@@ -20,6 +20,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Flight
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.WaterDrop
@@ -66,6 +68,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SkyCastTravelScreen(
     state: TravelViewModel.TravelState,
+    travelDateOutOfRange: Boolean = false,
     onSetDate: (LocalDate) -> Unit,
     onPickDestination: () -> Unit,
     onRefresh: () -> Unit,
@@ -146,7 +149,13 @@ fun SkyCastTravelScreen(
             } else if (!state.isLoading) {
                 item {
                     Text(
-                        text = "Pick a destination and travel date to see your forecast.",
+                        text = if (travelDateOutOfRange) {
+                            // Both inputs are set; the date just has no daily
+                            // data (past the 14-day provider horizon).
+                            "Travel date is outside the available 14-day forecast window. Pick a date up to two weeks from today."
+                        } else {
+                            "Pick a destination and travel date to see your forecast."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.6f),
                         modifier = Modifier.padding(8.dp)
@@ -185,18 +194,30 @@ private fun DestinationPicker(destination: City?, onClick: () -> Unit) {
 
 @Composable
 private fun DatePicker(travelDate: LocalDate?, onPickDate: (LocalDate) -> Unit) {
-    var showDate by remember { mutableStateOf(false) }
+    val today = remember { LocalDate.now() }
+    val maxDate = remember { LocalDate.now().plusDays(13) }
     SkyCastCard(
-        contentPadding = PaddingValues(16.dp),
-        onClick = {
-            // Cycle through the next 14 days as a simple stand-in for a full date picker.
-            val next = (travelDate ?: LocalDate.now()).plusDays(1)
-            onPickDate(next)
-        }
+        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 6.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.CalendarToday, contentDescription = null, tint = WarmOrange)
-            Spacer(modifier = Modifier.width(12.dp))
+            // Previous day (disabled at today). The old single-button card
+            // only ever moved forward and could run past the 14-day forecast
+            // window with no way back.
+            IconButton(
+                onClick = {
+                    val previous = (travelDate ?: today).minusDays(1)
+                        .coerceIn(today, maxDate)
+                    onPickDate(previous)
+                },
+                enabled = travelDate != null && travelDate > today || travelDate == null,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.ChevronLeft,
+                    contentDescription = "Previous day",
+                    tint = if (travelDate != null && travelDate == today) Color.White.copy(alpha = 0.25f) else Color.White
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Travel date",
@@ -204,10 +225,26 @@ private fun DatePicker(travelDate: LocalDate?, onPickDate: (LocalDate) -> Unit) 
                     color = Color.White.copy(alpha = 0.6f)
                 )
                 Text(
-                    text = travelDate?.format(DateTimeFormatter.ofPattern("EEE, MMM d")) ?: "Tap to choose",
+                    text = (travelDate ?: today).format(DateTimeFormatter.ofPattern("EEE, MMM d")),
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White,
                     fontWeight = FontWeight.SemiBold
+                )
+            }
+            IconButton(
+                onClick = {
+                    // Cycle forward as before but capped at the provider's
+                    // 14-day daily horizon.
+                    val next = (travelDate ?: today).plusDays(1)
+                        .coerceIn(today, maxDate)
+                    onPickDate(next)
+                },
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.ChevronRight,
+                    contentDescription = "Next day",
+                    tint = if (travelDate != null && travelDate == maxDate) Color.White.copy(alpha = 0.25f) else Color.White
                 )
             }
         }

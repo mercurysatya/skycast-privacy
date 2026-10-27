@@ -20,6 +20,7 @@ import com.vayu.weather.domain.model.AirQuality
 import com.vayu.weather.domain.model.City
 import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.domain.repository.WeatherAlert
+import com.vayu.weather.domain.repository.WeatherAlertUpsertResult
 import com.vayu.weather.domain.repository.WeatherRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -171,6 +172,8 @@ class WeatherRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addFavoriteCity(city: City) {
+        // Append to the end of the user's existing order.
+        val nextIndex = dao.getMaxFavoriteSortIndex() + 1
         dao.insertFavoriteCity(
             FavoriteCityEntity(
                 id = city.id,
@@ -179,7 +182,8 @@ class WeatherRepositoryImpl @Inject constructor(
                 longitude = city.longitude,
                 country = city.country,
                 admin1 = city.admin1,
-                countryCode = city.countryCode
+                countryCode = city.countryCode,
+                sortIndex = nextIndex
             )
         )
     }
@@ -196,6 +200,14 @@ class WeatherRepositoryImpl @Inject constructor(
                 countryCode = city.countryCode
             )
         )
+    }
+
+    override suspend fun reorderFavoriteCities(cities: List<City>) {
+        db.withTransaction {
+            cities.forEachIndexed { index, city ->
+                dao.updateFavoriteSortIndex(city.id, index)
+            }
+        }
     }
 
     override suspend fun isFavoriteCity(cityId: Long): Boolean {
@@ -252,34 +264,126 @@ class WeatherRepositoryImpl @Inject constructor(
 
     override fun getWeatherAlerts(limit: Int): Flow<List<WeatherAlert>> {
         return dao.getWeatherAlerts(limit).map { entities ->
-            entities.map { entity ->
-                WeatherAlert(
-                    id = entity.id,
-                    title = entity.title,
-                    message = entity.message,
-                    severity = entity.severity,
-                    timestamp = entity.timestamp,
-                    latitude = entity.latitude,
-                    longitude = entity.longitude,
-                    cityName = entity.cityName
-                )
-            }
+            entities.map { entity -> entity.toDomain() }
         }
     }
 
-    override suspend fun addWeatherAlert(alert: WeatherAlert) {
-        dao.insertWeatherAlert(
-            WeatherAlertEntity(
-                id = alert.id,
-                title = alert.title,
+    override fun getActiveWeatherAlerts(limit: Int, now: Long): Flow<List<WeatherAlert>> {
+        return dao.getActiveWeatherAlerts(limit, now).map { entities ->
+            entities.map { entity -> entity.toDomain() }
+        }
+    }
+
+    /**
+     * Idempotent advisory write.
+     *
+     * The advisory is identified by its fingerprint, so ingesting the same
+     * advisory again updates the existing row instead of inserting a second
+     * one. The unique index on the fingerprint is the last line of defence
+     * against concurrent writers: if two coroutines race, the second insert
+     * fails with a constraint violation and is retried as an update.
+     */
+    override suspend fun upsertWeatherAlert(alert: WeatherAlert): WeatherAlertUpsertResult {
+        val fingerprint = alert.fingerprint.orEmpty()
+        if (fingerprint.isEmpty()) {
+            // Without an identity there is nothing to deduplicate on — keep the
+            // old insert behaviour for callers that do not have one.
+            val id = dao.insertWeatherAlert(alert.toEntity())
+            dao.trimWeatherAlerts()
+            return WeatherAlertUpsertResult.Created(id)
+        }
+
+        val existing = dao.getWeatherAlertByFingerprint(fingerprint)
+        if (existing == null) {
+            try {
+                val id = dao.insertWeatherAlert(alert.toEntity())
+                dao.trimWeatherAlerts()
+                return WeatherAlertUpsertResult.Created(id)
+            } catch (e: android.database.sqlite.SQLiteConstraintException) {
+                // Another writer inserted the same advisory first — fall
+                // through and update that row instead.
+                return updateExisting(fingerprint, alert)
+            }
+        }
+        return updateExisting(fingerprint, alert)
+    }
+
+    private suspend fun updateExisting(
+        fingerprint: String,
+        alert: WeatherAlert
+    ): WeatherAlertUpsertResult {
+        val existing = dao.getWeatherAlertByFingerprint(fingerprint)
+            ?: return WeatherAlertUpsertResult.Unchanged(0L)
+        val contentChanged = existing.message != alert.message ||
+            existing.severity != alert.severity
+        if (contentChanged) {
+            dao.updateWeatherAlertContent(
+                id = existing.id,
                 message = alert.message,
                 severity = alert.severity,
                 timestamp = alert.timestamp,
                 latitude = alert.latitude,
                 longitude = alert.longitude,
-                cityName = alert.cityName
+                cityName = alert.cityName,
+                expiresAt = alert.expiresAt
             )
-        )
+            return WeatherAlertUpsertResult.Updated(
+                id = existing.id,
+                escalated = severityRank(alert.severity) > severityRank(existing.severity)
+            )
+        }
+        // Same content: only the validity may need to be extended (the
+        // forecast day rolled over). No new row, no new timestamp.
+        if (existing.expiresAt != alert.expiresAt) {
+            dao.updateWeatherAlertExpiry(existing.id, alert.expiresAt)
+        }
+        return WeatherAlertUpsertResult.Unchanged(existing.id)
+    }
+
+    override suspend fun resolveWeatherAlert(fingerprint: String, resolvedAt: Long): Boolean {
+        val existing = dao.getWeatherAlertByFingerprint(fingerprint) ?: return false
+        if (existing.expiresAt <= resolvedAt) return false
+        // The advisory is over — close its validity window. The row itself is
+        // kept so the alert history stays complete.
+        dao.updateWeatherAlertExpiry(existing.id, resolvedAt)
+        return true
+    }
+
+    private fun severityRank(severity: String): Int = when (severity.lowercase()) {
+        "high" -> 3
+        "medium" -> 2
+        "low" -> 1
+        else -> 0
+    }
+
+    private fun WeatherAlertEntity.toDomain() = WeatherAlert(
+        id = id,
+        title = title,
+        message = message,
+        severity = severity,
+        timestamp = timestamp,
+        latitude = latitude,
+        longitude = longitude,
+        cityName = cityName,
+        fingerprint = fingerprint.ifEmpty { null },
+        expiresAt = expiresAt
+    )
+
+    private fun WeatherAlert.toEntity() = WeatherAlertEntity(
+        id = id,
+        title = title,
+        message = message,
+        severity = severity,
+        timestamp = timestamp,
+        latitude = latitude,
+        longitude = longitude,
+        cityName = cityName,
+        fingerprint = fingerprint.orEmpty(),
+        expiresAt = expiresAt
+    )
+
+    override suspend fun addWeatherAlert(alert: WeatherAlert) {
+        dao.insertWeatherAlert(alert.toEntity())
         // Keep only the most recent 100 alerts
         dao.trimWeatherAlerts()
     }
@@ -302,7 +406,9 @@ class WeatherRepositoryImpl @Inject constructor(
             timestamp = entity.timestamp,
             latitude = entity.latitude,
             longitude = entity.longitude,
-            cityName = entity.cityName
+            cityName = entity.cityName,
+            fingerprint = entity.fingerprint.ifEmpty { null },
+            expiresAt = entity.expiresAt
         )
     }
 

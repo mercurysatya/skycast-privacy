@@ -14,25 +14,27 @@ import androidx.work.WorkerParameters
 import com.vayu.weather.R
 import com.vayu.weather.data.local.SettingsManager
 import com.vayu.weather.domain.location.LocationTracker
-import com.vayu.weather.domain.repository.WeatherAlert
-import com.vayu.weather.domain.repository.WeatherRepository
+import com.vayu.weather.domain.use_case.AdvisoryChange
+import com.vayu.weather.domain.use_case.EvaluateWeatherAdvisoriesUseCase
 import com.vayu.weather.domain.use_case.GetWeatherUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlin.math.roundToInt
 
 @HiltWorker
 class WeatherAlertWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val getWeatherUseCase: GetWeatherUseCase,
+    private val evaluateWeatherAdvisories: EvaluateWeatherAdvisoriesUseCase,
     private val locationTracker: LocationTracker,
-    private val settingsManager: SettingsManager,
-    private val weatherRepository: WeatherRepository
+    private val settingsManager: SettingsManager
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
         const val WORK_NAME = "WeatherAlertWork"
+
+        /** Stable notification id derived from the advisory fingerprint. */
+        fun notificationIdFor(fingerprint: String): Int = fingerprint.hashCode()
     }
 
     override suspend fun doWork(): Result {
@@ -53,116 +55,42 @@ class WeatherAlertWorker @AssistedInject constructor(
         val weatherInfo = result.getOrNull()
             ?: return if (runAttemptCount >= 3) Result.failure() else Result.retry()
 
-        val severityFilter = settingsManager.getSeverityFilter()
+        // The advisory evaluation is the single source of truth for what an
+        // advisory is; it upserts idempotently, so running it again for the
+        // same forecast never creates a second row.
+        val changes = evaluateWeatherAdvisories(
+            weatherInfo = weatherInfo,
+            latitude = lat,
+            longitude = lon,
+            cityName = settingsManager.getLastCity()
+        )
 
-        // ===== RAIN ALERT =====
-        // Missing data must never be treated as 0 — that produced false
-        // "freezing" / "rain" alerts when the provider omits fields.
-        val nextRainProb = weatherInfo.daily.firstOrNull()?.precipitationProbability
-        if (nextRainProb != null && nextRainProb >= settingsManager.getRainAlertThreshold()) {
-            val severity = if (nextRainProb >= 80) "high" else "medium"
-            if (passesFilter(severity, severityFilter)) {
-                val title = applicationContext.getString(R.string.rain_alert_title)
-                val message = applicationContext.getString(R.string.rain_alert_message, nextRainProb)
-                storeAndNotify(title, message, severity, lat, lon)
-            }
-        }
-
-        // ===== WIND ALERT =====
-        if (settingsManager.getEnableWindAlerts()) {
-            val windSpeed = weatherInfo.current.windSpeed
-            val windThreshold = settingsManager.getWindAlertThreshold()
-            if (windSpeed != null && windSpeed >= windThreshold) {
-                val severity = if (windSpeed >= windThreshold * 1.5) "high" else "medium"
-                if (passesFilter(severity, severityFilter)) {
-                    val windKph = windSpeed.roundToInt()
-                    val title = applicationContext.getString(R.string.wind_alert_title)
-                    val message = applicationContext.getString(R.string.wind_alert_message, windKph)
-                    storeAndNotify(title, message, severity, lat, lon)
+        // Notification policy: a *new* advisory notifies, and so does an
+        // escalation (severity raised). An unchanged advisory and a
+        // de-escalation stay silent — that is what kept the user from being
+        // notified about the same rain every three hours.
+        changes.forEach { change ->
+            when (change) {
+                is AdvisoryChange.Created -> showNotification(
+                    change.alert.title,
+                    change.alert.message,
+                    notificationIdFor(change.alert.fingerprint.orEmpty())
+                )
+                is AdvisoryChange.Updated -> if (change.escalated) {
+                    showNotification(
+                        change.alert.title,
+                        change.alert.message,
+                        notificationIdFor(change.alert.fingerprint.orEmpty())
+                    )
                 }
-            }
-        }
-
-        // ===== UV ALERT =====
-        if (settingsManager.getEnableUvAlerts()) {
-            val uvIndex = weatherInfo.daily.firstOrNull()?.uvIndex?.toInt()
-            val uvThreshold = settingsManager.getUvAlertThreshold()
-            if (uvIndex != null && uvIndex >= uvThreshold) {
-                val severity = if (uvIndex >= 11) "high" else "medium"
-                if (passesFilter(severity, severityFilter)) {
-                    val title = applicationContext.getString(R.string.uv_alert_title)
-                    val message = applicationContext.getString(R.string.uv_alert_message, uvIndex)
-                    storeAndNotify(title, message, severity, lat, lon)
-                }
-            }
-        }
-
-        // ===== HEAT ALERT =====
-        if (settingsManager.getEnableHeatAlerts()) {
-            val maxTemp = weatherInfo.daily.firstOrNull()?.maxTemp?.toInt()
-            val heatThreshold = settingsManager.getHeatAlertThreshold()
-            if (maxTemp != null && maxTemp >= heatThreshold) {
-                val severity = if (maxTemp >= heatThreshold + 5) "high" else "medium"
-                if (passesFilter(severity, severityFilter)) {
-                    val title = applicationContext.getString(R.string.heat_alert_title)
-                    val message = applicationContext.getString(R.string.heat_alert_message, maxTemp)
-                    storeAndNotify(title, message, severity, lat, lon)
-                }
-            }
-        }
-
-        // ===== COLD ALERT =====
-        if (settingsManager.getEnableColdAlerts()) {
-            val minTemp = weatherInfo.daily.firstOrNull()?.minTemp?.toInt()
-            val coldThreshold = settingsManager.getColdAlertThreshold()
-            if (minTemp != null && minTemp <= coldThreshold) {
-                val severity = if (minTemp <= coldThreshold - 5) "high" else "medium"
-                if (passesFilter(severity, severityFilter)) {
-                    val title = applicationContext.getString(R.string.cold_alert_title)
-                    val message = applicationContext.getString(R.string.cold_alert_message, minTemp)
-                    storeAndNotify(title, message, severity, lat, lon)
-                }
+                else -> Unit
             }
         }
 
         return Result.success()
     }
 
-    private fun passesFilter(severity: String, filter: String): Boolean {
-        return when (filter) {
-            "HIGH" -> severity == "high"
-            "HIGH_MEDIUM" -> severity == "high" || severity == "medium"
-            else -> true
-        }
-    }
-
-    private suspend fun storeAndNotify(
-        title: String,
-        message: String,
-        severity: String,
-        latitude: Double,
-        longitude: Double
-    ) {
-        // Dedup: skip if an identical alert (same title + severity) was
-        // already stored within the last 3 hours to prevent repeated
-        // notifications for the same condition.
-        val threeHoursAgo = System.currentTimeMillis() - 3 * 60 * 60 * 1000L
-        val existing = weatherRepository.findRecentWeatherAlert(title, severity, threeHoursAgo)
-        if (existing != null) return
-
-        weatherRepository.addWeatherAlert(
-            WeatherAlert(
-                title = title,
-                message = message,
-                severity = severity,
-                latitude = latitude,
-                longitude = longitude
-            )
-        )
-        showNotification(title, message)
-    }
-
-    private fun showNotification(title: String, message: String) {
+    private fun showNotification(title: String, message: String, notificationId: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     applicationContext,
@@ -195,6 +123,8 @@ class WeatherAlertWorker @AssistedInject constructor(
             .setAutoCancel(true)
             .build()
 
-        notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notification)
+        // A stable id per advisory: an updated advisory replaces its own
+        // notification instead of stacking another one next to it.
+        notificationManager.notify(notificationId, notification)
     }
 }

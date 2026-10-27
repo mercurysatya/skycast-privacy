@@ -173,6 +173,10 @@ fun SkyCastHomeScreen(
             isCelsius = isCelsius,
             windUnit = settings.windUnit,
             pressureUnit = settings.pressureUnit,
+            showHourlyForecast = settings.showHourlyForecast,
+            showSunMoon = settings.showSunMoon,
+            showAirQuality = settings.showAirQuality,
+            showWeatherDetails = settings.showWeatherDetails,
             cityName = cityName,
             regionName = regionName,
             onOpenSettings = onOpenSettings,
@@ -200,6 +204,10 @@ private fun SkyCastHomeContent(
     isCelsius: Boolean,
     windUnit: com.vayu.weather.presentation.weather.WindUnit,
     pressureUnit: String,
+    showHourlyForecast: Boolean = true,
+    showSunMoon: Boolean = true,
+    showAirQuality: Boolean = true,
+    showWeatherDetails: Boolean = true,
     cityName: String?,
     regionName: String?,
     onOpenSettings: () -> Unit,
@@ -239,7 +247,7 @@ private fun SkyCastHomeContent(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // ── Offline banner (above all else) ──
@@ -314,13 +322,15 @@ private fun SkyCastHomeContent(
             }
 
             // ── Hourly forecast (high priority, moved up) ──
-            item(key = "hourly") {
-                SkyCastHourlyTimeline(
-                    hourly = info.hourly,
-                    isCelsius = isCelsius,
-                    windUnit = windUnit,
-                    currentTimeInLocation = currentTimeInLocation
-                )
+            if (showHourlyForecast) {
+                item(key = "hourly") {
+                    SkyCastHourlyTimeline(
+                        hourly = info.hourly,
+                        isCelsius = isCelsius,
+                        windUnit = windUnit,
+                        currentTimeInLocation = currentTimeInLocation
+                    )
+                }
             }
 
             // ── 7-day forecast ──
@@ -385,16 +395,18 @@ private fun SkyCastHomeContent(
             }
 
             // ── Compact details (humidity / wind / pressure / visibility / dew) ──
-            item(key = "details") {
-                SkyCastDetailsGrid(
-                    info = info,
-                    isCelsius = isCelsius,
-                    windUnit = windUnit,
-                    pressureUnit = pressureUnit,
-                    onOpenMetricDetail = onOpenMetricDetail,
-                    onToggleUnit = onToggleUnit,
-                    isCelsiusSelected = isCelsius
-                )
+            if (showWeatherDetails) {
+                item(key = "details") {
+                    SkyCastDetailsGrid(
+                        info = info,
+                        isCelsius = isCelsius,
+                        windUnit = windUnit,
+                        pressureUnit = pressureUnit,
+                        onOpenMetricDetail = onOpenMetricDetail,
+                        onToggleUnit = onToggleUnit,
+                        isCelsiusSelected = isCelsius
+                    )
+                }
             }
 
             // ── UV (compact) ──
@@ -408,7 +420,7 @@ private fun SkyCastHomeContent(
             }
 
             // ── Air quality (compact) ──
-            if (state.airQuality != null) {
+            if (showAirQuality && state.airQuality != null) {
                 item(key = "aqi") {
                     SkyCastAqiCard(airQuality = state.airQuality)
                 }
@@ -425,11 +437,13 @@ private fun SkyCastHomeContent(
             }
 
             // ── Sun & moon ──
-            item(key = "sun_moon") {
-                SkyCastSunMoonCard(
-                    daily = info.daily.firstOrNull(),
-                    currentTimeInLocation = info.current.time
-                )
+            if (showSunMoon) {
+                item(key = "sun_moon") {
+                    SkyCastSunMoonCard(
+                        daily = info.daily.firstOrNull(),
+                        currentTimeInLocation = info.current.time
+                    )
+                }
             }
         }
     }
@@ -501,7 +515,16 @@ private fun SkyCastLocationHeader(
                     )
                 }
             }
-            val subtitle = displayRegion ?: updatedAtLabel
+            // The region (when known) and the "updated" stamp share the one
+            // subtitle line — the timestamp must not disappear just because a
+            // place name is now available.
+            val subtitle = if (!displayRegion.isNullOrBlank()) {
+                listOfNotNull(displayRegion, updatedAtLabel)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" · ")
+            } else {
+                updatedAtLabel
+            }
             if (!subtitle.isNullOrBlank()) {
                 Text(
                     text = subtitle,
