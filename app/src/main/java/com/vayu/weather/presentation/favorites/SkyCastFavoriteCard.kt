@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.vayu.weather.R
 import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.presentation.util.getWeatherIcon
 import com.vayu.weather.presentation.util.localizedWeatherDescription
