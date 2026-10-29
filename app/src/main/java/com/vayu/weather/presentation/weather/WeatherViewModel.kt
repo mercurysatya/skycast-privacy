@@ -160,6 +160,13 @@ class WeatherViewModel @Inject constructor(
                     // A name that already belongs to these very coordinates stays
                     // valid; a name from different coordinates is stale and must go.
                     currentCityName = if (sameCoordinates) currentCityName else null
+                    // Fall back to the last known city name so the header shows
+                    // a real place name immediately instead of waiting for the
+                    // asynchronous reverse-geocode (which can fail on devices
+                    // without a Geocoder backend).
+                    if (currentCityName == null) {
+                        currentCityName = settingsManager.getLastCity()
+                    }
                     // Captured before the asynchronous lookup can change it, so
                     // the location is persisted exactly once with a known name.
                     val nameToPersist = currentCityName
