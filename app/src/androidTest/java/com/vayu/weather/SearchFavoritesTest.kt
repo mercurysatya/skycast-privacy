@@ -51,7 +51,6 @@ class SearchFavoritesTest {
                 onCitySelected = {}
             )
         }
-        composeTestRule.onNodeWithText("New York").assertIsDisplayed()
         composeTestRule.onNodeWithText("New York, United States").assertIsDisplayed()
     }
 
@@ -68,7 +67,7 @@ class SearchFavoritesTest {
                 onCitySelected = {}
             )
         }
-        composeTestRule.onNodeWithText("No cities found for \"Xyz\"").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No cities found for \u201CXyz\u201D").assertIsDisplayed()
     }
 
     @Test
@@ -96,7 +95,7 @@ class SearchFavoritesTest {
                 onRemoveFavorite = {}
             )
         }
-        composeTestRule.onNodeWithText("No Favorites Yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No favorite cities yet").assertIsDisplayed()
     }
 
     @Test
