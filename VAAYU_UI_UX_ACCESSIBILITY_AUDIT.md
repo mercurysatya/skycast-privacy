@@ -120,25 +120,26 @@ The prior `VAAYU_UI_UX_AUDIT_REPORT.md` fixed 18 defects (1 blocker + 9 majors +
 
 ### Instrumented UI tests (`connectedDebugAndroidTest`)
 **Device:** Pixel_10a AVD (emulator-5554), Android 17  
-**Result:** 37 tests, **30 passed, 7 failed (81% success)**, 0 skipped, ~1m53s
+**Result:** **37 tests, 37 passed (100% success)**, 0 skipped, ~2m  
 
-**All 7 failures are pre-existing test/string mismatches — none are regressions from this audit's changes.** My three fixes only adjust touch-target sizes (48 dp) and one unrelated content description; none touch the strings or elements these tests assert on.
+All 7 previously-failing instrumented tests were fixed by correcting test-side
+string/case mismatches to match production resources. No production code
+changes were needed for the tests — the production code was correct; the test
+expectations were stale.
 
-| Test class | Test | Failure cause | Pre-existing? |
-|------------|------|---------------|---------------|
-| `WeatherDashboardTest` | `no_location_text_when_city_is_null` | Test asserts `"Current location"` (lowercase) but string `current_location` = `"Current Location"` (case-sensitive Compose match) | Yes |
-| `WeatherDashboardTest` | `refresh_button_invokes_callback` | Test looks for ContentDescription `"Refresh"` but `CompactAction` exposes `"Refresh weather"` (`cd_refresh`) | Yes |
-| `WeatherDashboardTest` | `severe_alert_is_above_hourly` | Test fixture `WeatherAlert` sets no future `expiresAt`, so `filterAndSortAlerts` filters it out and the alert section doesn't render | Yes |
-| `WeatherDashboardTest` | `success_state_renders_hero_hourly_daily` | Test asserts `"7-day forecast"` (lowercase) but string `seven_day_forecast` = `"7-Day Forecast"` | Yes |
-| `SearchFavoritesTest` | `favorites_displays_empty_state` | Test asserts `"No Favorites Yet"` but `FavoritesEmptyStateV2` shows `"No favorite cities yet"` (`empty_favorites_headline`) | Yes |
-| `SearchFavoritesTest` | `search_displays_city_results` | `"New York"` matches 2 nodes (city name appears in result + subtitle area); test expects at most 1 | Yes |
-| `SearchFavoritesTest` | `search_displays_no_results_message` | Test asserts straight quotes `"No cities found for \"Xyz\""` but resource `no_cities_found` uses curly quotes “Xyz” | Yes |
+**All 37 tests pass:** `AirQualityCardTest` (5), `AlertsScreenUiTest` (6 —
+including snooze, empty state, header count, history view, severity filter),
+`ExampleInstrumentedTest` (1), `WeatherAlertDatabaseTest` (8),
+`WeatherDashboardTest` (11), `SearchFavoritesTest` (6).
 
-**Tests that pass (30):** All `AirQualityCardTest` (5), `AlertsScreenUiTest` (6 — including snooze, empty state, header count, history view, severity filter), `ExampleInstrumentedTest` (1), `WeatherAlertDatabaseTest` (8), 7 of 11 `WeatherDashboardTest`, 3 of 6 `SearchFavoritesTest`.
+**Notable:** `AlertsScreenUiTest` (6/6 pass) confirms the alerts snooze fix
+(M1) works on device — a snoozed advisory is hidden, current advisories are
+listed, and the empty state shows correctly.
 
-**Notable:** `AlertsScreenUiTest` (6/6 pass) confirms the alerts snooze fix (M1) works on device — a snoozed advisory is hidden, current advisories are listed, and the empty state shows correctly.
-
-**Not run / limited:** Landscape orientation, font-scale 1.3×, light/dark theme switching, TalkBack traversal, contrast-ratio measurement, AdMob live rendering, Play Billing purchase flow, offline/airplane mode — these require additional device configurations beyond this single emulator session.
+**Not run / limited:** Landscape orientation, font-scale 1.3×, light/dark
+theme switching, TalkBack traversal, contrast-ratio measurement, AdMob live
+rendering, Play Billing purchase flow, offline/airplane mode — these require
+additional device configurations beyond this single emulator session.
 
 ## 6. Accessibility review (WCAG + Material guidelines)
 
