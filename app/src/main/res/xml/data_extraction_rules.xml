@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
+    <!--
+        Backup is disabled in AndroidManifest.xml. Keep these exclusions as
+        defence in depth for Android 12+ device-to-device transfer and for any
+        future re-enable of cloud backup. The settings DataStore contains the
+        last known precise location and the Premium cache.
+    -->
     <cloud-backup>
+        <exclude domain="file" path="datastore/settings_prefs.preferences_pb"/>
         <exclude domain="sharedpref" path="weather_widget_prefs.xml"/>
+        <exclude domain="sharedpref" path="weather_streak.xml"/>
         <exclude domain="database" path="."/>
     </cloud-backup>
     <device-transfer>
+        <exclude domain="file" path="datastore/settings_prefs.preferences_pb"/>
         <exclude domain="sharedpref" path="weather_widget_prefs.xml"/>
+        <exclude domain="sharedpref" path="weather_streak.xml"/>
         <exclude domain="database" path="."/>
     </device-transfer>
 </data-extraction-rules>

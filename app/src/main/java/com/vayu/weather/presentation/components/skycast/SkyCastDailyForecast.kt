@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -67,9 +68,12 @@ fun SkyCastDailyForecast(
 ) {
     if (daily.isEmpty()) return
     var expanded by remember { mutableStateOf<String?>(null) }
+    // Travel now fetches 14 days so its two-week picker has data. Home keeps
+    // its promised 7-day list.
+    val visibleDaily = daily.take(7)
 
-    val allMin = convertTemp(daily.minOf { it.minTemp }, isCelsius)
-    val allMax = convertTemp(daily.maxOf { it.maxTemp }, isCelsius)
+    val allMin = convertTemp(visibleDaily.minOf { it.minTemp }, isCelsius)
+    val allMax = convertTemp(visibleDaily.maxOf { it.maxTemp }, isCelsius)
 
     SkyCastCard(
         contentPadding = PaddingValues(vertical = 16.dp)
@@ -77,11 +81,12 @@ fun SkyCastDailyForecast(
         Column(modifier = Modifier.fillMaxWidth()) {
             SkyCastSectionHeader(
                 title = "7-day forecast",
-                subtitle = "Tap a day for hourly details"
+                subtitle = "Tap a day for hourly details",
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            daily.forEachIndexed { index, day ->
+            visibleDaily.forEachIndexed { index, day ->
                 val isExpanded = expanded == day.date
                 val today = if (currentTimeInLocation != null) {
                     try { java.time.LocalDate.parse(currentTimeInLocation.substringBefore("T")) } catch (_: Exception) { LocalDate.now() }
@@ -119,7 +124,7 @@ fun SkyCastDailyForecast(
                             isCelsius = isCelsius
                         )
                     }
-                    if (index < daily.lastIndex) {
+                    if (index < visibleDaily.lastIndex) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Box(
                             modifier = Modifier
@@ -170,7 +175,9 @@ private fun DailyRow(
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White,
             fontWeight = if (label == "Today") FontWeight.Bold else FontWeight.Medium,
-            modifier = Modifier.width(76.dp)
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.widthIn(min = 76.dp)
         )
         Box(
             modifier = Modifier.size(28.dp),
@@ -187,7 +194,7 @@ private fun DailyRow(
         // Rain probability
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.width(40.dp)
+            modifier = Modifier.widthIn(min = 40.dp)
         ) {
             if (rain > 0) {
                 Icon(
@@ -200,16 +207,21 @@ private fun DailyRow(
                 Text(
                     text = "$rain%",
                     style = MaterialTheme.typography.labelSmall,
-                    color = SkyBlue
+                    color = SkyBlue,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }
+        Spacer(modifier = Modifier.width(4.dp))
         // Min temp
         Text(
             text = "${low}°",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White.copy(alpha = 0.55f),
-            modifier = Modifier.width(34.dp)
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.widthIn(min = 34.dp)
         )
         // Range bar
         Box(
@@ -237,7 +249,9 @@ private fun DailyRow(
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.width(34.dp)
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.widthIn(min = 34.dp)
         )
     }
 }

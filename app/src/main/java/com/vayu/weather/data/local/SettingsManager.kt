@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.vayu.weather.domain.repository.UserDataStore
 import com.vayu.weather.presentation.weather.AlertSeverity
 import com.vayu.weather.presentation.weather.SettingsState
 import com.vayu.weather.presentation.weather.TemperatureUnit
@@ -27,7 +28,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 @Singleton
 class SettingsManager @Inject constructor(
     @ApplicationContext private val context: Context
-) {
+) : UserDataStore {
     private val dataStore = context.dataStore
 
     /** Single-shot load of all preferences — reads DataStore once instead of 37 separate .first() calls. */
@@ -380,6 +381,19 @@ private object Keys {
     suspend fun setPremiumFromBilling(active: Boolean) {
         dataStore.edit { it[Keys.IS_PREMIUM] = active }
         com.vayu.weather.presentation.premium.PremiumManager.sync(active)
+    }
+
+    /**
+     * Removes every locally persisted preference, including the last known
+     * location and the Premium display cache. The in-memory Premium flag is
+     * cleared immediately; [com.vayu.weather.data.billing.BillingManager]
+     * re-queries Play afterwards, so an active subscription can restore it.
+     *
+     * Idempotent: clearing an already-empty store is a no-op.
+     */
+    override suspend fun clearAll() {
+        dataStore.edit { it.clear() }
+        com.vayu.weather.presentation.premium.PremiumManager.sync(false)
     }
 
     // === Clock Format ===

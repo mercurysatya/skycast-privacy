@@ -62,7 +62,7 @@ class TravelViewModel @Inject constructor(
         val city = state.destination ?: return
         state = state.copy(isLoading = true, error = null)
         viewModelScope.launch {
-            getWeatherUseCase(city.latitude, city.longitude)
+            getWeatherUseCase(city.latitude, city.longitude, forecastDays = 14)
                 .onSuccess { info ->
                     val day = state.travelDate?.let { pickDay(info, it) }
                     state = state.copy(

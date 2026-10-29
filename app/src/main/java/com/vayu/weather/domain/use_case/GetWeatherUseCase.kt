@@ -8,6 +8,14 @@ class GetWeatherUseCase @Inject constructor(
     private val repository: WeatherRepository
 ) {
     suspend operator fun invoke(lat: Double, long: Double): Result<WeatherInfo> {
-        return repository.getWeatherData(lat, long)
+        return invoke(lat, long, 7)
+    }
+
+    suspend operator fun invoke(
+        lat: Double,
+        long: Double,
+        forecastDays: Int
+    ): Result<WeatherInfo> {
+        return repository.getWeatherData(lat, long, forecastDays)
     }
 }

@@ -624,7 +624,7 @@ private fun CompactAction(
 ) {
     androidx.compose.material3.IconButton(
         onClick = onClick,
-        modifier = Modifier.size(40.dp)
+        modifier = Modifier.size(48.dp)
     ) {
         Box(contentAlignment = Alignment.TopEnd) {
             Icon(

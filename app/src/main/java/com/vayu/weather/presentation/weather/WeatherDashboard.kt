@@ -119,6 +119,7 @@ import com.vayu.weather.ui.theme.TrendingRed
 import com.vayu.weather.ui.theme.WarmOrange
 import com.vayu.weather.ui.theme.WeatherOpacity
 import com.vayu.weather.ui.theme.WarningAmber
+import com.vayu.weather.ui.theme.SkyCastTokens
 import com.vayu.weather.presentation.components.AirQualityCard
 import com.vayu.weather.presentation.components.AirQualityPill
 import com.vayu.weather.presentation.components.UvPill
@@ -738,7 +739,7 @@ private fun SmallIconButton(
 ) {
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(SkyCastTokens.TouchTargetComfortable)
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White.copy(alpha = 0.1f))
             .clickable(onClick = onClick),
@@ -1239,8 +1240,10 @@ private fun DailyForecastSection(
     currentTimeInLocation: String? = null
 ) {
     if (dailyData.isEmpty()) return
-    val allMin = remember(dailyData) { dailyData.minOf { it.minTemp }.roundToInt() }
-    val allMax = remember(dailyData) { dailyData.maxOf { it.maxTemp }.roundToInt() }
+    // Travel can cache 14 days; this section is the 7-day forecast.
+    val visibleDaily = remember(dailyData) { dailyData.take(7) }
+    val allMin = remember(visibleDaily) { visibleDaily.minOf { it.minTemp }.roundToInt() }
+    val allMax = remember(visibleDaily) { visibleDaily.maxOf { it.maxTemp }.roundToInt() }
     var expandedDay by remember { mutableStateOf<String?>(null) }
     val haptic = rememberHapticFeedback()
 
@@ -1267,7 +1270,7 @@ private fun DailyForecastSection(
                 modifier = Modifier.padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                dailyData.forEachIndexed { index, day ->
+                visibleDaily.forEachIndexed { index, day ->
                     val hourlyForDay = remember(hourlyData, day.date) {
                         hourlyData.filter { it.time.startsWith(day.date) }
                     }
@@ -1277,7 +1280,7 @@ private fun DailyForecastSection(
                         isCelsius = isCelsius,
                         globalMin = allMin,
                         globalMax = allMax,
-                        isLast = dailyData.lastIndex == index,
+                        isLast = visibleDaily.lastIndex == index,
                         isExpanded = expandedDay == day.date,
                         currentTimeInLocation = currentTimeInLocation,
                         onClick = {

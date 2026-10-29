@@ -183,11 +183,14 @@
     <string name="delete_my_data">Delete My Data</string>
     <string name="delete_my_data_subtitle">Remove all local data from this device</string>
     <string name="delete">Delete</string>
-    <string name="delete_all_data_confirm">This will permanently delete all your favorites, recent searches, weather alerts, and cached data. This action cannot be undone.</string>
+    <string name="deleting">Deleting…</string>
+    <string name="delete_all_data_confirm">This permanently deletes your favorites, recent searches, weather alerts, history, cached weather, saved location, and app settings. Premium is re-checked with Google Play and may remain active if you have a subscription. This action cannot be undone.</string>
     <string name="data_deleted">All data deleted</string>
+    <string name="data_delete_failed">Couldn\'t delete all data. Please try again.</string>
 
     <!-- Data Management -->
     <string name="clear_cache">Clear Cache</string>
+    <string name="clear">Clear</string>
     <string name="clear_cache_subtitle">Remove cached weather data</string>
     <string name="clear_cache_confirm">This will clear all cached weather data. The data will be re-fetched on next load.</string>
     <string name="cache_cleared">Weather cache cleared</string>

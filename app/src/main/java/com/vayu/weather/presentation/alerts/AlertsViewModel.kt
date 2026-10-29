@@ -14,6 +14,7 @@ import com.vayu.weather.domain.use_case.DeleteWeatherAlertUseCase
 import com.vayu.weather.domain.use_case.GetWeatherAlertsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -35,8 +36,22 @@ class AlertsViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            getWeatherAlertsUseCase().collectLatest { alerts ->
-                state = state.copy(alerts = alerts, isLoading = false)
+            getWeatherAlertsUseCase()
+                .catch {
+                    // A failed query must not leave the history view on an
+                    // endless spinner; show the empty state instead.
+                    state = state.copy(isLoading = false)
+                }
+                .collectLatest { alerts ->
+                    state = state.copy(alerts = alerts, isLoading = false)
+                }
+        }
+        // Safety net for a slow first emission (the history entry point has no
+        // other content until loading ends).
+        viewModelScope.launch {
+            delay(5_000)
+            if (state.isLoading) {
+                state = state.copy(isLoading = false)
             }
         }
         // Load snooze duration and push frequency from settings

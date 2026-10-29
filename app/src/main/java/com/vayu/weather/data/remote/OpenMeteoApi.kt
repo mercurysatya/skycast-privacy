@@ -13,7 +13,9 @@ interface OpenMeteoApi {
         @Query("current") current: String = "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature,is_day,visibility,surface_pressure,pressure_msl,wind_gusts_10m,dew_point_2m,cloud_cover,uv_index",
         @Query("hourly") hourly: String = "temperature_2m,relative_humidity_2m,weather_code,pressure_msl,wind_speed_10m,visibility,precipitation_probability,wind_direction_10m,precipitation,apparent_temperature",
         @Query("daily") daily: String = "weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,precipitation_probability_max,sunrise,sunset",
-        @Query("timezone") timezone: String = "auto"
+        @Query("timezone") timezone: String = "auto",
+        /** Open-Meteo defaults to 7 days; Travel asks for the full 14-day window. */
+        @Query("forecast_days") forecastDays: Int = 7
     ): WeatherDto
 
     /** Lightweight call for tap-to-weather on map */

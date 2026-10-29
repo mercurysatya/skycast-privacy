@@ -12,6 +12,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.vayu.weather.R
+import com.vayu.weather.data.local.DataDeletionGuard
 import com.vayu.weather.data.local.SettingsManager
 import com.vayu.weather.domain.location.LocationTracker
 import com.vayu.weather.domain.use_case.AdvisoryChange
@@ -27,7 +28,8 @@ class WeatherAlertWorker @AssistedInject constructor(
     private val getWeatherUseCase: GetWeatherUseCase,
     private val evaluateWeatherAdvisories: EvaluateWeatherAdvisoriesUseCase,
     private val locationTracker: LocationTracker,
-    private val settingsManager: SettingsManager
+    private val settingsManager: SettingsManager,
+    private val deletionGuard: DataDeletionGuard
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
@@ -38,6 +40,7 @@ class WeatherAlertWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): Result {
+        val deletionToken = deletionGuard.currentGenerationOrNull() ?: return Result.success()
         if (!settingsManager.getNotificationsEnabled()) return Result.success()
 
         // A fresh fused location fix is not guaranteed while the app is in the
@@ -57,33 +60,36 @@ class WeatherAlertWorker @AssistedInject constructor(
 
         // The advisory evaluation is the single source of truth for what an
         // advisory is; it upserts idempotently, so running it again for the
-        // same forecast never creates a second row.
-        val changes = evaluateWeatherAdvisories(
-            weatherInfo = weatherInfo,
-            latitude = lat,
-            longitude = lon,
-            cityName = settingsManager.getLastCity()
-        )
+        // same forecast never creates a second row. It is guarded so a wipe
+        // cannot be followed by a late insert or notification.
+        deletionGuard.tryWrite(deletionToken) {
+            val changes = evaluateWeatherAdvisories(
+                weatherInfo = weatherInfo,
+                latitude = lat,
+                longitude = lon,
+                cityName = settingsManager.getLastCity()
+            )
 
-        // Notification policy: a *new* advisory notifies, and so does an
-        // escalation (severity raised). An unchanged advisory and a
-        // de-escalation stay silent — that is what kept the user from being
-        // notified about the same rain every three hours.
-        changes.forEach { change ->
-            when (change) {
-                is AdvisoryChange.Created -> showNotification(
-                    change.alert.title,
-                    change.alert.message,
-                    notificationIdFor(change.alert.fingerprint.orEmpty())
-                )
-                is AdvisoryChange.Updated -> if (change.escalated) {
-                    showNotification(
+            // Notification policy: a *new* advisory notifies, and so does an
+            // escalation (severity raised). An unchanged advisory and a
+            // de-escalation stay silent — that is what kept the user from being
+            // notified about the same rain every three hours.
+            changes.forEach { change ->
+                when (change) {
+                    is AdvisoryChange.Created -> showNotification(
                         change.alert.title,
                         change.alert.message,
                         notificationIdFor(change.alert.fingerprint.orEmpty())
                     )
+                    is AdvisoryChange.Updated -> if (change.escalated) {
+                        showNotification(
+                            change.alert.title,
+                            change.alert.message,
+                            notificationIdFor(change.alert.fingerprint.orEmpty())
+                        )
+                    }
+                    else -> Unit
                 }
-                else -> Unit
             }
         }
 

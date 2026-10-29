@@ -1,6 +1,8 @@
 package com.vayu.weather.di
 
+import com.vayu.weather.data.local.SettingsManager
 import com.vayu.weather.data.repository.WeatherRepositoryImpl
+import com.vayu.weather.domain.repository.UserDataStore
 import com.vayu.weather.domain.repository.WeatherRepository
 import dagger.Binds
 import dagger.Module
@@ -17,4 +19,10 @@ abstract class RepositoryModule {
     abstract fun bindWeatherRepository(
         weatherRepositoryImpl: WeatherRepositoryImpl
     ): WeatherRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUserDataStore(
+        settingsManager: SettingsManager
+    ): UserDataStore
 }

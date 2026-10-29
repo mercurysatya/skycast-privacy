@@ -122,6 +122,35 @@ class BillingManagerTest {
         assertTrue("A transport failure must not revoke Premium", manager.state.value.entitlement.isPremium)
     }
 
+    @Test
+    fun `reset entitlement prevents a failed refresh from restoring premium`() = runTest {
+        val gateway = FakeGateway()
+        val manager = BillingManager(gateway, FakeProducts())
+        gateway.queryResult = PurchaseQueryResult(listOf(purchased(acknowledged = true)), true)
+        manager.refresh()
+        assertTrue(manager.state.value.entitlement.isPremium)
+
+        manager.resetEntitlement()
+        assertFalse(
+            "A local-data wipe must forget the cached entitlement",
+            manager.state.value.entitlement.isPremium
+        )
+
+        gateway.connection = BillingConnection.DISCONNECTED
+        manager.refresh()
+        assertFalse(
+            "A failed query must not resurrect the pre-deletion entitlement",
+            manager.state.value.entitlement.isPremium
+        )
+
+        gateway.connection = BillingConnection.CONNECTED
+        manager.refresh()
+        assertTrue(
+            "Only a successful Play query may grant Premium again",
+            manager.state.value.entitlement.isPremium
+        )
+    }
+
     // -------------------------------------------------------------- products
 
     @Test

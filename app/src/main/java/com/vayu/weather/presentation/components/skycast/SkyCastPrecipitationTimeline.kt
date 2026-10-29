@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayu.weather.domain.model.HourlyWeather
@@ -56,6 +58,19 @@ fun SkyCastPrecipitationTimeline(
     if (hourly.isEmpty()) return
 
     val sorted = hourly.sortedBy { it.time }
+    // Hour labels are laid out edge-to-edge. At large font scales ten labels
+    // no longer fit, so shorten the window instead of letting "Now 1 AM 2 AM"
+    // collide into one unreadable run. Six labels fit at 200% on a phone.
+    val density = LocalDensity.current
+    val fontScale = density.fontScale
+    // Use the actual window width rather than Configuration.screenWidthDp:
+    // the latter excludes some insets differently across target SDKs and can
+    // be rounded, which matters when deciding whether ten labels fit.
+    val windowWidthDp = with(density) {
+        LocalWindowInfo.current.containerSize.width.toDp().value
+    }
+    val maxReadableLabels = ((windowWidthDp - 48f) / (26f * fontScale)).toInt()
+        .coerceIn(4, hoursToShow)
     // Use the API's location time when available so the "Now" anchor
     // matches the weather location, not the device timezone.
     val locationNow = if (currentTimeInLocation != null) {
@@ -67,7 +82,7 @@ fun SkyCastPrecipitationTimeline(
         .asSequence()
         .mapNotNull { h -> parseHourly(h.time)?.let { it to h } }
         .filter { (time, _) -> !time.isBefore(locationNow.minusMinutes(30)) }
-        .take(hoursToShow)
+        .take(maxReadableLabels)
         .toList()
     if (window.isEmpty()) return
 

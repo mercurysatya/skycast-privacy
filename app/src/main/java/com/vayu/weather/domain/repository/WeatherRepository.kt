@@ -6,7 +6,14 @@ import com.vayu.weather.domain.model.WeatherInfo
 import kotlinx.coroutines.flow.Flow
 
 interface WeatherRepository {
-    suspend fun getWeatherData(lat: Double, long: Double): Result<WeatherInfo>
+    /**
+     * Loads the forecast for a location.
+     *
+     * [forecastDays] is the provider horizon. The UI's 7-day lists still cap
+     * themselves to seven rows; Travel requests 14 so its date picker and the
+     * advertised two-week window agree with the data that is actually stored.
+     */
+    suspend fun getWeatherData(lat: Double, long: Double, forecastDays: Int): Result<WeatherInfo>
     suspend fun getAirQuality(lat: Double, long: Double): Result<AirQuality>
     suspend fun searchCity(query: String): Result<List<City>>
     fun getFavoriteCities(): Flow<List<City>>

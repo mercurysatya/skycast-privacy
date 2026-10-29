@@ -151,6 +151,22 @@ fun VayuApp() {
         }
     }
 
+    // A completed wipe resets onboarding. Navigating here (rather than from
+    // the settings screen) keeps the flow reliable even if the user leaves the
+    // screen before the success feedback is dismissed.
+    LaunchedEffect(settingsState.dataDeleted) {
+        if (settingsState.dataDeleted) {
+            android.widget.Toast.makeText(
+                context,
+                R.string.data_deleted,
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            settingsViewModel.clearDeletionResult()
+            showSettings = false
+            showOnboarding = true
+        }
+    }
+
     // GDPR/EEA consent must be gathered before any ad request is made.
     // The UMP form is shown only when required; then the ad SDK is
     // initialized and interstitial/rewarded ads are preloaded.
@@ -202,6 +218,10 @@ fun VayuApp() {
                     onComplete = {
                         showOnboarding = false
                         settingsViewModel.setOnboardingComplete()
+                        // Deletion resets this flag off so no background work
+                        // runs during first-run setup. Completing onboarding
+                        // restores the first-run default.
+                        settingsViewModel.setNotificationsEnabled(true)
                         // Without this, a first-run user lands on the empty
                         // dashboard error state because nothing triggers a load.
                         weatherViewModel.loadWeatherInfo()
@@ -305,6 +325,7 @@ fun VayuApp() {
                     },
                     onDeleteAllData = { settingsViewModel.deleteAllData() },
                     onClearCache = { settingsViewModel.clearWeatherCache() },
+                    onDeletionResultShown = settingsViewModel::clearDeletionResult,
                     onOpenAlerts = {
                         // "Alert History" opens the full history, including the
                         // advisories that are over.

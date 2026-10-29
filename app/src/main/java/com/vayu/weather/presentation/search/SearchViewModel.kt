@@ -53,7 +53,14 @@ class SearchViewModel @Inject constructor(
         state = state.copy(searchQuery = newQuery, error = null)
         searchJob?.cancel()
         if (newQuery.isBlank()) {
-            state = state.copy(searchResults = emptyList())
+            // Cancelling the in-flight job does not clear its loading flag;
+            // without this the spinner stayed on screen forever after the
+            // user cleared the field.
+            state = state.copy(
+                searchResults = emptyList(),
+                isLoading = false,
+                error = null
+            )
             return
         }
         searchJob = viewModelScope.launch {

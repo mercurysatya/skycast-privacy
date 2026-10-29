@@ -542,15 +542,18 @@ private fun DailyForecastExpanded(
             ),
             shape = RoundedCornerShape(20.dp)
         ) {
-            dailyData.forEachIndexed { index, day ->
+            // The API cache may now hold 14 days for Travel; this section is
+            // explicitly the 7-day forecast.
+            val visibleDaily = dailyData.take(7)
+            visibleDaily.forEachIndexed { index, day ->
                 DailyDetailItem(
                     data = day,
                     isCelsius = isCelsius,
                     isFirst = index == 0,
-                    isLast = index == dailyData.lastIndex,
+                    isLast = index == visibleDaily.lastIndex,
                     currentTimeInLocation = currentTimeInLocation
                 )
-                if (index < dailyData.lastIndex) {
+                if (index < visibleDaily.lastIndex) {
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
                         modifier = Modifier.padding(horizontal = 12.dp)

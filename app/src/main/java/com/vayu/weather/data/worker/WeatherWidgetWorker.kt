@@ -6,6 +6,7 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.vayu.weather.data.local.DataDeletionGuard
 import com.vayu.weather.domain.location.LocationTracker
 import com.vayu.weather.domain.model.WeatherInfo
 import com.vayu.weather.domain.use_case.GetWeatherUseCase
@@ -30,10 +31,15 @@ class WeatherWidgetWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val getWeatherUseCase: GetWeatherUseCase,
     private val locationTracker: LocationTracker,
-    private val settingsManager: com.vayu.weather.data.local.SettingsManager
+    private val settingsManager: com.vayu.weather.data.local.SettingsManager,
+    private val deletionGuard: DataDeletionGuard
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
+        val deletionToken = deletionGuard.currentGenerationOrNull() ?: return Result.success()
+        // A wipe returns the app to first-run setup. Do not fetch or cache new
+        // weather (or repopulate the widget) until the user finishes setup.
+        if (!settingsManager.isOnboardingComplete()) return Result.success()
         Log.d(TAG, "Widget worker starting (attempt $runAttemptCount)")
 
         if (runAttemptCount >= 3) {
@@ -54,7 +60,10 @@ class WeatherWidgetWorker @AssistedInject constructor(
         return getWeatherUseCase(location.latitude, location.longitude).fold(
             onSuccess = { weatherInfo ->
                 Log.d(TAG, "Weather data received, writing widget snapshot")
-                writeSnapshot(weatherInfo, cityName, isCelsius, windUnit)
+                // Never repopulate the snapshot after a wipe started.
+                deletionGuard.tryWrite(deletionToken) {
+                    writeSnapshot(weatherInfo, cityName, isCelsius, windUnit)
+                }
                 Result.success()
             },
             onFailure = { e ->

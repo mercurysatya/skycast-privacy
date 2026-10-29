@@ -2,6 +2,7 @@ package com.vayu.weather.presentation.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import android.content.Intent
@@ -99,6 +103,7 @@ fun SettingsScreen(
     onOpenPrivacyPolicy: (String?) -> Unit = {},
     onDeleteAllData: () -> Unit = {},
     onClearCache: () -> Unit = {},
+    onDeletionResultShown: () -> Unit = {},
     onOpenAlerts: () -> Unit = {},
     // Quiet hours
     onQuietHoursEnabledChange: (Boolean) -> Unit = {},
@@ -128,6 +133,13 @@ fun SettingsScreen(
         snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
             snackbarMessage = null
+        }
+    }
+
+    LaunchedEffect(state.dataDeletionFailed) {
+        if (state.dataDeletionFailed) {
+            snackbarMessage = resources.getString(R.string.data_delete_failed)
+            onDeletionResultShown()
         }
     }
 
@@ -307,11 +319,13 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Thermostat,
                         title = stringResource(R.string.temperature),
                         subtitle = if (state.temperatureUnit == TemperatureUnit.CELSIUS)
-                            stringResource(R.string.celsius_full) else stringResource(R.string.fahrenheit_full)
+                            stringResource(R.string.celsius_full) else stringResource(R.string.fahrenheit_full),
+                        toggleChecked = state.temperatureUnit == TemperatureUnit.FAHRENHEIT,
+                        onToggle = { wrappedToggleUnit() }
                     ) {
                         Switch(
                             checked = state.temperatureUnit == TemperatureUnit.FAHRENHEIT,
-                            onCheckedChange = { wrappedToggleUnit() },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -420,11 +434,13 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Rounded.Palette,
                         title = stringResource(R.string.material_you),
-                        subtitle = if (state.useDynamicColor) stringResource(R.string.dynamic_colors_enabled) else stringResource(R.string.custom_colors)
+                        subtitle = if (state.useDynamicColor) stringResource(R.string.dynamic_colors_enabled) else stringResource(R.string.custom_colors),
+                        toggleChecked = state.useDynamicColor,
+                        onToggle = { wrappedToggleDynamicColor(it) }
                     ) {
                         Switch(
                             checked = state.useDynamicColor,
-                            onCheckedChange = { wrappedToggleDynamicColor(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -440,11 +456,13 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Rounded.Notifications,
                         title = stringResource(R.string.weather_alerts_setting),
-                        subtitle = if (state.notificationsEnabled) stringResource(R.string.enabled) else stringResource(R.string.disabled)
+                        subtitle = if (state.notificationsEnabled) stringResource(R.string.enabled) else stringResource(R.string.disabled),
+                        toggleChecked = state.notificationsEnabled,
+                        onToggle = { wrappedToggleNotifications(it) }
                     ) {
                         Switch(
                             checked = state.notificationsEnabled,
-                            onCheckedChange = { wrappedToggleNotifications(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -461,16 +479,22 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(4.dp))
-                            Slider(
-                                value = state.rainAlertThreshold.toFloat(),
-                                onValueChange = { wrappedRainAlertThresholdChange(it.roundToInt()) },
-                                valueRange = 10f..100f,
-                                steps = 8,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = MaterialTheme.colorScheme.primary,
-                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                            Box(
+                                modifier = Modifier.a11yLabel(
+                                    resources.getString(R.string.rain_threshold_toast, state.rainAlertThreshold)
                                 )
-                            )
+                            ) {
+                                Slider(
+                                    value = state.rainAlertThreshold.toFloat(),
+                                    onValueChange = { wrappedRainAlertThresholdChange(it.roundToInt()) },
+                                    valueRange = 10f..100f,
+                                    steps = 8,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = MaterialTheme.colorScheme.primary,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -600,11 +624,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.wind_alerts),
                         subtitle = if (state.enableWindAlerts)
                             stringResource(R.string.wind_threshold, state.windAlertThreshold)
-                        else stringResource(R.string.disabled)
+                        else stringResource(R.string.disabled),
+                        toggleChecked = state.enableWindAlerts,
+                        onToggle = { onEnableWindAlertsChange(it) }
                     ) {
                         Switch(
                             checked = state.enableWindAlerts,
-                            onCheckedChange = { onEnableWindAlertsChange(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -618,16 +644,22 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Slider(
-                                value = state.windAlertThreshold.toFloat(),
-                                onValueChange = { onWindAlertThresholdChange(it.toInt()) },
-                                valueRange = 20f..120f,
-                                steps = 9,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = MaterialTheme.colorScheme.primary,
-                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                            Box(
+                                modifier = Modifier.a11yLabel(
+                                    resources.getString(R.string.wind_threshold, state.windAlertThreshold)
                                 )
-                            )
+                            ) {
+                                Slider(
+                                    value = state.windAlertThreshold.toFloat(),
+                                    onValueChange = { onWindAlertThresholdChange(it.toInt()) },
+                                    valueRange = 20f..120f,
+                                    steps = 9,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = MaterialTheme.colorScheme.primary,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("20", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("120", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -643,11 +675,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.uv_alerts),
                         subtitle = if (state.enableUvAlerts)
                             stringResource(R.string.uv_threshold, state.uvAlertThreshold)
-                        else stringResource(R.string.disabled)
+                        else stringResource(R.string.disabled),
+                        toggleChecked = state.enableUvAlerts,
+                        onToggle = { onEnableUvAlertsChange(it) }
                     ) {
                         Switch(
                             checked = state.enableUvAlerts,
-                            onCheckedChange = { onEnableUvAlertsChange(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -661,16 +695,22 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Slider(
-                                value = state.uvAlertThreshold.toFloat(),
-                                onValueChange = { onUvAlertThresholdChange(it.toInt()) },
-                                valueRange = 3f..12f,
-                                steps = 8,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = MaterialTheme.colorScheme.primary,
-                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                            Box(
+                                modifier = Modifier.a11yLabel(
+                                    resources.getString(R.string.uv_threshold, state.uvAlertThreshold)
                                 )
-                            )
+                            ) {
+                                Slider(
+                                    value = state.uvAlertThreshold.toFloat(),
+                                    onValueChange = { onUvAlertThresholdChange(it.toInt()) },
+                                    valueRange = 3f..12f,
+                                    steps = 8,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = MaterialTheme.colorScheme.primary,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("3", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("12", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -686,11 +726,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.heat_alerts),
                         subtitle = if (state.enableHeatAlerts)
                             stringResource(R.string.heat_threshold, state.heatAlertThreshold)
-                        else stringResource(R.string.disabled)
+                        else stringResource(R.string.disabled),
+                        toggleChecked = state.enableHeatAlerts,
+                        onToggle = { onEnableHeatAlertsChange(it) }
                     ) {
                         Switch(
                             checked = state.enableHeatAlerts,
-                            onCheckedChange = { onEnableHeatAlertsChange(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -704,16 +746,22 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Slider(
-                                value = state.heatAlertThreshold.toFloat(),
-                                onValueChange = { onHeatAlertThresholdChange(it.toInt()) },
-                                valueRange = 30f..50f,
-                                steps = 19,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = MaterialTheme.colorScheme.primary,
-                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                            Box(
+                                modifier = Modifier.a11yLabel(
+                                    resources.getString(R.string.heat_threshold, state.heatAlertThreshold)
                                 )
-                            )
+                            ) {
+                                Slider(
+                                    value = state.heatAlertThreshold.toFloat(),
+                                    onValueChange = { onHeatAlertThresholdChange(it.toInt()) },
+                                    valueRange = 30f..50f,
+                                    steps = 19,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = MaterialTheme.colorScheme.primary,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("30°C", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("50°C", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -729,11 +777,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.cold_alerts),
                         subtitle = if (state.enableColdAlerts)
                             stringResource(R.string.cold_threshold, state.coldAlertThreshold)
-                        else stringResource(R.string.disabled)
+                        else stringResource(R.string.disabled),
+                        toggleChecked = state.enableColdAlerts,
+                        onToggle = { onEnableColdAlertsChange(it) }
                     ) {
                         Switch(
                             checked = state.enableColdAlerts,
-                            onCheckedChange = { onEnableColdAlertsChange(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -747,16 +797,22 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Slider(
-                                value = state.coldAlertThreshold.toFloat(),
-                                onValueChange = { onColdAlertThresholdChange(it.toInt()) },
-                                valueRange = -10f..10f,
-                                steps = 19,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = MaterialTheme.colorScheme.primary,
-                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                            Box(
+                                modifier = Modifier.a11yLabel(
+                                    resources.getString(R.string.cold_threshold, state.coldAlertThreshold)
                                 )
-                            )
+                            ) {
+                                Slider(
+                                    value = state.coldAlertThreshold.toFloat(),
+                                    onValueChange = { onColdAlertThresholdChange(it.toInt()) },
+                                    valueRange = -10f..10f,
+                                    steps = 19,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = MaterialTheme.colorScheme.primary,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("-10°C", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("10°C", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -775,11 +831,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.quiet_hours),
                         subtitle = if (state.quietHoursEnabled)
                             stringResource(R.string.quiet_hours_enabled, state.quietHoursStartHour, state.quietHoursStartMinute, state.quietHoursEndHour, state.quietHoursEndMinute)
-                        else stringResource(R.string.disabled)
+                        else stringResource(R.string.disabled),
+                        toggleChecked = state.quietHoursEnabled,
+                        onToggle = { onQuietHoursEnabledChange(it) }
                     ) {
                         Switch(
                             checked = state.quietHoursEnabled,
-                            onCheckedChange = { onQuietHoursEnabledChange(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -876,11 +934,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.notification_time_1),
                         subtitle = if (state.notificationTime1Enabled)
                             String.format("%02d:%02d", state.notificationTime1Hour, state.notificationTime1Minute)
-                        else stringResource(R.string.disabled)
+                        else stringResource(R.string.disabled),
+                        toggleChecked = state.notificationTime1Enabled,
+                        onToggle = { onNotificationTime1EnabledChange(it) }
                     ) {
                         Switch(
                             checked = state.notificationTime1Enabled,
-                            onCheckedChange = { onNotificationTime1EnabledChange(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -930,11 +990,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.notification_time_2),
                         subtitle = if (state.notificationTime2Enabled)
                             String.format("%02d:%02d", state.notificationTime2Hour, state.notificationTime2Minute)
-                        else stringResource(R.string.disabled)
+                        else stringResource(R.string.disabled),
+                        toggleChecked = state.notificationTime2Enabled,
+                        onToggle = { onNotificationTime2EnabledChange(it) }
                     ) {
                         Switch(
                             checked = state.notificationTime2Enabled,
-                            onCheckedChange = { onNotificationTime2EnabledChange(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -984,11 +1046,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.notification_time_3),
                         subtitle = if (state.notificationTime3Enabled)
                             String.format("%02d:%02d", state.notificationTime3Hour, state.notificationTime3Minute)
-                        else stringResource(R.string.disabled)
+                        else stringResource(R.string.disabled),
+                        toggleChecked = state.notificationTime3Enabled,
+                        onToggle = { onNotificationTime3EnabledChange(it) }
                     ) {
                         Switch(
                             checked = state.notificationTime3Enabled,
-                            onCheckedChange = { onNotificationTime3EnabledChange(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -1103,11 +1167,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.clock_format),
                         subtitle = if (state.use24hClock)
                             stringResource(R.string.clock_24h)
-                        else stringResource(R.string.clock_12h)
+                        else stringResource(R.string.clock_12h),
+                        toggleChecked = state.use24hClock,
+                        onToggle = { onUse24hClockChange(it) }
                     ) {
                         Switch(
                             checked = state.use24hClock,
-                            onCheckedChange = { onUse24hClockChange(it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -1187,11 +1253,13 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Rounded.WbSunny,
                         title = stringResource(R.string.show_hourly_forecast),
-                        subtitle = if (state.showHourlyForecast) stringResource(R.string.enabled) else stringResource(R.string.disabled)
+                        subtitle = if (state.showHourlyForecast) stringResource(R.string.enabled) else stringResource(R.string.disabled),
+                        toggleChecked = state.showHourlyForecast,
+                        onToggle = { onSectionVisibilityChange("hourly", it) }
                     ) {
                         Switch(
                             checked = state.showHourlyForecast,
-                            onCheckedChange = { onSectionVisibilityChange("hourly", it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -1204,11 +1272,13 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Rounded.NightsStay,
                         title = stringResource(R.string.show_sun_moon),
-                        subtitle = if (state.showSunMoon) stringResource(R.string.enabled) else stringResource(R.string.disabled)
+                        subtitle = if (state.showSunMoon) stringResource(R.string.enabled) else stringResource(R.string.disabled),
+                        toggleChecked = state.showSunMoon,
+                        onToggle = { onSectionVisibilityChange("sun_moon", it) }
                     ) {
                         Switch(
                             checked = state.showSunMoon,
-                            onCheckedChange = { onSectionVisibilityChange("sun_moon", it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -1221,11 +1291,13 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Rounded.Air,
                         title = stringResource(R.string.show_air_quality),
-                        subtitle = if (state.showAirQuality) stringResource(R.string.enabled) else stringResource(R.string.disabled)
+                        subtitle = if (state.showAirQuality) stringResource(R.string.enabled) else stringResource(R.string.disabled),
+                        toggleChecked = state.showAirQuality,
+                        onToggle = { onSectionVisibilityChange("air_quality", it) }
                     ) {
                         Switch(
                             checked = state.showAirQuality,
-                            onCheckedChange = { onSectionVisibilityChange("air_quality", it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -1238,11 +1310,13 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Rounded.Info,
                         title = stringResource(R.string.show_weather_details),
-                        subtitle = if (state.showWeatherDetails) stringResource(R.string.enabled) else stringResource(R.string.disabled)
+                        subtitle = if (state.showWeatherDetails) stringResource(R.string.enabled) else stringResource(R.string.disabled),
+                        toggleChecked = state.showWeatherDetails,
+                        onToggle = { onSectionVisibilityChange("weather_details", it) }
                     ) {
                         Switch(
                             checked = state.showWeatherDetails,
-                            onCheckedChange = { onSectionVisibilityChange("weather_details", it) },
+                        onCheckedChange = null,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
@@ -1355,10 +1429,13 @@ fun SettingsScreen(
                                 title = { Text(stringResource(R.string.delete_my_data)) },
                                 text = { Text(stringResource(R.string.delete_all_data_confirm)) },
                                 confirmButton = {
-                                    TextButton(onClick = {
-                                        onDeleteAllData()
-                                        showDeleteDialog = false
-                                    }) {
+                                    TextButton(
+                                        onClick = {
+                                            onDeleteAllData()
+                                            showDeleteDialog = false
+                                        },
+                                        enabled = !state.isDeleting
+                                    ) {
                                         Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                                     }
                                 },
@@ -1369,8 +1446,20 @@ fun SettingsScreen(
                                 }
                             )
                         }
-                        TextButton(onClick = { showDeleteDialog = true }) {
-                            Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                        TextButton(
+                            onClick = { showDeleteDialog = true },
+                            enabled = !state.isDeleting
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (state.isDeleting) R.string.deleting else R.string.delete
+                                ),
+                                color = if (state.isDeleting) {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                }
+                            )
                         }
                     }
 
@@ -1389,12 +1478,12 @@ fun SettingsScreen(
                                 title = { Text(stringResource(R.string.clear_cache)) },
                                 text = { Text(stringResource(R.string.clear_cache_confirm)) },
                                 confirmButton = {
-                                    TextButton(onClick = {
-                                        onClearCache()
-                                        showCacheDialog = false
-                                    }) {
-                                        Text(stringResource(R.string.delete))
-                                    }
+                                        TextButton(onClick = {
+                                            onClearCache()
+                                            showCacheDialog = false
+                                        }) {
+                                            Text(stringResource(R.string.clear))
+                                        }
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { showCacheDialog = false }) {
@@ -1452,11 +1541,24 @@ private fun SettingsRow(
     icon: ImageVector,
     title: String,
     subtitle: String,
+    toggleChecked: Boolean? = null,
+    onToggle: ((Boolean) -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (toggleChecked != null && onToggle != null) {
+                    Modifier.toggleable(
+                        value = toggleChecked,
+                        onValueChange = onToggle,
+                        role = Role.Switch
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1486,3 +1588,12 @@ private fun SettingsRow(
         }
     }
 }
+
+/**
+ * Settings controls used to expose only "switch, off" or "slider, 50 percent"
+ * to TalkBack because their visible label lives in a sibling [SettingsRow].
+ * Attaching the row label to the control itself makes each control
+ * self-describing.
+ */
+private fun Modifier.a11yLabel(label: String): Modifier =
+    semantics(mergeDescendants = true) { contentDescription = label }

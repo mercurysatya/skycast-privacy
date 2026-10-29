@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
 private const val TAG = "MapVM"
@@ -118,6 +119,19 @@ data class WindPoint(
     val direction: Double // degrees
 )
 
+/** Loading/error state for the temperature and wind grid overlays. */
+data class MapGridState(
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
+private data class GridRequest(
+    val centerLat: Double,
+    val centerLon: Double,
+    val spanLat: Double,
+    val spanLon: Double
+)
+
 /** Weather alert for map zone */
 data class MapWeatherAlert(
     val latitude: Double,
@@ -189,6 +203,10 @@ class MapViewModel @Inject constructor(
     private val _windPoints = MutableStateFlow<List<WindPoint>>(emptyList())
     val windPoints: StateFlow<List<WindPoint>> = _windPoints.asStateFlow()
 
+    // Temperature/wind grid loading state
+    private val _gridState = MutableStateFlow(MapGridState())
+    val gridState: StateFlow<MapGridState> = _gridState.asStateFlow()
+
     // Weather alerts on map
     private val _mapAlerts = MutableStateFlow<List<MapWeatherAlert>>(emptyList())
     val mapAlerts: StateFlow<List<MapWeatherAlert>> = _mapAlerts.asStateFlow()
@@ -197,12 +215,10 @@ class MapViewModel @Inject constructor(
     private val _mapTilt = MutableStateFlow(MapTilt.FLAT)
     val mapTilt: StateFlow<MapTilt> = _mapTilt.asStateFlow()
 
-    // Track visible bounds for grid loading
-    private var visibleBounds: Pair<Pair<Double, Double>, Pair<Double, Double>>? = null
-
     private var autoPlayJob: Job? = null
     private var tapWeatherJob: Job? = null
     private var gridJob: Job? = null
+    private var lastGridRequest: GridRequest? = null
 
     init {
         loadRadarFrames()
@@ -411,30 +427,33 @@ class MapViewModel @Inject constructor(
 
     // === Grid Data (temp heatmap + wind) ===
 
-    fun loadGridData(centerLat: Double, centerLon: Double, spanLat: Double = 8.0, spanLon: Double = 10.0) {
+    fun loadGridData(centerLat: Double, centerLon: Double, spanLat: Double, spanLon: Double) {
+        lastGridRequest = GridRequest(centerLat, centerLon, spanLat, spanLon)
         gridJob?.cancel()
+        _gridState.value = MapGridState(isLoading = true)
         gridJob = viewModelScope.launch {
             try {
-                val lats = (-2..2).map { centerLat + it * (spanLat / 2) }
-                val lons = (-2..2).map { centerLon + it * (spanLon / 2) }
+                val coordinates = gridCoordinates(centerLat, centerLon, spanLat, spanLon)
 
                 val tempPointsList = mutableListOf<TempGridPoint>()
                 val windPointsList = mutableListOf<WindPoint>()
+                val failedRequests = AtomicInteger()
 
                 coroutineScope {
-                    val jobs = lats.flatMap { lat ->
-                        lons.map { lon ->
-                            async(Dispatchers.IO) {
-                                try {
-                                    val weather = openMeteoApi.getWeather(lat, lon)
-                                    val current = weather.current
-                                    if (current != null) {
-                                        Pair(
-                                            TempGridPoint(lat, lon, current.temperature),
-                                            WindPoint(lat, lon, current.windSpeed ?: 0.0, current.windDirection ?: 0.0)
-                                        )
-                                    } else null
-                                } catch (_: Exception) { null }
+                    val jobs = coordinates.map { (lat, lon) ->
+                        async(Dispatchers.IO) {
+                            try {
+                                val weather = openMeteoApi.getWeather(lat, lon)
+                                val current = weather.current
+                                if (current != null) {
+                                    Pair(
+                                        TempGridPoint(lat, lon, current.temperature),
+                                        WindPoint(lat, lon, current.windSpeed ?: 0.0, current.windDirection ?: 0.0)
+                                    )
+                                } else null
+                            } catch (_: Exception) {
+                                failedRequests.incrementAndGet()
+                                null
                             }
                         }
                     }
@@ -448,10 +467,24 @@ class MapViewModel @Inject constructor(
 
                 _tempPoints.value = tempPointsList
                 _windPoints.value = windPointsList
+                _gridState.value = when {
+                    tempPointsList.isEmpty() && failedRequests.get() == coordinates.size ->
+                        MapGridState(error = "Couldn't load the weather layer")
+                    tempPointsList.isEmpty() ->
+                        MapGridState(error = "No weather data available for this area")
+                    else -> MapGridState()
+                }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 Log.e(TAG, "Failed to load grid data", e)
+                _gridState.value = MapGridState(error = "Couldn't load the weather layer")
             }
+        }
+    }
+
+    fun retryGridData() {
+        lastGridRequest?.let { request ->
+            loadGridData(request.centerLat, request.centerLon, request.spanLat, request.spanLon)
         }
     }
 
@@ -504,19 +537,7 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun onBoundsChanged(centerLat: Double, centerLon: Double, zoom: Double) {
-        val span = when {
-            zoom > 10 -> 4.0
-            zoom > 7 -> 8.0
-            zoom > 4 -> 16.0
-            else -> 32.0
-        }
-        visibleBounds = Pair(Pair(centerLat, centerLon), Pair(span, span))
-        // Only load heavy data if temp/wind overlays are active
-        val type = _radarState.value.overlayType
-        if (type == OverlayType.TEMPERATURE || type == OverlayType.WIND) {
-            loadGridData(centerLat, centerLon, span, span * 1.25)
-        }
+    fun onBoundsChanged(centerLat: Double, centerLon: Double) {
         loadMapAlerts(centerLat, centerLon)
         // Debounced center weather fetch (800ms delay)
         fetchCenterWeather(centerLat, centerLon)

@@ -210,7 +210,7 @@ private fun DatePicker(travelDate: LocalDate?, onPickDate: (LocalDate) -> Unit) 
                     onPickDate(previous)
                 },
                 enabled = travelDate != null && travelDate > today || travelDate == null,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     Icons.Rounded.ChevronLeft,
@@ -239,7 +239,7 @@ private fun DatePicker(travelDate: LocalDate?, onPickDate: (LocalDate) -> Unit) 
                         .coerceIn(today, maxDate)
                     onPickDate(next)
                 },
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     Icons.Rounded.ChevronRight,

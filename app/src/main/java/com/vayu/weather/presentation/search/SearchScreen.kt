@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.vayu.weather.R
 import com.vayu.weather.domain.model.City
 import com.vayu.weather.presentation.ads.AdBanner
+import com.vayu.weather.ui.theme.SkyCastTokens
 
 @Composable
 fun SearchScreen(
@@ -214,7 +215,7 @@ private fun EmptySearchContent(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                IconButton(onClick = onClearRecentSearches, modifier = Modifier.size(28.dp)) {
+                IconButton(onClick = onClearRecentSearches, modifier = Modifier.size(SkyCastTokens.TouchTargetComfortable)) {
                     Icon(
                         imageVector = Icons.Rounded.DeleteSweep,
                         contentDescription = stringResource(R.string.clear_all),

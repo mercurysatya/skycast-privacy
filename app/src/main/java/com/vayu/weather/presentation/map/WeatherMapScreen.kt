@@ -98,6 +98,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -125,6 +127,10 @@ import kotlin.math.roundToInt
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.expressions.dsl.const
+import org.maplibre.compose.expressions.value.LineCap
+import org.maplibre.compose.expressions.value.LineJoin
+import org.maplibre.compose.layers.CircleLayer
+import org.maplibre.compose.layers.LineLayer
 import org.maplibre.compose.layers.RasterLayer
 import org.maplibre.compose.map.GestureOptions
 import org.maplibre.compose.map.MapOptions
@@ -132,6 +138,7 @@ import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.util.ClickResult
 import org.maplibre.compose.map.RenderOptions
 import org.maplibre.compose.sources.TileSetOptions
+import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.sources.rememberRasterSource
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.spatialk.geojson.Position
@@ -161,33 +168,6 @@ private fun mapWeatherDescription(code: Int, isDay: Boolean): String = when (cod
     else -> "Cloudy"
 }
 
-/** Interpolate temperature to a color for the heatmap */
-private fun tempToColor(temp: Double): Color {
-    return when {
-        temp < -10 -> Color(0xFF1A237E) // Deep blue
-        temp < 0 -> Color(0xFF1565C0)   // Blue
-        temp < 5 -> Color(0xFF0097A7)   // Cyan
-        temp < 10 -> Color(0xFF2E7D32)  // Green
-        temp < 15 -> Color(0xFF689F38)  // Light green
-        temp < 20 -> Color(0xFFFDD835)  // Yellow
-        temp < 25 -> Color(0xFFFF8F00)  // Orange
-        temp < 30 -> Color(0xFFF44336)  // Red
-        temp < 35 -> Color(0xFFB71C1C)  // Dark red
-        else -> Color(0xFF4A148C)       // Purple (extreme)
-    }
-}
-
-/** Convert wind speed + direction to arrow color */
-private fun windSpeedColor(speed: Double): Color {
-    return when {
-        speed < 5 -> Color(0xFF81C784)
-        speed < 15 -> Color(0xFFFFD54F)
-        speed < 25 -> Color(0xFFFF8A65)
-        speed < 35 -> Color(0xFFE53935)
-        else -> Color(0xFF6A1B9A)
-    }
-}
-
 @Composable
 fun WeatherMapScreen(
     locationTracker: LocationTracker,
@@ -215,6 +195,7 @@ fun WeatherMapScreen(
     val favoritePins by mapViewModel.favoritePins.collectAsState()
     val tempPoints by mapViewModel.tempPoints.collectAsState()
     val windPoints by mapViewModel.windPoints.collectAsState()
+    val gridState by mapViewModel.gridState.collectAsState()
     val mapAlerts by mapViewModel.mapAlerts.collectAsState()
     val mapTilt by mapViewModel.mapTilt.collectAsState()
     val searchNavigateTo by mapViewModel.searchNavigateTo.collectAsState()
@@ -239,7 +220,7 @@ fun WeatherMapScreen(
                 zoom = clampZoom(DEFAULT_ZOOM.toDouble()),
                 tilt = mapTilt.degrees.toDouble()
             )
-            mapViewModel.onBoundsChanged(loc.latitude, loc.longitude, DEFAULT_ZOOM.toDouble())
+            mapViewModel.onBoundsChanged(loc.latitude, loc.longitude)
         }
     }
 
@@ -252,7 +233,7 @@ fun WeatherMapScreen(
                 bearing = cameraState.position.bearing,
                 tilt = mapTilt.degrees.toDouble()
             )
-            mapViewModel.onBoundsChanged(lat, lon, 10.0)
+            mapViewModel.onBoundsChanged(lat, lon)
             mapViewModel.consumeSearchNavigate()
             showSearch = false
             searchQuery = ""
@@ -269,28 +250,34 @@ fun WeatherMapScreen(
         )
     }
 
+    val viewport = cameraState.viewport
+    val overlayBounds = remember(viewport) {
+        viewport?.let { gridBounds(it.visibleBoundingBox) }
+    }
+
     // Keep the "conditions at map center" mini-card and the alert chips in
     // sync when the user pans/zooms. Previously onBoundsChanged fired only on
     // programmatic camera moves, so the card showed stale weather while
     // presenting itself as the map-center conditions.
-    LaunchedEffect(cameraState.position.target) {
+    LaunchedEffect(cameraState.position.target, cameraState.position.zoom) {
         val target = cameraState.position.target
         // Skip the untouched first position (20°N, 0°) — it would fire a
         // pointless request over the Atlantic before the camera moves.
         if (target.latitude == 20.0 && target.longitude == 0.0) return@LaunchedEffect
         kotlinx.coroutines.delay(700) // debounce while the user drags
-        mapViewModel.onBoundsChanged(
-            target.latitude,
-            target.longitude,
-            cameraState.position.zoom
-        )
+        mapViewModel.onBoundsChanged(target.latitude, target.longitude)
     }
 
-    // Load grid data when overlay type switches to Temperature or Wind
-    LaunchedEffect(radarState.overlayType) {
-        if (radarState.overlayType == OverlayType.TEMPERATURE || radarState.overlayType == OverlayType.WIND) {
-            val pos = cameraState.position.target
-            mapViewModel.loadGridData(pos.latitude, pos.longitude)
+    // Sample the temperature/wind grid from the visible viewport whenever the
+    // overlay is active or the camera settles after a pan/zoom. Using the map's
+    // own bounding box keeps all five samples on screen at every zoom level.
+    LaunchedEffect(radarState.overlayType, overlayBounds) {
+        val bounds = overlayBounds
+        if (bounds != null &&
+            (radarState.overlayType == OverlayType.TEMPERATURE || radarState.overlayType == OverlayType.WIND)
+        ) {
+            kotlinx.coroutines.delay(700)
+            mapViewModel.loadGridData(bounds.centerLat, bounds.centerLon, bounds.spanLat, bounds.spanLon)
         }
     }
 
@@ -325,6 +312,18 @@ fun WeatherMapScreen(
         }
     }
     val mapOptions = remember { MapOptions() }
+
+    val temperatureOverlay = remember(tempPoints) { temperatureOverlayData(tempPoints) }
+    val windOverlay = remember(windPoints, overlayBounds) {
+        val bounds = overlayBounds
+        windOverlayData(
+            windPoints,
+            windArrowLengthDegrees(
+                spanLat = bounds?.spanLat ?: 0.5,
+                spanLon = bounds?.spanLon ?: 0.5
+            )
+        )
+    }
 
     // Animated tilt
     val animatedTilt by animateFloatAsState(
@@ -386,15 +385,60 @@ fun WeatherMapScreen(
                     )
                 }
             }
+            // Temperature overlay: one circle per grid sample, blurred so the
+            // coarse grid reads as a field. GeoJSON layers let MapLibre place
+            // the points, avoiding the lat/lon → screen projection problem.
+            if (radarState.overlayType == OverlayType.TEMPERATURE && tempPoints.isNotEmpty()) {
+                val source = rememberGeoJsonSource(temperatureOverlay)
+                CircleLayer(
+                    id = "temperature-overlay",
+                    source = source,
+                    opacity = const(0.45f),
+                    color = temperatureColorExpression(),
+                    radius = const(100.dp),
+                    blur = const(0.8f)
+                )
+            }
+            // Wind overlay: one arrow per grid sample, coloured by speed.
+            if (radarState.overlayType == OverlayType.WIND && windPoints.isNotEmpty()) {
+                val source = rememberGeoJsonSource(windOverlay)
+                LineLayer(
+                    id = "wind-overlay",
+                    source = source,
+                    opacity = const(0.9f),
+                    color = windColorExpression(),
+                    width = const(2.dp),
+                    cap = const(LineCap.Round),
+                    join = const(LineJoin.Round)
+                )
+            }
         }
         } // end key(selectedBaseMap)
 
         if (isLoading) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-        // === TEMPERATURE/WIND OVERLAY (Canvas-based) ===
-        // Note: Canvas overlays removed because the map library does not support
-        // lat/lon → screen projection on CameraState. Temperature and wind data
-        // are displayed in the weather detail cards instead.
+        // === TEMPERATURE/WIND LOADING / ERROR ===
+        // An empty grid must not look like an empty map: the selected layer
+        // reports whether it is still loading or failed, with a retry action.
+        if (radarState.overlayType == OverlayType.TEMPERATURE || radarState.overlayType == OverlayType.WIND) {
+            val isTemperature = radarState.overlayType == OverlayType.TEMPERATURE
+            val hasData = if (isTemperature) tempPoints.isNotEmpty() else windPoints.isNotEmpty()
+            if (!hasData) {
+                val overlayName = if (isTemperature) "temperature" else "wind"
+                val gridError = gridState.error
+                when {
+                    gridState.isLoading -> MapGridStatusCard(
+                        message = "Loading $overlayName layer…",
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                    gridError != null -> MapGridStatusCard(
+                        message = gridError,
+                        onRetry = mapViewModel::retryGridData,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+            }
+        }
 
         // === WEATHER ALERT ZONES ===
         // The MapLibre Compose version in use cannot project lat/lon to screen
@@ -402,12 +446,11 @@ fun WeatherMapScreen(
         // They are stacked in a column (previously every chip drew on top of
         // the others at TopStart, overlapping the compass controls). The column
         // starts BELOW the control rail: the rail (compass + 3 FABs) ends at
-        // 52dp + 40dp + 3*(36dp + 6dp) = 218dp; starting at 232dp keeps the
-        // chips clear of the reset-compass button (the old 190dp start made the
-        // first chip cover it).
+        // 52dp + 40dp + 3*48dp + 3*4dp ≈ 248dp; starting at 268dp keeps the
+        // chips clear of the reset-compass button.
         if (mapAlerts.isNotEmpty()) {
             Column(
-                modifier = Modifier.align(Alignment.TopStart).padding(top = 232.dp, start = 12.dp),
+                modifier = Modifier.align(Alignment.TopStart).padding(top = 268.dp, start = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 mapAlerts.take(2).forEach { alert ->
@@ -433,7 +476,7 @@ fun WeatherMapScreen(
         // === COMPASS + ZOOM CONTROLS (top-left) ===
         Column(
             modifier = Modifier.align(Alignment.TopStart).padding(top = 52.dp, start = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             CompassIndicator()
@@ -450,7 +493,7 @@ fun WeatherMapScreen(
                 },
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                 elevation = FloatingActionButtonDefaults.elevation(2.dp),
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(Icons.Rounded.Add, contentDescription = "Zoom in", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
             }
@@ -467,7 +510,7 @@ fun WeatherMapScreen(
                 },
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                 elevation = FloatingActionButtonDefaults.elevation(2.dp),
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(Icons.Rounded.Remove, contentDescription = "Zoom out", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
             }
@@ -483,7 +526,7 @@ fun WeatherMapScreen(
                 },
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                 elevation = FloatingActionButtonDefaults.elevation(2.dp),
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(Icons.Rounded.Explore, contentDescription = "Reset compass", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
             }
@@ -570,7 +613,14 @@ fun WeatherMapScreen(
                 radarOpacity = radarState.opacity,
                 cloudOpacity = cloudState.opacity,
                 onBaseMapSelected = { mapViewModel.selectBaseMapStyle(it) },
-                onOverlayTypeSelected = { mapViewModel.setOverlayType(it) },
+                onOverlayTypeSelected = { type ->
+                    mapViewModel.setOverlayType(type)
+                    // Temperature/wind are data overlays: surface the matching
+                    // legend as soon as one is chosen.
+                    if (type == OverlayType.TEMPERATURE || type == OverlayType.WIND) {
+                        showLegend = true
+                    }
+                },
                 onRadarColorSchemeSelected = { mapViewModel.setRadarColorScheme(it) },
                 onRadarOpacityChange = { mapViewModel.setRadarOpacity(it) },
                 onCloudOpacityChange = { mapViewModel.setCloudOpacity(it) },
@@ -596,7 +646,7 @@ fun WeatherMapScreen(
                         bearing = cameraState.position.bearing,
                         tilt = cameraState.position.tilt
                     )
-                    mapViewModel.onBoundsChanged(pin.city.latitude, pin.city.longitude, FAB_ZOOM.toDouble())
+                    mapViewModel.onBoundsChanged(pin.city.latitude, pin.city.longitude)
                 },
                 modifier = Modifier.align(Alignment.BottomStart).padding(bottom = favBottomPadding, start = 12.dp, end = 12.dp)
             )
@@ -633,7 +683,7 @@ fun WeatherMapScreen(
                                 bearing = cameraState.position.bearing,
                                 tilt = mapTilt.degrees.toDouble()
                             )
-                            mapViewModel.onBoundsChanged(loc.latitude, loc.longitude, FAB_ZOOM.toDouble())
+                            mapViewModel.onBoundsChanged(loc.latitude, loc.longitude)
                         } else {
                             // Re-request location
                             scope.launch {
@@ -647,7 +697,7 @@ fun WeatherMapScreen(
                                             bearing = cameraState.position.bearing,
                                             tilt = mapTilt.degrees.toDouble()
                                         )
-                                        mapViewModel.onBoundsChanged(loc2.latitude, loc2.longitude, FAB_ZOOM.toDouble())
+                                        mapViewModel.onBoundsChanged(loc2.latitude, loc2.longitude)
                                     }
                                 } catch (e: Exception) {
                                     Log.w(TAG, "Failed to get location", e)
@@ -668,11 +718,15 @@ fun WeatherMapScreen(
             FloatingActionButton(
                 onClick = { fabExpanded = !fabExpanded },
                 containerColor = if (fabExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(52.dp)
+                modifier = Modifier
+                    .size(52.dp)
+                    .semantics {
+                        contentDescription = if (fabExpanded) "Close menu" else "Map options"
+                    }
             ) {
                 Icon(
                     imageVector = if (fabExpanded) Icons.Rounded.Close else Icons.Rounded.Menu,
-                    contentDescription = if (fabExpanded) "Close menu" else "Map options",
+                    contentDescription = null,
                     tint = if (fabExpanded) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(24.dp)
                 )
@@ -713,6 +767,50 @@ fun WeatherMapScreen(
                 onToggleExpanded = { sliderExpanded = !sliderExpanded },
                 modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp, start = 12.dp, end = 76.dp)
             )
+        }
+    }
+}
+
+// === Grid Overlay Status ===
+@Composable
+private fun MapGridStatusCard(
+    message: String,
+    modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+        ),
+        elevation = CardDefaults.cardElevation(3.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (onRetry == null) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            }
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (onRetry != null) {
+                Text(
+                    text = "Retry",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onRetry)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }
@@ -952,7 +1050,7 @@ private fun RadarLegend(overlayType: OverlayType, modifier: Modifier = Modifier)
                 }
                 OverlayType.TEMPERATURE -> {
                     Canvas(modifier = Modifier.width(140.dp).height(12.dp).clip(RoundedCornerShape(6.dp))) {
-                        val colors = listOf(Color(0xFF1A237E), Color(0xFF1565C0), Color(0xFF2E7D32), Color(0xFFFDD835), Color(0xFFFF8F00), Color(0xFFF44336), Color(0xFF4A148C))
+                        val colors = listOf(TemperatureColdestColor) + TemperatureColorStops.map { it.second }
                         val step = size.width / (colors.size - 1)
                         for (i in 0 until colors.size - 1) drawRect(colors[i], Offset(i * step, 0f), androidx.compose.ui.geometry.Size(step + 1f, size.height))
                     }
@@ -963,7 +1061,7 @@ private fun RadarLegend(overlayType: OverlayType, modifier: Modifier = Modifier)
                 }
                 OverlayType.WIND -> {
                     Canvas(modifier = Modifier.width(140.dp).height(12.dp).clip(RoundedCornerShape(6.dp))) {
-                        val colors = listOf(Color(0xFF81C784), Color(0xFFFFD54F), Color(0xFFFF8A65), Color(0xFFE53935), Color(0xFF6A1B9A))
+                        val colors = listOf(WindCalmColor) + WindColorStops.map { it.second }
                         val step = size.width / (colors.size - 1)
                         for (i in 0 until colors.size - 1) drawRect(colors[i], Offset(i * step, 0f), androidx.compose.ui.geometry.Size(step + 1f, size.height))
                     }
@@ -1029,8 +1127,8 @@ private fun LayerSelectorPanel(selectedBaseMap: BaseMapStyle, overlayType: Overl
                 )
             }
 
-            // OPACITY
-            if (overlayType != OverlayType.NONE) {
+            // OPACITY (radar/cloud only — temperature and wind use fixed styling)
+            if (overlayType == OverlayType.RADAR || overlayType == OverlayType.CLOUDS) {
                 SectionDivider()
                 SectionLabel("Opacity")
                 Slider(

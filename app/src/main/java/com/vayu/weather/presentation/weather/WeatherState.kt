@@ -69,5 +69,11 @@ data class SettingsState(
     val notificationTime3Hour: Int = 18,
     val notificationTime3Minute: Int = 0,
     /** SkyCast Premium entitlement (removes ads, unlocks premium content). */
-    val isPremium: Boolean = false
+    val isPremium: Boolean = false,
+    /** True while a local-data wipe is running; disables the delete control. */
+    val isDeleting: Boolean = false,
+    /** One-shot success event consumed by the app shell (toast + onboarding). */
+    val dataDeleted: Boolean = false,
+    /** One-shot failure event consumed by the settings screen snackbar. */
+    val dataDeletionFailed: Boolean = false
 )

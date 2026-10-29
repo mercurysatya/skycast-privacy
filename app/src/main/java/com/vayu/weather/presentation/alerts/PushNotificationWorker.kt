@@ -13,6 +13,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ListenableWorker.Result
 import androidx.work.WorkerParameters
 import com.vayu.weather.R
+import com.vayu.weather.data.local.DataDeletionGuard
 import com.vayu.weather.data.local.SettingsManager
 import com.vayu.weather.domain.repository.WeatherAlert
 import com.vayu.weather.domain.repository.WeatherRepository
@@ -27,7 +28,8 @@ class PushNotificationWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val settingsManager: SettingsManager,
-    private val weatherRepository: WeatherRepository
+    private val weatherRepository: WeatherRepository,
+    private val deletionGuard: DataDeletionGuard
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
@@ -36,6 +38,7 @@ class PushNotificationWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): Result {
+        val deletionToken = deletionGuard.currentGenerationOrNull() ?: return Result.success()
         // Check if push notifications are enabled
         if (!settingsManager.getEnablePushAlerts()) return Result.success()
 
@@ -46,7 +49,11 @@ class PushNotificationWorker @AssistedInject constructor(
         try {
             val alerts = weatherRepository.getWeatherAlerts().first()
             if (alerts.isNotEmpty()) {
-                sendPushAlerts(applicationContext, alerts)
+                // A wipe may have started while alerts were loading; in that
+                // case sending them would leak already-deleted content.
+                deletionGuard.tryWrite(deletionToken) {
+                    sendPushAlerts(applicationContext, alerts)
+                }
             }
         } catch (e: Exception) {
             return Result.retry()

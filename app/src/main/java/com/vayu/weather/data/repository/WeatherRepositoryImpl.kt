@@ -61,7 +61,11 @@ class WeatherRepositoryImpl @Inject constructor(
             java.util.Locale.US.let { "%.3f,%.3f".format(it, lat, lon) }
     }
 
-    override suspend fun getWeatherData(lat: Double, long: Double): Result<WeatherInfo> {
+    override suspend fun getWeatherData(
+        lat: Double,
+        long: Double,
+        forecastDays: Int
+    ): Result<WeatherInfo> {
         // Quantize the key: raw GPS coordinates differ on every fix, so the
         // exact-coordinate key never hit the 30-min TTL and inserted a new row
         // on every refresh. 3 decimals ≈ 110 m.
@@ -70,34 +74,39 @@ class WeatherRepositoryImpl @Inject constructor(
         // Check cache first
         val cached = dao.getWeatherCache(locationId)
         val cacheAge = System.currentTimeMillis() - (cached?.lastUpdated ?: 0)
-        if (cached != null && cacheAge < CACHE_TTL_MS) {
-            try {
-                val decoded = json.decodeFromString<WeatherInfo>(cached.weatherDataJson)
-                return Result.success(decoded)
+        var cachedInfo: WeatherInfo? = null
+        if (cached != null) {
+            cachedInfo = try {
+                json.decodeFromString<WeatherInfo>(cached.weatherDataJson)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 // Corrupt or schema-stale cache row: drop it and fall through to network refresh
                 dao.deleteWeatherCacheById(locationId)
+                null
             }
+        }
+
+        // A 7-day cached row cannot satisfy Travel's 14-day request. Re-fetch
+        // instead of letting the date picker offer days the cache has no data
+        // for.
+        val cacheHasRequestedDays =
+            (cachedInfo?.daily?.size ?: 0) >= forecastDays
+        if (cachedInfo != null && cacheAge < CACHE_TTL_MS && cacheHasRequestedDays) {
+            return Result.success(cachedInfo)
         }
 
         // Check network
         if (!isNetworkAvailable()) {
             // Try to use stale cache as fallback
-            if (cached != null) {
-                return try {
-                    Result.success(json.decodeFromString<WeatherInfo>(cached.weatherDataJson))
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    Result.failure(Exception("No internet connection"))
-                }
+            if (cachedInfo != null) {
+                return Result.success(cachedInfo)
             }
             return Result.failure(Exception("No internet connection"))
         }
 
         // Fetch from network
         return try {
-            val response = api.getWeatherData(lat, long)
+            val response = api.getWeatherData(lat, long, forecastDays = forecastDays)
             val weatherInfo = response.toWeatherInfo()
             val cacheEntity = WeatherCacheEntity(
                 locationId = locationId,
@@ -112,10 +121,8 @@ class WeatherRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             // Fallback to stale cache
-            if (cached != null) {
-                try {
-                    return Result.success(json.decodeFromString<WeatherInfo>(cached.weatherDataJson))
-                } catch (_: Exception) {}
+            if (cachedInfo != null) {
+                return Result.success(cachedInfo)
             }
             Result.failure(e)
         }

@@ -11,6 +11,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.*
 import com.vayu.weather.MainActivity
 import com.vayu.weather.R
+import com.vayu.weather.data.local.DataDeletionGuard
 import com.vayu.weather.data.local.WeatherDao
 import com.vayu.weather.data.remote.OpenMeteoApi
 import dagger.assisted.Assisted
@@ -28,10 +29,12 @@ class WeatherNotificationWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val weatherDao: WeatherDao,
     private val openMeteoApi: OpenMeteoApi,
-    private val settingsManager: com.vayu.weather.data.local.SettingsManager
+    private val settingsManager: com.vayu.weather.data.local.SettingsManager,
+    private val deletionGuard: DataDeletionGuard
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        val deletionToken = deletionGuard.currentGenerationOrNull() ?: return Result.success()
         return try {
             val type = inputData.getString(KEY_NOTIFICATION_TYPE) ?: TYPE_CURRENT
 
@@ -54,12 +57,16 @@ class WeatherNotificationWorker @AssistedInject constructor(
 
             val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-            // Create notification channels
-            createChannels(notificationManager)
+            // The weather request can outlive the start of a wipe. Re-check
+            // before posting so deleted location data is not surfaced.
+            deletionGuard.tryWrite(deletionToken) {
+                // Create notification channels
+                createChannels(notificationManager)
 
-            when (type) {
-                TYPE_CURRENT -> sendCurrentWeatherNotification(notificationManager, cityName, weather)
-                TYPE_MORNING -> sendMorningForecastNotification(notificationManager, cityName, weather)
+                when (type) {
+                    TYPE_CURRENT -> sendCurrentWeatherNotification(notificationManager, cityName, weather)
+                    TYPE_MORNING -> sendMorningForecastNotification(notificationManager, cityName, weather)
+                }
             }
 
             Result.success()

@@ -45,7 +45,7 @@ class DefaultLocationNameResolver @Inject constructor(
         }
 
         if (resolved == null) {
-            Log.w(TAG, "No place name for $latitude,$longitude")
+            Log.w(TAG, "No place name resolved for the current location")
             return null
         }
 
@@ -73,7 +73,9 @@ class DefaultLocationNameResolver @Inject constructor(
         } catch (e: Exception) {
             // A missing backend, a network hiccup or a malformed address must
             // never take the dashboard down — the caller falls back gracefully.
-            Log.w(TAG, "Reverse geocoding failed for $latitude,$longitude: ${e.message}")
+            // Do not log coordinates: they are user data and may end up in
+            // Crashlytics/logcat.
+            Log.w(TAG, "Reverse geocoding failed (${e.javaClass.simpleName})")
             null
         }
     }

@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
     <!--
-        Settings live in a Preferences DataStore, whose on-disk file is
-        files/datastore/settings_prefs.preferences_pb — the previous
-        sharedpref include matched nothing. With an explicit <include>,
-        only listed paths are backed up, so widget snapshots, the streak
-        counter and databases are already excluded; no <exclude> entries
-        (lint FullBackupContent rejects excludes outside included paths).
+        Backup is disabled in AndroidManifest.xml (android:allowBackup="false").
+        These rules are a defensive fallback if it is ever re-enabled: only
+        DataStore files are eligible, and the settings store is excluded because
+        it contains the last known precise location and the Premium cache.
+        Widget snapshots, streak counters and databases are intentionally not
+        backup-eligible.
     -->
-    <include domain="file" path="datastore/settings_prefs.preferences_pb"/>
+    <include domain="file" path="datastore/"/>
+    <exclude domain="file" path="datastore/settings_prefs.preferences_pb"/>
 </full-backup-content>

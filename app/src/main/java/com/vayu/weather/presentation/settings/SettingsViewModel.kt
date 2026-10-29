@@ -11,15 +11,19 @@ import com.vayu.weather.presentation.weather.ThemeMode
 import com.vayu.weather.presentation.weather.WidgetSize
 import com.vayu.weather.presentation.weather.WindUnit
 import com.vayu.weather.presentation.weather.AlertSeverity
+import android.app.NotificationManager
 import android.content.Context
+import android.util.Log
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.vayu.weather.data.billing.BillingManager
 import com.vayu.weather.data.billing.BillingOffer
+import com.vayu.weather.data.local.DataDeletionGuard
 import com.vayu.weather.data.worker.WeatherAlertWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +41,8 @@ class SettingsViewModel @Inject constructor(
     private val settingsManager: SettingsManager,
     private val deleteAllLocalDataUseCase: DeleteAllLocalDataUseCase,
     private val clearWeatherCacheUseCase: ClearWeatherCacheUseCase,
-    private val billingManager: BillingManager
+    private val billingManager: BillingManager,
+    private val deletionGuard: DataDeletionGuard
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -306,9 +311,76 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun deleteAllData() {
-        viewModelScope.launch {
-            deleteAllLocalDataUseCase()
+        if (_state.value.isDeleting) return
+        _state.update {
+            it.copy(
+                isDeleting = true,
+                dataDeleted = false,
+                dataDeletionFailed = false
+            )
         }
+        viewModelScope.launch {
+            try {
+                deletionGuard.runDeletion {
+                    // Let any in-flight worker finish its guarded write, then
+                    // wipe it along with the stores. Workers that start during
+                    // the wipe are rejected by the guard.
+                    deleteAllLocalDataUseCase()
+                    // The settings store is empty now. Keep notifications off
+                    // explicitly because an absent key would default to on.
+                    settingsManager.setNotificationsEnabled(false)
+                    // Posted notifications can contain the deleted city and
+                    // weather; remove them along with the underlying data.
+                    cancelPostedNotifications()
+                }
+                // Forget the pre-deletion entitlement before re-querying Play.
+                // A failed query must leave Premium off instead of re-caching
+                // the stale in-memory value (refresh() keeps it by design).
+                billingManager.resetEntitlement()
+                refreshAllWidgets()
+                _state.value = SettingsState(
+                    notificationsEnabled = false,
+                    isDeleting = false,
+                    dataDeleted = true
+                )
+                // Re-query Play without delaying the deletion result. An
+                // active subscription may re-grant Premium; a transport
+                // failure leaves it off until the next successful query.
+                launch {
+                    try {
+                        billingManager.refresh()
+                        _state.update {
+                            it.copy(
+                                isPremium = billingManager.state.value.entitlement.isPremium
+                            )
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Premium re-query after deletion failed", e)
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Local data deletion failed", e)
+                _state.update {
+                    it.copy(isDeleting = false, dataDeletionFailed = true)
+                }
+            }
+        }
+    }
+
+    /** Consumes the one-shot deletion snackbar event. */
+    fun clearDeletionResult() {
+        _state.update {
+            it.copy(dataDeleted = false, dataDeletionFailed = false)
+        }
+    }
+
+    private fun cancelPostedNotifications() {
+        val manager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancelAll()
     }
 
     fun setCheckIntervalHours(hours: Int) {
@@ -398,5 +470,9 @@ class SettingsViewModel @Inject constructor(
                 "weather_details" -> { settingsManager.setShowWeatherDetails(visible); _state.update { it.copy(showWeatherDetails = visible) } }
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "SettingsViewModel"
     }
 }

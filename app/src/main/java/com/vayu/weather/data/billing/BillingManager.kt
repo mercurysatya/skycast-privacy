@@ -233,6 +233,18 @@ class BillingManager @Inject constructor(
         update { copy(message = null) }
     }
 
+    /**
+     * Drops the cached entitlement without treating it as a Play revocation.
+     *
+     * Called after a successful local-data wipe. A later failed query must not
+     * resurrect the pre-deletion value (that is the normal "keep on transport
+     * failure" rule for live sessions), so only a successful Play query can
+     * grant Premium again.
+     */
+    fun resetEntitlement() {
+        update { copy(entitlement = PremiumEntitlement.NONE) }
+    }
+
     // --------------------------------------------------------------- internals
 
     private fun update(transform: BillingUiState.() -> BillingUiState) {
