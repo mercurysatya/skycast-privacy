@@ -12,18 +12,18 @@
 
 | Item | Status | Detail |
 |------|--------|--------|
-| Physical device | **Not available** | No Android device or emulator accessible in this environment. No `adb`, no Android SDK. |
-| Instrumented UI tests | **Not run** | `connectedDebugAndroidTest` cannot execute without a device/emulator. |
-| Unit tests | **Not run** | `testDebugUnitTest` cannot execute without the Android SDK / compileSdk 37. |
-| Gradle build / lint | **Not run** | `assembleDebug`, `assembleRelease`, `lintDebug` require the Android SDK. |
-| Screenshots | **None captured** | No device to render UI. |
-| Method used | **Static code analysis** | Line-by-line review of every screen, component, theme token, navigation route, and strings resource. Cross-checked against prior audit reports in `reports/`. |
+| Physical device / emulator | **Emulator (Pixel_10a AVD)** | Android 17, API level as reported by device; `adb` responsive |
+| Instrumented UI tests | **Run** | `connectedDebugAndroidTest` executed on emulator |
+| Unit tests | **Run** | `testDebugUnitTest` executed |
+| Gradle build / lint | **Run** | `assembleDebug` and `lintDebug` executed |
+| Screenshots | **None captured** | No screenshot tooling used; UI verified via test assertions |
+| Method used | **Static code analysis + device execution** | Line-by-line review of every screen/component, plus executed builds, unit tests, lint, and instrumented UI tests on a connected emulator |
 
-**Configurations reviewed by code inspection (not executed):**
-- Screen sizes: phones (720×1560 @320dpi), baseline (1080×2340 @420dpi), tablets/foldables (FlowRow 4-col grid >480dp width), narrow (720×2340 @320dpi), high density (560dpi)
-- Orientations: portrait (`user_rotation=0`) + landscape (`user_rotation=1`)
-- Font scaling: 1.0 → 1.3 (API 31 max) — reviewed for single-line ellipsis, wrapping, clipping
-- System themes: light (`VayuLight`), dark (`VayuDark`), dynamic color (Material You on API 31+)
+**Configurations reviewed:**
+- Screen sizes: phones (720×1560 @320dpi), baseline (1080×2340 @420dpi), tablets/foldables (FlowRow 4-col grid >480dp width), narrow (720×2340 @320dpi), high density (560dpi) — via code inspection + emulator baseline
+- Orientations: portrait + landscape — via code inspection (landscape not exercised on device)
+- Font scaling: 1.0 → 1.3 — reviewed for ellipsis/wrapping/clipping in code (not exercised on device)
+- System themes: light (`VayuLight`), dark (`VayuDark`), dynamic color — via code inspection
 - Locales: `values` (en), `values-hi`, `values-kn`, `values-ml`, `values-ta`, `values-te`
 
 ---
@@ -109,7 +109,38 @@ The prior `VAAYU_UI_UX_AUDIT_REPORT.md` fixed 18 defects (1 blocker + 9 majors +
 
 ---
 
-## 5. Accessibility review (WCAG + Material guidelines)
+## 5. Build & Device Test Results (executed 2026-10-29)
+
+### Builds
+| Task | Result | Detail |
+|------|--------|--------|
+| `assembleDebug` | ✅ BUILD SUCCESSFUL | 46 actionable tasks, ~48s. APK installed on emulator. |
+| `lintDebug` | ✅ BUILD SUCCESSFUL | 0 errors / 0 warnings. |
+| `testDebugUnitTest` | ✅ BUILD SUCCESSFUL | All JVM unit tests pass. |
+
+### Instrumented UI tests (`connectedDebugAndroidTest`)
+**Device:** Pixel_10a AVD (emulator-5554), Android 17  
+**Result:** 37 tests, **30 passed, 7 failed (81% success)**, 0 skipped, ~1m53s
+
+**All 7 failures are pre-existing test/string mismatches — none are regressions from this audit's changes.** My three fixes only adjust touch-target sizes (48 dp) and one unrelated content description; none touch the strings or elements these tests assert on.
+
+| Test class | Test | Failure cause | Pre-existing? |
+|------------|------|---------------|---------------|
+| `WeatherDashboardTest` | `no_location_text_when_city_is_null` | Test asserts `"Current location"` (lowercase) but string `current_location` = `"Current Location"` (case-sensitive Compose match) | Yes |
+| `WeatherDashboardTest` | `refresh_button_invokes_callback` | Test looks for ContentDescription `"Refresh"` but `CompactAction` exposes `"Refresh weather"` (`cd_refresh`) | Yes |
+| `WeatherDashboardTest` | `severe_alert_is_above_hourly` | Test fixture `WeatherAlert` sets no future `expiresAt`, so `filterAndSortAlerts` filters it out and the alert section doesn't render | Yes |
+| `WeatherDashboardTest` | `success_state_renders_hero_hourly_daily` | Test asserts `"7-day forecast"` (lowercase) but string `seven_day_forecast` = `"7-Day Forecast"` | Yes |
+| `SearchFavoritesTest` | `favorites_displays_empty_state` | Test asserts `"No Favorites Yet"` but `FavoritesEmptyStateV2` shows `"No favorite cities yet"` (`empty_favorites_headline`) | Yes |
+| `SearchFavoritesTest` | `search_displays_city_results` | `"New York"` matches 2 nodes (city name appears in result + subtitle area); test expects at most 1 | Yes |
+| `SearchFavoritesTest` | `search_displays_no_results_message` | Test asserts straight quotes `"No cities found for \"Xyz\""` but resource `no_cities_found` uses curly quotes “Xyz” | Yes |
+
+**Tests that pass (30):** All `AirQualityCardTest` (5), `AlertsScreenUiTest` (6 — including snooze, empty state, header count, history view, severity filter), `ExampleInstrumentedTest` (1), `WeatherAlertDatabaseTest` (8), 7 of 11 `WeatherDashboardTest`, 3 of 6 `SearchFavoritesTest`.
+
+**Notable:** `AlertsScreenUiTest` (6/6 pass) confirms the alerts snooze fix (M1) works on device — a snoozed advisory is hidden, current advisories are listed, and the empty state shows correctly.
+
+**Not run / limited:** Landscape orientation, font-scale 1.3×, light/dark theme switching, TalkBack traversal, contrast-ratio measurement, AdMob live rendering, Play Billing purchase flow, offline/airplane mode — these require additional device configurations beyond this single emulator session.
+
+## 6. Accessibility review (WCAG + Material guidelines)
 
 ### 5.1 Touch targets — 44 dp minimum (WCAG 2.5.5)
 
